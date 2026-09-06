@@ -39,9 +39,12 @@ jobs:
       - name: Build Frontend
         run: docker build -t interfascia-frontend:latest ./Frontend
 
+      - name: Instalar Trivy
+        uses: aquasecurity/trivy-action@v0.36.0
+
       - name: Trivy - Backend
-        run: trivy image  --severity CRITICAL --ignore-unfixed --exit-code 1 interfascia-backend:latest
-        
+        run: trivy image --severity CRITICAL --ignore-unfixed --exit-code 1 interfascia-backend:latest
+
       - name: Trivy - Frontend
         run: trivy image --severity CRITICAL --ignore-unfixed --exit-code 1 interfascia-frontend:latest
 
