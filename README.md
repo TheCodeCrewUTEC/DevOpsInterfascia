@@ -146,7 +146,7 @@ Detener los servicios:
 docker compose down
 ```
 ## Integración Continua
-
+ 
 El proyecto utiliza GitHub Actions para automatizar las validaciones del código
 
 Actualmente el pipeline realiza:
