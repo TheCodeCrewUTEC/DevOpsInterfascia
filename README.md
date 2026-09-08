@@ -6,7 +6,6 @@ El proyecto utiliza una arquitectura basada en servicios desacoplados y contened
 
 ## Tecnologías
 
-## Prueba git
 
 ### Frontend
 - Next.js
