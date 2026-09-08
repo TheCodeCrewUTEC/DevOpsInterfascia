@@ -1,17 +1,14 @@
-name: CI Interfascia
-
+name: Build
 on:
   push:
     branches:
+      - main
       - DevOps
-      - main
-
+      
   pull_request:
-    branches:
-      - main
-
+    types: [opened, synchronize, reopened]
+    
 jobs:
-
   sonarqube:
     name: SonarQube
     runs-on: ubuntu-latest
