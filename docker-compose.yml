@@ -30,7 +30,6 @@ services:
     ports:
       - "8000:80"
 
-<<<<<<< Updated upstream
     depends_on:
       - db
 
@@ -52,7 +51,5 @@ services:
 
 volumes:
   postgres_data:
-=======
     env_file:
       - .env
->>>>>>> Stashed changes
