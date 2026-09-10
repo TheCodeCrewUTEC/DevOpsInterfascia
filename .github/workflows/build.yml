@@ -1,34 +1,29 @@
-name: CI Interfascia
-
+name: Build
 on:
   push:
     branches:
+      - main
       - DevOps
-      - main
-
+      
   pull_request:
-    branches:
-      - main
-
+    types: [opened, synchronize, reopened]
+    
 jobs:
-
   sonarqube:
-    name: Analisis SonarQube
-    runs-on: self-hosted
-
+    name: SonarQube
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout del repositorio
-        uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
-          fetch-depth: 0
-
-      - name: Ejecutar análisis SonarQube
-        run: |
-          sonar-scanner "-Dsonar.host.url=${{ secrets.SONAR_HOST_URL }}" "-Dsonar.token=${{ secrets.SONAR_TOKEN }}" "-Dsonar.projectKey=Interfascia"
+          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@7006c4492b2e0ee0f816d36501671557c97f5995 # v8.1.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   docker-trivy:
     name: Build y análisis de vulnerabilidades
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     needs: sonarqube
 
     steps:
@@ -42,10 +37,22 @@ jobs:
         run: docker build -t interfascia-frontend:latest ./Frontend
 
       - name: Trivy - Backend
-        run: trivy image  --severity CRITICAL --ignore-unfixed --exit-code 1 interfascia-backend:latest
-        
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          scan-type: image
+          image-ref: interfascia-backend:latest
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: 1
+
       - name: Trivy - Frontend
-        run: trivy image --severity CRITICAL --ignore-unfixed --exit-code 1 interfascia-frontend:latest
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          scan-type: image
+          image-ref: interfascia-frontend:latest
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: 1
 
   frontend:
     name: Build Frontend
@@ -64,7 +71,7 @@ jobs:
 
       - name: Instalar dependencias
         working-directory: Frontend
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Ejecutar tests
         working-directory: Frontend
@@ -89,7 +96,7 @@ jobs:
 
       - name: Instalar dependencias
         working-directory: Backend
-        run: pip install -r requirements.txt
+        run: "pip install --only-binary=:all: -r requirements.txt"
 
       - name: Ejecutar tests
         working-directory: Backend

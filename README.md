@@ -6,10 +6,6 @@ El proyecto utiliza una arquitectura basada en servicios desacoplados y contened
 
 ## Tecnologías
 
-## Probando commit
-## Probando commit 2
-## probando commit 3
-
 ### Frontend
 - Next.js
 - React
@@ -150,7 +146,7 @@ Detener los servicios:
 docker compose down
 ```
 ## Integración Continua
-
+ 
 El proyecto utiliza GitHub Actions para automatizar las validaciones del código
 
 Actualmente el pipeline realiza:
