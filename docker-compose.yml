@@ -30,6 +30,9 @@ services:
     ports:
       - "8000:80"
 
+    env_file:
+      - .env
+
     depends_on:
       - db
 
@@ -51,5 +54,3 @@ services:
 
 volumes:
   postgres_data:
-    env_file:
-      - .env
