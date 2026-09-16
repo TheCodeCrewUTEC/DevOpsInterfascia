@@ -1,16 +1,14 @@
-import Link from "next/link";
-import Button from "./Button";
 import Image from "next/image";
 
 export default function Footer() {
   return (
-    <footer className="relative px-8 py-6">
-      
+    <footer className="mt-auto bg-white px-8 py-6">
+
       <div className="text-left">
         <p>Avalado por:</p>
       </div>
 
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between">
         <Image
           src="/Logo_UTEC.png"
           width={103}
@@ -34,7 +32,7 @@ export default function Footer() {
 
         <Image
           src="/Logo_UTU1.png"
-          width={200          }
+          width={200}
           height={73}
           alt="Logo de UTU"
         />

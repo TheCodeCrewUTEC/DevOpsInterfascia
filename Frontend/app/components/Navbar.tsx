@@ -3,8 +3,8 @@ import Button from "./Button";
 
 export default function Navbar() {
   return (
-    <nav className="relative flex items-center px-8 py-6">
-      
+    <nav className="sticky top-0 z-50 flex items-center bg-white px-8 py-6">
+
       {/* Logo + nombre */}
       <div className="flex items-center gap-6">
         <div className="bg-gray-300 px-4 py-1">
@@ -22,16 +22,14 @@ export default function Navbar() {
           Repositorio
         </Link>
 
-        <Link href="/">
+        <Link href="/#que-es-interfascia">
           ¿Qué es Interfascia?
         </Link>
-
       </div>
 
       {/* Links */}
-      <div className="absolute right-1 flex -translate-x-1/2 items-center gap-10 ">
-
-        <Button>Iniciar sesión</Button>
+      <div className="absolute right-1 flex -translate-x-1/2 items-center gap-10">
+        <Button href="/login">Iniciar sesión</Button>
       </div>
 
     </nav>

@@ -32,7 +32,7 @@ export default function Home() {
 
 
       {/* ¿QUÉ ES INTERFASCIA? */}
-      <section className="px-8 py-16">
+      <section id="que-es-interfascia" className="px-8 py-16">
 
         <div className="flex items-center gap-4">
 
