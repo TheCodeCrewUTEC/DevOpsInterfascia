@@ -23,7 +23,7 @@ export default function Home() {
               ¿No tienes una cuenta aún?
             </p>
 
-              <Button variant="secondary">Registrate</Button>
+              <Button href="/registro" variant="secondary">Registrate</Button>
           </div>
 
         </div>
