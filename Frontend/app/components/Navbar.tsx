@@ -17,7 +17,7 @@ export default function Navbar() {
       </div>
 
       {/* Links */}
-      <div className="absolute left-1/2 flex -translate-x-1/2 items-center gap-10">
+      <div className="absolute left-1/2 flex -translate-x-1/2 items-center gap-6 whitespace-nowrap">
         <Link href="/repositorio">
           Repositorio
         </Link>
@@ -25,11 +25,20 @@ export default function Navbar() {
         <Link href="/#que-es-interfascia">
           ¿Qué es Interfascia?
         </Link>
+
+        <Link href="/consultor-ia">
+          Consultor IA
+        </Link>
+
+        <Link href="/analisis-datos">
+          Análisis de Datos
+        </Link>
       </div>
 
-      {/* Links */}
-      <div className="absolute right-1 flex -translate-x-1/2 items-center gap-10">
+      {/* Acciones */}
+      <div className="ml-auto flex items-center gap-3">
         <Button href="/login">Iniciar sesión</Button>
+        <Button href="/registro" variant="secondary">Registrate</Button>
       </div>
 
     </nav>

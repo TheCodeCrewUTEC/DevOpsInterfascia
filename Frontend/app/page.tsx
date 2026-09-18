@@ -1,6 +1,3 @@
-import Image from "next/image";
-import Button from "./components/Button";
-
 export default function Home() {
   return (
     <main>
@@ -12,20 +9,8 @@ export default function Home() {
           Impulsando la innovación en el territorio uruguayo
         </h1>
 
-        <div className="mt-8 flex items-center justify-between">
-
-          <div className="h-64 w-1/2 bg-gray-200">
-            Imagen
-          </div>
-
-          <div className="flex flex-col items-center gap-2">
-            <p className="text-xs">
-              ¿No tienes una cuenta aún?
-            </p>
-
-              <Button href="/registro" variant="secondary">Registrate</Button>
-          </div>
-
+        <div className="mt-8 h-64 w-1/2 bg-gray-200">
+          Imagen
         </div>
 
       </section>
