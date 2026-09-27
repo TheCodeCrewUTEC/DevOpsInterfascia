@@ -1,17 +1,39 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from app.schemas.convocatoria import ConvocatoriaResponse
 from app.schemas.documento import DocumentoResponse
 from app.schemas.convocatoria_detalle import ConvocatoriaDetalleResponse
 from app.services import convocatoria_service, documento_service
+from app.schemas.convocatoria_paginacion import ConvocatoriaPaginadaResponse
+from datetime import date
 
 router = APIRouter(
     prefix="/api/convocatorias",
     tags=["Convocatorias"]
 )
 
-@router.get("/", response_model=list[ConvocatoriaResponse])
-def obtener_convocatorias():
-    return convocatoria_service.obtener_convocatorias()
+@router.get("/", response_model=ConvocatoriaPaginadaResponse)
+def obtener_convocatorias(
+    estado: str | None = None,
+    institucion: str | None = None,
+    buscar: str | None = None,
+    fecha_apertura_desde: date | None = None,
+    fecha_apertura_hasta: date | None = None,
+    fecha_cierre_desde: date | None = None,
+    fecha_cierre_hasta: date | None = None,
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100)
+):
+    return convocatoria_service.obtener_convocatorias(
+        estado=estado,
+        institucion=institucion,
+        buscar=buscar,
+        fecha_apertura_desde=fecha_apertura_desde,
+        fecha_apertura_hasta=fecha_apertura_hasta,
+        fecha_cierre_desde=fecha_cierre_desde,
+        fecha_cierre_hasta=fecha_cierre_hasta,
+        page=page,
+        limit=limit
+    )
 
 
 @router.get("/{id}", response_model=ConvocatoriaDetalleResponse)
