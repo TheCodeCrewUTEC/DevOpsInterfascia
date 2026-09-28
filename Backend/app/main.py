@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.routers import convocatorias
 from app.routers import documentos
 from app.routers import chunks
+from app.routers import auth
 
 app = FastAPI(
     title="Interfascia API",
@@ -25,6 +26,7 @@ app.add_middleware(
 app.include_router(convocatorias.router)
 app.include_router(documentos.router)
 app.include_router(chunks.router)
+app.include_router(auth.router)
 
 @app.get("/")
 def root():

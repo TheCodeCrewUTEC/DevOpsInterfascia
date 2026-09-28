@@ -5,6 +5,7 @@ interface ButtonProps {
   variant?: "primary" | "secondary";
   href?: string;
   type?: "button" | "submit" | "reset";
+  prefetch?: boolean;
 }
 
 export default function Button({
@@ -12,6 +13,7 @@ export default function Button({
   variant = "primary",
   href,
   type = "button",
+  prefetch,
 }: ButtonProps) {
   const className =
     variant === "primary"
@@ -20,7 +22,7 @@ export default function Button({
 
   if (href) {
     return (
-      <Link href={href} className={`inline-block text-center ${className}`}>
+      <Link href={href} prefetch={prefetch} className={`inline-block text-center ${className}`}>
         {children}
       </Link>
     );
