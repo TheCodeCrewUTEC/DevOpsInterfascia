@@ -321,12 +321,18 @@ El login y el registro los maneja **Keycloak**. Las rutas `/login` y `/registro`
 node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
 ```
 
-2. Completar en el `.env` de la raíz: `AUTH_SECRET`, `KEYCLOAK_FRONTEND_CLIENT_SECRET`, `KEYCLOAK_ADMIN_PASSWORD`.
+2. Completar en el `.env` de la raíz: `AUTH_SECRET`, `KEYCLOAK_FRONTEND_CLIENT_SECRET`, `KEYCLOAK_ADMIN_PASSWORD` y `KEYCLOAK_DB_PASSWORD`.
 
-3. Levantar solo Keycloak (la primera vez importa el realm `interfascia` desde `keycloak/realm-interfascia.json`):
+3. Levantar Keycloak (arranca también `db`; la primera vez importa el realm `interfascia` desde `keycloak/realm-interfascia.json`):
 
 ```bash
 docker compose up -d keycloak
+```
+
+Keycloak guarda usuarios y configuración en **PostgreSQL**, en una base propia (`keycloak` por defecto) dentro del contenedor `interfascia-db`. El script `db/init/01-keycloak.sh` la crea automáticamente, pero **solo si el volumen de Postgres es nuevo**. Si ya tenías el volumen `interfascia_postgres_data`, crearla una vez a mano (usar la misma contraseña que `KEYCLOAK_DB_PASSWORD`):
+
+```bash
+docker exec interfascia-db psql -U interfascia -d interfascia -c "CREATE ROLE keycloak LOGIN PASSWORD 'la-clave-del-env';" -c "CREATE DATABASE keycloak OWNER keycloak;"
 ```
 
 4. Para correr el frontend con `npm run dev`, copiar `Frontend/.env.example` a `Frontend/.env.local` y poner los mismos secretos.
@@ -336,7 +342,7 @@ docker compose up -d keycloak
 | Consola de administración | http://localhost:8080/admin (usuario `admin`) |
 | Realm de la app | http://localhost:8080/realms/interfascia |
 
-> El realm solo se importa si todavía no existe. Si se modifica `realm-interfascia.json`, borrar el volumen para reimportarlo: `docker compose down` y `docker volume rm interfascia_keycloak_data`.
+> El realm solo se importa si todavía no existe en la base. Si se modifica `realm-interfascia.json`, hay que aplicar el cambio desde la consola de administración, o borrar y recrear la base de Keycloak (se pierden los usuarios registrados).
 
 **Diseño de las pantallas.** Las pantallas de login, registro y recuperar contraseña usan el tema propio `keycloak/themes/interfascia/`, que replica el wireframe de Figma (navbar y footer de la app incluidos):
 

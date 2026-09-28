@@ -29,6 +29,9 @@ services:
       - backend
       - keycloak
 
+    networks:
+      - interfascia-net
+
 
   backend:
     build:
@@ -53,6 +56,9 @@ services:
       - db
       - keycloak
 
+    networks:
+      - interfascia-net
+
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.4
@@ -73,15 +79,25 @@ services:
       KEYCLOAK_FRONTEND_CLIENT_SECRET: ${KEYCLOAK_FRONTEND_CLIENT_SECRET}
       # Usada por el tema para el navbar, el footer y el botón de cerrar
       INTERFASCIA_APP_URL: http://localhost:3000
+      # Usuarios y configuración se guardan en el Postgres del proyecto (base propia de Keycloak)
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://db:5432/${KEYCLOAK_DB_NAME:-keycloak}
+      KC_DB_USERNAME: ${KEYCLOAK_DB_USER:-keycloak}
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
 
     ports:
       - "8080:8080"
 
     volumes:
-      # Montado en data/ (no en data/h2) para heredar los permisos del usuario keycloak de la imagen
-      - keycloak_data:/opt/keycloak/data
       - ./keycloak/realm-interfascia.json:/opt/keycloak/data/import/realm-interfascia.json:ro
       - ./keycloak/themes/interfascia:/opt/keycloak/themes/interfascia:ro
+
+    depends_on:
+      db:
+        condition: service_healthy
+
+    networks:
+      - interfascia-net
 
 
   db:
@@ -95,10 +111,30 @@ services:
       POSTGRES_DB: interfascia
       POSTGRES_USER: interfascia
       POSTGRES_PASSWORD: interfascia
+      # Los usa db/init/01-keycloak.sh para crear la base de Keycloak
+      KEYCLOAK_DB_NAME: ${KEYCLOAK_DB_NAME:-keycloak}
+      KEYCLOAK_DB_USER: ${KEYCLOAK_DB_USER:-keycloak}
+      KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
 
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U interfascia -d interfascia"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+    networks:
+      - interfascia-net
 
 volumes:
   postgres_data:
-  keycloak_data:
+
+# Misma red (nombre y clave) que el compose de infraestructura, para que ambos compartan la base
+networks:
+  interfascia-net:
+    name: interfascia-net
+    driver: bridge
