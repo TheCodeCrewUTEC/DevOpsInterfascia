@@ -1,15 +1,7 @@
 from pathlib import Path
 
 from app.services.docling_service import procesar_job
-
-from app.services.chunking_service import (
-    generar_chunks
-)
-
-from app.services.embedding_service import (
-    generar_embeddings
-)
-
+from app.services.respuesta_service_db import guardar_respuesta
 from app.services.qwen_service import (
     extraer_campos_formulario
 )
@@ -19,6 +11,13 @@ from app.services.formulario_job_service import (
     actualizar_estado_job
 )
 
+from app.services.document_embedding_service import (
+    generar_chunks_documentos,
+    generar_embeddings,
+    buscar_chunks_relevantes,
+)
+
+from app.services.respuesta_service import generar_respuesta
 
 async def procesar_formulario(
     ctx,
@@ -31,29 +30,36 @@ async def procesar_formulario(
 
     try:
 
-        # PENDING → PROCESSING
+        # ==========================================
+        # 1. PENDING → PROCESSING
+        # ==========================================
+
         actualizar_estado_job(
             job_id,
             "PROCESSING"
         )
 
-        # OBTENER JOB
+        # ==========================================
+        # 2. OBTENER JOB
+        # ==========================================
+
         job = obtener_job(job_id)
 
         if not job:
-
             raise Exception(
                 f"No existe el Job {job_id}"
             )
 
-        # UBICAR CARPETA
+        # ==========================================
+        # 3. UBICAR CARPETA
+        # ==========================================
+
         carpeta_job = (
             Path("storage/formularios")
             / f"job_{job_id}"
         )
 
         if not carpeta_job.exists():
-
             raise Exception(
                 f"No existe la carpeta del Job: "
                 f"{carpeta_job}"
@@ -63,7 +69,10 @@ async def procesar_formulario(
             f"[WORKER] Carpeta: {carpeta_job}"
         )
 
-        # PROCESAR CON DOCLING
+        # ==========================================
+        # 4. PROCESAR CON DOCLING
+        # ==========================================
+
         resultados = procesar_job(
             carpeta_job
         )
@@ -73,7 +82,10 @@ async def procesar_formulario(
             f"{len(resultados)}"
         )
 
-        # MOSTRAR RESULTADO DE DOCLING
+        # ==========================================
+        # 5. MOSTRAR RESULTADO DE DOCLING
+        # ==========================================
+
         for resultado in resultados:
 
             print(
@@ -86,7 +98,10 @@ async def procesar_formulario(
                 f"{len(resultado['texto'])}"
             )
 
-        # BUSCAR FORMULARIO
+        # ==========================================
+        # 6. BUSCAR FORMULARIO
+        # ==========================================
+
         formulario = next(
             (
                 resultado
@@ -98,7 +113,6 @@ async def procesar_formulario(
         )
 
         if not formulario:
-
             raise Exception(
                 "No se encontró el formulario "
                 "de postulación"
@@ -109,104 +123,357 @@ async def procesar_formulario(
             f"{formulario['nombre']}"
         )
 
-        # QWEN - EXTRAER CAMPOS
+        # ==========================================
+        # 7. MOSTRAR INFORMACIÓN DEL FORMULARIO
+        # ==========================================
+
+        print(
+            f"[QWEN] Texto del formulario: "
+            f"{len(formulario['texto'])} caracteres"
+        )
+
+        # ==========================================
+        # 8. OBTENER RUTA REAL DEL PDF
+        # ==========================================
+
+        ruta_formulario = (
+            carpeta_job
+            / formulario["nombre"]
+        )
+
+        if not ruta_formulario.exists():
+            raise Exception(
+                f"No existe el archivo del formulario: "
+                f"{ruta_formulario}"
+            )
+
+        print(
+            f"[QWEN] Archivo utilizado: "
+            f"{ruta_formulario}"
+        )
+
+        # ==========================================
+        # 9. EXTRAER CAMPOS CON QWEN
+        # ==========================================
+
         print(
             "[QWEN] Extrayendo campos "
             "del formulario..."
         )
 
         campos = extraer_campos_formulario(
-            formulario["texto"]
+            ruta_formulario
         )
+
+        # ==========================================
+        # 10. VALIDAR RESULTADO
+        # ==========================================
+
+        if not isinstance(
+            campos,
+            dict
+        ):
+            raise Exception(
+                "La extracción no devolvió "
+                "un objeto válido"
+            )
 
         lista_campos = campos.get(
             "campos",
             []
         )
 
+        if not isinstance(
+            lista_campos,
+            list
+        ):
+            raise Exception(
+                "La lista de campos no es válida"
+            )
+
         print(
-            f"[QWEN] Campos encontrados: "
+            f"\n[QWEN] Campos encontrados: "
             f"{len(lista_campos)}"
         )
 
-        # MOSTRAR CAMPOS EXTRAÍDOS
-        for i, campo in enumerate(
-            lista_campos,
-            start=1
-        ):
+        # ============================================================
+        # PROCESAR DOCUMENTOS DEL USUARIO
+        # ============================================================
 
-            print(
-                f"\n[CAMPO {i}]"
+        print()
+        print("=" * 60)
+        print("[WORKER] Procesando documentos del usuario")
+        print("=" * 60)
+
+        chunks = generar_chunks_documentos(carpeta_job)
+
+        print(
+            f"[WORKER] Chunks generados: {len(chunks)}"
+        )
+
+        chunks = generar_embeddings(chunks)
+
+        print(
+            f"[WORKER] Embeddings generados: {len(chunks)}"
+        )
+
+        # ============================================================
+        # BUSCAR INFORMACIÓN PARA CADA CAMPO
+        # ============================================================
+
+        print()
+        print("=" * 60)
+        print("[WORKER] BUSCANDO INFORMACIÓN PARA CADA CAMPO")
+        print("=" * 60)
+
+        respuestas = []
+
+        for campo in lista_campos:
+
+            nombre_campo = campo.get("campo")
+            tipo_campo = campo.get("tipo")
+
+            print("\n")
+            print("=" * 70)
+            print(f"[WORKER] PROCESANDO CAMPO: {nombre_campo}")
+            print(f"[WORKER] Tipo: {tipo_campo}")
+
+            # --------------------------------------------------------
+            # 1. BÚSQUEDA SEMÁNTICA
+            # --------------------------------------------------------
+
+            resultados = buscar_chunks_relevantes(
+                nombre_campo,
+                chunks,
+                top_k=5,
             )
 
             print(
-                f"Nombre: "
-                f"{campo.get('nombre')}"
+                f"[WORKER] Chunks encontrados: "
+                f"{len(resultados)}"
             )
 
-            print(
-                f"Tipo: "
-                f"{campo.get('tipo')}"
+            resultado_qwen = generar_respuesta(
+                campo=nombre_campo,
+                tipo=tipo_campo,
+                chunks_relevantes=resultados,
             )
 
-            print(
-                f"Descripción: "
-                f"{campo.get('descripcion')}"
+            respuesta = resultado_qwen.get("respuesta")
+
+            # ============================================================
+            # NORMALIZAR NULL
+            # ============================================================
+
+            if respuesta == "null":
+                respuesta = None
+
+
+            # ============================================================
+            # TRANSFORMAR FUENTES DE QWEN
+            # ============================================================
+
+            fuentes_qwen = resultado_qwen.get("fuentes", [])
+
+            fuentes = []
+
+            for fuente in fuentes_qwen:
+
+                if not isinstance(fuente, dict):
+                    continue
+
+                # Aceptamos chunk_id como formato principal
+                # y chunk por compatibilidad con la implementación actual.
+                chunk_id = fuente.get("chunk_id")
+
+                if chunk_id is None:
+                    chunk_id = fuente.get("chunk")
+
+                if chunk_id is None:
+                    continue
+
+                # Qwen recibe los chunks numerados desde 1.
+                indice = int(chunk_id) - 1
+
+                if indice < 0 or indice >= len(resultados):
+                    continue
+
+                chunk = resultados[indice]
+
+                archivo = chunk.get("documento")
+                pagina = chunk.get("pagina")
+
+                if not archivo:
+                    continue
+
+                fuentes.append({
+                    "archivo": archivo,
+                    "pagina": pagina
+                })
+
+
+            # ============================================================
+            # ELIMINAR FUENTES DUPLICADAS
+            # ============================================================
+
+            fuentes_unicas = []
+
+            for fuente in fuentes:
+
+                if fuente not in fuentes_unicas:
+                    fuentes_unicas.append(fuente)
+
+
+            # ============================================================
+            # GUARDAR RESPUESTA EN BD
+            # ============================================================
+
+            guardar_respuesta(
+                job_id=job_id,
+                campo=nombre_campo,
+                respuesta=respuesta,
+                fuentes=fuentes_unicas,
             )
 
-        # CHUNKING DE DOCUMENTOS DEL PROYECTO
-        for resultado in resultados:
 
-            # No utilizamos el formulario como
-            # fuente de información del proyecto
-            if resultado["nombre"] == "FormularioPostulacion.pdf":
-                continue
+            # ============================================================
+            # RESULTADO DEL CAMPO
+            # ============================================================
 
-            print(
-                f"\n[CHUNKING] Generando chunks para: "
-                f"{resultado['nombre']}"
+            resultado_campo = {
+                "campo": nombre_campo,
+                "respuesta": respuesta,
+                "fuentes": fuentes_unicas,
+            }
+
+            respuestas.append(resultado_campo)
+
+            print(f"[WORKER] RESPUESTA FINAL: {respuesta}")
+            print(f"[WORKER] FUENTES: {fuentes_unicas}")
+        # ==========================================
+        # 11. MOSTRAR CAMPOS
+        # ==========================================
+
+        for campo in lista_campos:
+
+            nombre_campo = campo.get("campo")
+            tipo_campo = campo.get("tipo")
+
+            print("\n" + "=" * 70)
+            print(f"[WORKER] PROCESANDO CAMPO: {nombre_campo}")
+            print(f"[WORKER] Tipo: {tipo_campo}")
+            print("=" * 70)
+
+            # ============================================================
+            # 1. BÚSQUEDA SEMÁNTICA
+            # ============================================================
+
+            resultados = buscar_chunks_relevantes(
+                nombre_campo,
+                chunks,
+                top_k=5,
             )
 
-            chunks = generar_chunks(
-                resultado["documento"]
+            print(f"[WORKER] Chunks encontrados: {len(resultados)}")
+
+            # ============================================================
+            # 2. GENERAR RESPUESTA CON QWEN
+            # ============================================================
+
+            resultado_qwen = generar_respuesta(
+                campo=nombre_campo,
+                tipo=tipo_campo,
+                chunks_relevantes=resultados,
             )
 
-            print(
-                f"[CHUNKING] Chunks generados: "
-                f"{len(chunks)}"
+            respuesta = resultado_qwen.get("respuesta")
+
+            # ============================================================
+            # 3. NORMALIZAR "null"
+            # ============================================================
+
+            if respuesta == "null":
+                respuesta = None
+
+            # ============================================================
+            # 4. TRANSFORMAR FUENTES
+            # ============================================================
+
+            fuentes_qwen = resultado_qwen.get("fuentes", [])
+
+            fuentes = []
+
+            for fuente in fuentes_qwen:
+
+                if not isinstance(fuente, dict):
+                    continue
+
+                chunk_id = fuente.get("chunk_id")
+
+                if chunk_id is None:
+                    continue
+
+                # Los chunks recuperados están numerados desde 1
+                # según el orden enviado a Qwen.
+                indice = chunk_id - 1
+
+                if indice < 0 or indice >= len(resultados):
+                    continue
+
+                chunk = resultados[indice]
+
+                archivo = chunk.get("documento")
+                pagina = chunk.get("pagina")
+
+                if not archivo:
+                    continue
+
+                fuentes.append({
+                    "archivo": archivo,
+                    "pagina": pagina
+                })
+
+            # ============================================================
+            # 5. ELIMINAR FUENTES DUPLICADAS
+            # ============================================================
+
+            fuentes_unicas = []
+
+            for fuente in fuentes:
+
+                if fuente not in fuentes_unicas:
+                    fuentes_unicas.append(fuente)
+
+            # ============================================================
+            # 6. GUARDAR EN BASE DE DATOS
+            # ============================================================
+
+            guardar_respuesta(
+                job_id=job_id,
+                campo=nombre_campo,
+                respuesta=respuesta,
+                fuentes=fuentes_unicas,
             )
 
-            # GENERAR EMBEDDINGS
-            embeddings = generar_embeddings(
-                chunks
-            )
+            # ============================================================
+            # 7. RESULTADO DEL CAMPO
+            # ============================================================
 
-            print(
-                f"[EMBEDDING] Resultado obtenido: "
-                f"{len(embeddings)} embeddings"
-            )
+            resultado_campo = {
+                "campo": nombre_campo,
+                "respuesta": respuesta,
+                "fuentes": fuentes_unicas,
+            }
 
-            # MOSTRAR INFORMACIÓN
-            for i, item in enumerate(
-                embeddings,
-                start=1
-            ):
+            respuestas.append(resultado_campo)
 
-                print(
-                    f"\n[EMBEDDING {i}]"
-                )
+            print(f"[WORKER] RESPUESTA FINAL: {respuesta}")
+            print(f"[WORKER] FUENTES: {fuentes_unicas}")
 
-                print(
-                    f"Texto: "
-                    f"{item['texto'][:150]}..."
-                )
+        # ==========================================
+        # 12. COMPLETED
+        # ==========================================
 
-                print(
-                    f"Dimensiones: "
-                    f"{len(item['embedding'])}"
-                )
-
-        # COMPLETED
         actualizar_estado_job(
             job_id,
             "COMPLETED"

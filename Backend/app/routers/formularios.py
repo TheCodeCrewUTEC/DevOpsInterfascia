@@ -168,3 +168,78 @@ async def crear_formulario_job(
         "estado": job["estado"],
         "creado": job["creado"]
     }
+
+@router.get("/jobs/{job_id}/resultado")
+def obtener_resultado_job(job_id: int):
+
+    conn = get_connection()
+
+    try:
+
+        with conn.cursor() as cur:
+
+            # ========================================================
+            # 1. OBTENER JOB
+            # ========================================================
+
+            cur.execute(
+                """
+                SELECT id, estado
+                FROM formulario_job
+                WHERE id = %s
+                """,
+                (job_id,)
+            )
+
+            job = cur.fetchone()
+
+            if not job:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"No existe el Job {job_id}"
+                )
+
+            job_id_db, estado = job
+
+            # ========================================================
+            # 2. OBTENER RESPUESTAS
+            # ========================================================
+
+            cur.execute(
+                """
+                SELECT
+                    campo,
+                    respuesta,
+                    fuentes
+                FROM respuesta_formulario
+                WHERE job_id = %s
+                ORDER BY id
+                """,
+                (job_id,)
+            )
+
+            filas = cur.fetchall()
+
+            respuestas = []
+
+            for campo, respuesta, fuentes in filas:
+
+                respuestas.append({
+                    "campo": campo,
+                    "respuesta": respuesta,
+                    "fuentes": fuentes or []
+                })
+
+            # ========================================================
+            # 3. RESPUESTA
+            # ========================================================
+
+            return {
+                "job_id": job_id_db,
+                "estado": estado,
+                "total_respuestas": len(respuestas),
+                "respuestas": respuestas
+            }
+
+    finally:
+        conn.close()
