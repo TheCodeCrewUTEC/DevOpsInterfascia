@@ -1,14 +1,12 @@
-import type { NextRequest } from "next/server";
 import { signIn } from "@/auth";
-import { safeRedirect } from "@/lib/safe-redirect";
 
-// prompt=create hace que Keycloak abra directamente el formulario de registro
-export async function GET(request: NextRequest) {
-  const { searchParams, origin } = request.nextUrl;
-
+// prompt=create hace que Keycloak abra directamente el formulario de registro.
+// Al terminar, Keycloak deja la sesión iniciada; /registro/exitoso la cierra
+// para que el usuario vea el aviso y entre con su email y contraseña.
+export async function GET() {
   await signIn(
     "keycloak",
-    { redirectTo: safeRedirect(searchParams.get("callbackUrl"), origin) },
+    { redirectTo: "/registro/exitoso" },
     { prompt: "create" },
   );
 }

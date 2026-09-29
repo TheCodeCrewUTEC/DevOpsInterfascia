@@ -35,7 +35,8 @@
                 <button class="ifx-submit ifx-submit--login" name="login" id="kc-login" type="submit">${msg("doLogIn")}</button>
 
                 <#if realm.registrationAllowed && !registrationDisabled??>
-                    <a class="ifx-link ifx-link--center" href="${url.registrationUrl}">${msg("noAccountRegister")}</a>
+                    <#-- Por la app (no url.registrationUrl) para que el registro termine en el aviso de éxito -->
+                    <a class="ifx-link ifx-link--center" href="${(properties.appUrl!'http://localhost:3000')?remove_ending('/')}/registro">${msg("noAccountRegister")}</a>
                 </#if>
             </form>
         </#if>

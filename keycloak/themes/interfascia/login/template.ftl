@@ -51,10 +51,11 @@
             <a href="${appUrl}/analisis-datos">Análisis de Datos</a>
         </div>
 
+        <#-- Pasan por la app: así el registro siempre termina en el aviso de "Registro exitoso" -->
         <div class="ifx-navbar__actions">
-            <a class="ifx-btn ifx-btn--primary" href="${(url.loginUrl)!(appUrl + '/login')}">Iniciar sesión</a>
+            <a class="ifx-btn ifx-btn--primary" href="${appUrl}/login">Iniciar sesión</a>
             <#if realm.registrationAllowed>
-                <a class="ifx-btn ifx-btn--secondary" href="${(url.registrationUrl)!(appUrl + '/registro')}">Registrate</a>
+                <a class="ifx-btn ifx-btn--secondary" href="${appUrl}/registro">Registrate</a>
             </#if>
         </div>
     </nav>
