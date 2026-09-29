@@ -34,3 +34,55 @@ def crear_job(formulario_path: str | None):
 
     finally:
         conn.close()
+
+def obtener_job(job_id: int):
+    conn = get_connection()
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    id,
+                    estado,
+                    formulario_path,
+                    creado,
+                    iniciado,
+                    finalizado,
+                    resultado_path,
+                    error
+                FROM formulario_job
+                WHERE id = %s
+                """,
+                (job_id,)
+            )
+
+            job = cur.fetchone()
+
+        return job
+
+    finally:
+        conn.close()
+
+def actualizar_estado_job(job_id: int, estado: str):
+    conn = get_connection()
+
+    try:
+        with conn.cursor() as cur:
+
+            cur.execute(
+                """
+                UPDATE formulario_job
+                SET estado = %s
+                WHERE id = %s
+                """,
+                (
+                    estado,
+                    job_id
+                )
+            )
+
+        conn.commit()
+
+    finally:
+        conn.close()
