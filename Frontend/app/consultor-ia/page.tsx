@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+
 const resultados = [
   {
     tipo: "Convocatoria",
@@ -65,6 +69,92 @@ const investigadores = [
 ];
 
 export default function ConsultorIAPage() {
+  const [formulario, setFormulario] = useState<File | null>(null);
+  const [documentos, setDocumentos] = useState<File[]>([]);
+
+  const [subiendo, setSubiendo] = useState(false);
+  const [jobId, setJobId] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleFormularioChange = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const archivo = event.target.files?.[0] ?? null;
+
+    setFormulario(archivo);
+    setError(null);
+  };
+
+  const handleDocumentosChange = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const archivos = Array.from(event.target.files ?? []);
+
+    setDocumentos(archivos);
+    setError(null);
+  };
+
+  const handleSubir = async () => {
+    setError(null);
+    setJobId(null);
+
+    if (!formulario) {
+      setError("Debe seleccionar un formulario de postulación.");
+      return;
+    }
+
+    if (documentos.length === 0) {
+      setError("Debe seleccionar al menos un documento del proyecto.");
+      return;
+    }
+
+    setSubiendo(true);
+
+    try {
+      const formData = new FormData();
+
+      formData.append("formulario", formulario);
+
+      documentos.forEach((documento) => {
+        formData.append("documentos", documento);
+      });
+
+      const response = await fetch(
+        "http://localhost:8000/formularios/jobs",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+
+        throw new Error(
+          errorData.detail || "Error al crear el job."
+        );
+      }
+
+      const data = await response.json();
+
+      console.log("Respuesta del backend:", data);
+
+      setJobId(data.id);
+
+    } catch (error) {
+      console.error("Error al subir archivos:", error);
+
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError("Ocurrió un error al subir los archivos.");
+      }
+
+    } finally {
+      setSubiendo(false);
+    }
+  };
+
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 py-8">
 
@@ -180,9 +270,38 @@ export default function ConsultorIAPage() {
         </p>
 
         <div className="mx-auto mt-10 max-w-5xl">
-          <p className="mb-3 text-sm text-black">
-            Adjunta documentación sobre tu Proyecto...
-          </p>
+
+        {/* FORMULARIO DE POSTULACIÓN */}
+
+        <p className="mb-3 text-sm text-black">
+          Selecciona el formulario de postulación
+        </p>
+
+        <label
+          htmlFor="formulario-postulacion"
+          className="flex min-h-32 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-sky-500 bg-white px-6 py-8 text-center"
+        >
+          <span className="text-sm text-neutral-700">
+            {formulario
+              ? formulario.name
+              : "Seleccionar formulario de postulación"}
+          </span>
+
+          <input
+            id="formulario-postulacion"
+            type="file"
+            accept=".pdf"
+            className="sr-only"
+            onChange={handleFormularioChange}
+          />
+        </label>
+
+
+        {/* DOCUMENTOS DEL PROYECTO */}
+
+        <p className="mb-3 mt-8 text-sm text-black">
+          Adjunta documentación sobre tu Proyecto...
+        </p>
 
           <label
             htmlFor="archivos-proyecto"
@@ -194,19 +313,54 @@ export default function ConsultorIAPage() {
             </span>
             <input
               id="archivos-proyecto"
-              name="archivos"
+              name="documentos"
               type="file"
               multiple
               className="sr-only"
+              onChange={handleDocumentosChange}
             />
           </label>
+
+          {documentos.length > 0 && (
+          <div className="mt-4 rounded-lg border border-neutral-300 bg-white p-4">
+
+            <p className="mb-2 text-sm font-medium text-black">
+              Documentos seleccionados:
+            </p>
+
+            <ul className="space-y-1">
+              {documentos.map((documento, index) => (
+                <li
+                  key={`${documento.name}-${index}`}
+                  className="text-sm text-neutral-700"
+                >
+                  {documento.name}
+                </li>
+              ))}
+            </ul>
+
+          </div>
+        )}
+        {error && (
+          <div className="mt-4 rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-700">
+            {error}
+          </div>
+        )}
+
+        {jobId && (
+          <div className="mt-4 rounded-lg border border-green-300 bg-green-50 p-3 text-sm text-green-700">
+            Job creado correctamente: #{jobId}
+          </div>
+        )}
 
           <div className="mt-4 flex justify-end">
             <button
               type="button"
-              className="border border-black bg-neutral-300 px-8 py-2 text-sm text-black"
+              onClick={handleSubir}
+              disabled={subiendo}
+              className="border border-black bg-neutral-300 px-8 py-2 text-sm text-black disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Subir
+              {subiendo ? "Subiendo..." : "Subir"}
             </button>
           </div>
         </div>

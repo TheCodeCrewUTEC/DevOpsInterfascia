@@ -160,14 +160,15 @@ async def crear_formulario_job(
             }
         )
 
-        # ENCOLAR JOB EN REDIS
-        await encolar_formulario(job_id)
+    # ENCOLAR JOB EN REDIS
+    await encolar_formulario(job_id)
 
     return {
         "id": job["id"],
         "estado": job["estado"],
         "creado": job["creado"]
     }
+        
 
 @router.get("/jobs/{job_id}/resultado")
 def obtener_resultado_job(job_id: int):
