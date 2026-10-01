@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -82,6 +82,11 @@ export default function ConsultorIAPage() {
   const [investigadores, setInvestigadores] = useState<Investigador[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [formulario, setFormulario] = useState<File | null>(null);
+  const [documentos, setDocumentos] = useState<File[]>([]);
+  const [subiendo, setSubiendo] = useState(false);
+  const [jobId, setJobId] = useState<number | null>(null);
+  const [errorSubida, setErrorSubida] = useState<string | null>(null);
 
   useEffect(() => {
     const controlador = new AbortController();
@@ -153,6 +158,60 @@ export default function ConsultorIAPage() {
   function enviar(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusqueda(borrador);
+  }
+
+  function handleFormularioChange(event: ChangeEvent<HTMLInputElement>) {
+    setFormulario(event.target.files?.[0] ?? null);
+    setJobId(null);
+    setErrorSubida(null);
+  }
+
+  function handleDocumentosChange(event: ChangeEvent<HTMLInputElement>) {
+    setDocumentos(Array.from(event.target.files ?? []));
+    setJobId(null);
+    setErrorSubida(null);
+  }
+
+  async function handleSubir() {
+    if (!formulario) {
+      setErrorSubida("Seleccioná el formulario de postulación.");
+      return;
+    }
+
+    if (documentos.length === 0) {
+      setErrorSubida("Adjuntá al menos un documento del proyecto.");
+      return;
+    }
+
+    const cuerpo = new FormData();
+    cuerpo.append("formulario", formulario);
+    for (const documento of documentos) {
+      cuerpo.append("documentos", documento);
+    }
+
+    setSubiendo(true);
+    setErrorSubida(null);
+    setJobId(null);
+
+    try {
+      const response = await fetch(`${API_URL}/formularios/jobs`, {
+        method: "POST",
+        body: cuerpo,
+      });
+
+      if (!response.ok) {
+        throw new Error(`No se pudo crear el job (${response.status}).`);
+      }
+
+      const job = (await response.json()) as { id: number };
+      setJobId(job.id);
+    } catch (err) {
+      setErrorSubida(
+        err instanceof Error ? err.message : "No se pudieron subir los archivos.",
+      );
+    } finally {
+      setSubiendo(false);
+    }
   }
 
   return (
@@ -375,9 +434,9 @@ export default function ConsultorIAPage() {
 
           </div>
         )}
-        {error && (
+        {errorSubida && (
           <div className="mt-4 rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-700">
-            {error}
+            {errorSubida}
           </div>
         )}
 
