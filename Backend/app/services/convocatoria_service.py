@@ -28,9 +28,17 @@ def obtener_convocatorias(
         where += " AND LOWER(institucion) LIKE LOWER(%s)"
         parametros.append(f"%{institucion}%")
 
-    if buscar is not None:
-        where += " AND titulo ILIKE %s"
-        parametros.append(f"%{buscar}%")
+    if buscar is not None and buscar.strip() != "":
+        where += """
+            AND (
+                titulo ILIKE %s
+                OR COALESCE(descripcion, '') ILIKE %s
+                OR COALESCE(institucion, '') ILIKE %s
+                OR COALESCE(beneficiarios, '') ILIKE %s
+            )
+        """
+        patron = f"%{buscar.strip()}%"
+        parametros.extend([patron] * 4)
 
     if fecha_apertura_desde is not None:
         where += " AND fecha_apertura >= %s"

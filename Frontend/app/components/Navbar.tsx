@@ -1,46 +1,54 @@
 import Link from "next/link";
 import Button from "./Button";
 
+const links = [
+  { href: "/repositorio", label: "Repositorio" },
+  { href: "/#que-es-interfascia", label: "¿Qué es Interfascia?" },
+  { href: "/consultor-ia", label: "Consultor IA" },
+  { href: "/analisis-datos", label: "Análisis de Datos" },
+];
+
 export default function Navbar() {
   return (
-    <nav className="sticky top-0 z-50 flex items-center bg-white px-8 py-6">
+    <nav className="sticky top-0 z-50 border-b border-pine/10 bg-sand/80 px-6 py-4 backdrop-blur-md">
+      <div className="mx-auto grid max-w-6xl grid-cols-[1fr_auto] items-center gap-x-4 gap-y-3 md:grid-cols-[1fr_auto_1fr]">
+        <Link href="/" className="flex shrink-0 items-center gap-3 justify-self-start">
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-pine text-ink">
+            <Mark />
+          </span>
+          <span className="font-display text-xl tracking-tight text-ink">
+            Interfascia
+          </span>
+        </Link>
 
-      {/* Logo + nombre */}
-      <div className="flex items-center gap-6">
-        <div className="bg-gray-300 px-4 py-1">
-          Logo
+        <div className="col-span-2 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-center md:col-span-1 md:col-start-2 md:row-start-1 md:flex-nowrap">
+          {links.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="nav-link text-xs text-ink/80 transition-colors hover:text-pine sm:text-sm md:whitespace-nowrap"
+            >
+              {link.label}
+            </Link>
+          ))}
         </div>
 
-        <Link href="/">
-          Interfascia
-        </Link>
+        <div className="col-start-2 row-start-1 flex shrink-0 items-center justify-end justify-self-end gap-2 max-md:[&_a]:whitespace-nowrap max-md:[&_a]:px-3 max-md:[&_a]:py-1.5 max-md:[&_a]:text-xs md:col-start-3">
+          <Button href="/login">Iniciar sesión</Button>
+          <Button href="/registro" variant="secondary">Registrate</Button>
+        </div>
       </div>
-
-      {/* Links */}
-      <div className="absolute left-1/2 flex -translate-x-1/2 items-center gap-6 whitespace-nowrap">
-        <Link href="/repositorio">
-          Repositorio
-        </Link>
-
-        <Link href="/#que-es-interfascia">
-          ¿Qué es Interfascia?
-        </Link>
-
-        <Link href="/consultor-ia">
-          Consultor IA
-        </Link>
-
-        <Link href="/analisis-datos">
-          Análisis de Datos
-        </Link>
-      </div>
-
-      {/* Acciones */}
-      <div className="ml-auto flex items-center gap-3">
-        <Button href="/login">Iniciar sesión</Button>
-        <Button href="/registro" variant="secondary">Registrate</Button>
-      </div>
-
     </nav>
+  );
+}
+
+function Mark() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+      <circle cx="5" cy="9" r="2.2" fill="currentColor" />
+      <circle cx="13" cy="5" r="2.2" fill="#f26b3a" />
+      <circle cx="13" cy="13" r="2.2" fill="#ffffff" />
+      <path d="M7 8.2 11 5.8M7 9.8 11 12.2" stroke="currentColor" strokeWidth="1.2" />
+    </svg>
   );
 }

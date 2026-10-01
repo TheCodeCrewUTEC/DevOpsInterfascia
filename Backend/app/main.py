@@ -6,6 +6,8 @@ from app.routers import formularios
 from app.routers import convocatorias
 from app.routers import documentos
 from app.routers import chunks
+from app.routers import investigadores
+from app.routers import proyectos
 
 
 app = FastAPI(
@@ -29,6 +31,8 @@ app.include_router(convocatorias.router)
 app.include_router(documentos.router)
 app.include_router(chunks.router)
 app.include_router(formularios.router)
+app.include_router(investigadores.router)
+app.include_router(proyectos.router)
 
 def custom_openapi():
     if app.openapi_schema:
