@@ -1,85 +1,137 @@
+"use client";
+
+import { FormEvent, useState } from "react";
 import Link from "next/link";
 
+const requiredFields = ["usuario", "contrasena"];
+
+const campo =
+  "h-11 rounded-xl border border-pine/20 bg-foam/70 px-3 text-sm text-ink outline-none transition focus:border-pine focus:bg-paper";
+
+const campoInvalido =
+  "h-11 rounded-xl border border-red-600 bg-red-50 px-3 text-sm text-ink outline-none transition focus:border-red-600";
+
+function missingRequired(form: HTMLFormElement) {
+  const data = new FormData(form);
+  return requiredFields.filter((name) =>
+    data.getAll(name).every((value) => String(value).trim() === ""),
+  );
+}
+
 export default function LoginPage() {
+  const [attempted, setAttempted] = useState(false);
+  const [empty, setEmpty] = useState<string[]>([]);
+
+  function iniciar(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const missing = missingRequired(event.currentTarget);
+    setAttempted(true);
+    setEmpty(missing);
+
+    if (missing.length === 0) return;
+
+    const first = event.currentTarget.elements.namedItem(missing[0]);
+    if (first instanceof HTMLElement) first.focus();
+  }
+
+  function actualizar(event: FormEvent<HTMLFormElement>) {
+    if (!attempted) return;
+    setEmpty(missingRequired(event.currentTarget));
+  }
+
+  function invalido(name: string) {
+    return empty.includes(name);
+  }
+
   return (
-    <main className="flex flex-1 items-center justify-center bg-neutral-700 px-4 py-10">
+    <main className="relative flex flex-1 items-center justify-center overflow-hidden px-4 py-16">
+      <div className="blob pointer-events-none absolute -left-16 top-10 h-56 w-56 rounded-full bg-gold/40 blur-3xl" />
+      <div className="blob-late pointer-events-none absolute right-0 bottom-0 h-64 w-64 rounded-full bg-pine/20 blur-3xl" />
 
-      <div className="relative w-full max-w-md bg-white px-10 py-12">
-
-        {/* Cerrar */}
+      <div className="relative w-full max-w-md rounded-[2rem] bg-paper px-8 py-10 shadow-sm ring-1 ring-pine/10 sm:px-10">
         <Link
           href="/"
-          className="absolute right-5 top-4 text-2xl leading-none text-black"
+          className="absolute right-5 top-5 flex h-8 w-8 items-center justify-center rounded-full text-xl text-ink/60 transition hover:bg-foam hover:text-ink"
           aria-label="Cerrar"
         >
           ×
         </Link>
 
-        <h1 className="mb-10 text-center text-3xl font-bold text-black">
-          Iniciar Sesión
-        </h1>
+        {empty.length > 0 ? (
+          <p className="mb-4 pr-8 text-sm font-medium text-red-600" role="alert">
+            Los campos resaltados son obligatorios
+          </p>
+        ) : null}
 
-        <form className="flex flex-col gap-5">
+        <p className="text-xs font-medium tracking-[0.16em] text-clay uppercase">
+          Cuenta
+        </p>
+        <h1 className="font-display mt-2 text-4xl text-ink">Iniciar sesión</h1>
+        <p className="mt-2 text-sm leading-relaxed text-ink/70">
+          Entrá para consultar fondos, proyectos e investigadores.
+        </p>
 
+        <form className="mt-8 flex flex-col gap-5" onSubmit={iniciar} onChange={actualizar} noValidate>
           <div className="flex flex-col gap-2">
-            <label htmlFor="usuario" className="text-sm text-black">
+            <label htmlFor="usuario" className={invalido("usuario") ? "text-sm text-red-600" : "text-sm text-ink"}>
               Nombre de usuario / Email
             </label>
             <input
               id="usuario"
               name="usuario"
               type="text"
-              className="h-10 border border-black bg-neutral-400 px-3 outline-none"
-              required
+              autoComplete="username"
+              aria-invalid={invalido("usuario")}
+              aria-required
+              className={invalido("usuario") ? campoInvalido : campo}
             />
           </div>
 
           <div className="flex flex-col gap-2">
-            <label htmlFor="contrasena" className="text-sm text-black">
+            <label htmlFor="contrasena" className={invalido("contrasena") ? "text-sm text-red-600" : "text-sm text-ink"}>
               Contraseña
             </label>
             <input
               id="contrasena"
               name="contrasena"
               type="password"
-              className="h-10 border border-black bg-neutral-400 px-3 outline-none"
-              required
+              autoComplete="current-password"
+              aria-invalid={invalido("contrasena")}
+              aria-required
+              className={invalido("contrasena") ? campoInvalido : campo}
             />
           </div>
 
           <Link
             href="#"
-            className="mt-1 text-center text-sm text-black underline"
+            className="text-sm text-pine-text underline-offset-4 hover:underline"
           >
             ¿Olvidaste tu contraseña?
           </Link>
 
           <button
             type="submit"
-            className="mx-auto mt-2 w-48 border border-black bg-neutral-300 py-2 text-center text-black"
+            className="rounded-full bg-pine py-3 text-sm font-medium text-ink shadow-sm transition duration-200 hover:-translate-y-0.5 hover:bg-pine-hover"
           >
-            Iniciar Sesión
+            Iniciar sesión
           </button>
-
-          <Link
-            href="/registro"
-            className="mt-2 text-center text-sm text-black underline"
-          >
-            ¿No tienes una cuenta aún? Registrate ahora
-          </Link>
 
           <button
             type="button"
-            className="mt-4 flex w-full items-center justify-center gap-3 border border-black bg-neutral-300 py-2.5 text-black"
+            className="flex w-full items-center justify-center gap-3 rounded-full border border-pine/30 bg-paper py-3 text-sm text-ink transition duration-200 hover:-translate-y-0.5 hover:border-pine hover:bg-foam"
           >
             <GoogleIcon />
             Continuar con Google
           </button>
 
+          <p className="text-center text-sm text-ink/70">
+            ¿No tienes una cuenta aún?{" "}
+            <Link href="/registro" className="text-pine-text underline-offset-4 hover:underline">
+              Registrate ahora
+            </Link>
+          </p>
         </form>
-
       </div>
-
     </main>
   );
 }
