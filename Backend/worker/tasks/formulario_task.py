@@ -19,6 +19,19 @@ from app.services.document_embedding_service import (
 
 from app.services.respuesta_service import generar_respuesta
 
+
+def fuente_desde_chunk(chunk: dict):
+    archivo = chunk.get("documento")
+
+    if not archivo:
+        return None
+
+    return {
+        "pagina": chunk.get("pagina"),
+        "archivo": archivo,
+    }
+
+
 async def procesar_formulario(
     ctx,
     job_id: int
@@ -233,132 +246,6 @@ async def procesar_formulario(
             nombre_campo = campo.get("campo")
             tipo_campo = campo.get("tipo")
 
-            print("\n")
-            print("=" * 70)
-            print(f"[WORKER] PROCESANDO CAMPO: {nombre_campo}")
-            print(f"[WORKER] Tipo: {tipo_campo}")
-
-            # --------------------------------------------------------
-            # 1. BÚSQUEDA SEMÁNTICA
-            # --------------------------------------------------------
-
-            resultados = buscar_chunks_relevantes(
-                nombre_campo,
-                chunks,
-                top_k=5,
-            )
-
-            print(
-                f"[WORKER] Chunks encontrados: "
-                f"{len(resultados)}"
-            )
-
-            resultado_qwen = generar_respuesta(
-                campo=nombre_campo,
-                tipo=tipo_campo,
-                chunks_relevantes=resultados,
-            )
-
-            respuesta = resultado_qwen.get("respuesta")
-
-            # ============================================================
-            # NORMALIZAR NULL
-            # ============================================================
-
-            if respuesta == "null":
-                respuesta = None
-
-
-            # ============================================================
-            # TRANSFORMAR FUENTES DE QWEN
-            # ============================================================
-
-            fuentes_qwen = resultado_qwen.get("fuentes", [])
-
-            fuentes = []
-
-            for fuente in fuentes_qwen:
-
-                if not isinstance(fuente, dict):
-                    continue
-
-                # Aceptamos chunk_id como formato principal
-                # y chunk por compatibilidad con la implementación actual.
-                chunk_id = fuente.get("chunk_id")
-
-                if chunk_id is None:
-                    chunk_id = fuente.get("chunk")
-
-                if chunk_id is None:
-                    continue
-
-                # Qwen recibe los chunks numerados desde 1.
-                indice = int(chunk_id) - 1
-
-                if indice < 0 or indice >= len(resultados):
-                    continue
-
-                chunk = resultados[indice]
-
-                archivo = chunk.get("documento")
-                pagina = chunk.get("pagina")
-
-                if not archivo:
-                    continue
-
-                fuentes.append({
-                    "archivo": archivo,
-                    "pagina": pagina
-                })
-
-
-            # ============================================================
-            # ELIMINAR FUENTES DUPLICADAS
-            # ============================================================
-
-            fuentes_unicas = []
-
-            for fuente in fuentes:
-
-                if fuente not in fuentes_unicas:
-                    fuentes_unicas.append(fuente)
-
-
-            # ============================================================
-            # GUARDAR RESPUESTA EN BD
-            # ============================================================
-
-            guardar_respuesta(
-                job_id=job_id,
-                campo=nombre_campo,
-                respuesta=respuesta,
-                fuentes=fuentes_unicas,
-            )
-
-
-            # ============================================================
-            # RESULTADO DEL CAMPO
-            # ============================================================
-
-            resultado_campo = {
-                "campo": nombre_campo,
-                "respuesta": respuesta,
-                "fuentes": fuentes_unicas,
-            }
-
-            respuestas.append(resultado_campo)
-
-            print(f"[WORKER] RESPUESTA FINAL: {respuesta}")
-            print(f"[WORKER] FUENTES: {fuentes_unicas}")
-        # ==========================================
-        # 11. MOSTRAR CAMPOS
-        # ==========================================
-
-        for campo in lista_campos:
-
-            nombre_campo = campo.get("campo")
-            tipo_campo = campo.get("tipo")
-
             print("\n" + "=" * 70)
             print(f"[WORKER] PROCESANDO CAMPO: {nombre_campo}")
             print(f"[WORKER] Tipo: {tipo_campo}")
@@ -405,12 +292,17 @@ async def procesar_formulario(
 
             for fuente in fuentes_qwen:
 
-                if not isinstance(fuente, dict):
-                    continue
+                chunk_id = None
 
-                chunk_id = fuente.get("chunk_id")
+                if isinstance(fuente, dict):
+                    chunk_id = fuente.get("chunk", fuente.get("chunk_id"))
+                elif isinstance(fuente, int):
+                    chunk_id = fuente
 
-                if chunk_id is None:
+                if isinstance(chunk_id, str) and chunk_id.isdigit():
+                    chunk_id = int(chunk_id)
+
+                if not isinstance(chunk_id, int):
                     continue
 
                 # Los chunks recuperados están numerados desde 1
@@ -420,18 +312,22 @@ async def procesar_formulario(
                 if indice < 0 or indice >= len(resultados):
                     continue
 
-                chunk = resultados[indice]
+                fuente_documento = fuente_desde_chunk(resultados[indice])
 
-                archivo = chunk.get("documento")
-                pagina = chunk.get("pagina")
+                if fuente_documento is not None:
+                    fuentes.append(fuente_documento)
 
-                if not archivo:
-                    continue
+            if not fuentes and respuesta:
+                texto_respuesta = str(respuesta).strip().lower()
 
-                fuentes.append({
-                    "archivo": archivo,
-                    "pagina": pagina
-                })
+                for chunk in resultados:
+                    texto_chunk = str(chunk.get("texto", "")).lower()
+
+                    if texto_respuesta and texto_respuesta in texto_chunk:
+                        fuente_documento = fuente_desde_chunk(chunk)
+
+                        if fuente_documento is not None:
+                            fuentes.append(fuente_documento)
 
             # ============================================================
             # 5. ELIMINAR FUENTES DUPLICADAS

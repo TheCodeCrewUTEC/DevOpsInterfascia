@@ -221,7 +221,7 @@ Si no existe información suficiente:
         if not isinstance(fuente, dict):
             continue
 
-        chunk = fuente.get("chunk")
+        chunk = fuente.get("chunk", fuente.get("chunk_id"))
 
         if chunk is None:
             continue
