@@ -1,6 +1,7 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useEffect, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
+import Loading from "../components/Loading";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -33,6 +34,24 @@ type Investigador = {
   investigaciones: string | null;
   nivel_sni: string | null;
   categoria_sni: string | null;
+};
+
+type Fuente = {
+  pagina: number | null;
+  archivo: string;
+};
+
+type RespuestaCampo = {
+  campo: string;
+  respuesta: string | null;
+  fuentes: Fuente[];
+};
+
+type ResultadoJob = {
+  job_id: number;
+  estado: string;
+  total_respuestas: number;
+  respuestas: RespuestaCampo[];
 };
 
 type Resultado = {
@@ -68,6 +87,98 @@ function sni(persona: Investigador) {
   return partes.length > 0 ? partes.join(" · ") : "—";
 }
 
+function normalizarFuentes(valor: unknown): Fuente[] {
+  let fuentes = valor;
+
+  if (typeof fuentes === "string") {
+    try {
+      fuentes = JSON.parse(fuentes) as unknown;
+    } catch {
+      return [];
+    }
+  }
+
+  if (!Array.isArray(fuentes)) return [];
+
+  return fuentes.flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    const fuente = item as { pagina?: unknown; archivo?: unknown };
+    if (typeof fuente.archivo !== "string" || !fuente.archivo.trim()) return [];
+    return [
+      {
+        pagina: typeof fuente.pagina === "number" ? fuente.pagina : null,
+        archivo: fuente.archivo,
+      },
+    ];
+  });
+}
+
+function esperar(ms: number, signal: AbortSignal) {
+  return new Promise<void>((resolve, reject) => {
+    if (signal.aborted) {
+      reject(new DOMException("Aborted", "AbortError"));
+      return;
+    }
+
+    const id = window.setTimeout(() => resolve(), ms);
+    signal.addEventListener(
+      "abort",
+      () => {
+        window.clearTimeout(id);
+        reject(new DOMException("Aborted", "AbortError"));
+      },
+      { once: true },
+    );
+  });
+}
+
+function mensajeEstado(estado: string | null) {
+  if (estado === "PROCESSING") return "Procesando los documentos del proyecto.";
+  if (estado === "PENDING") return "El formulario está en cola.";
+  return "Subiendo los documentos.";
+}
+
+async function consultarResultado(
+  jobId: number,
+  signal: AbortSignal,
+  alConsultar: (estado: string) => void,
+): Promise<ResultadoJob> {
+  const limite = Date.now() + 10 * 60 * 1000;
+
+  while (Date.now() < limite) {
+    const response = await fetch(`${API_URL}/formularios/jobs/${jobId}/resultado`, { signal });
+
+    if (!response.ok) {
+      throw new Error(`No se pudo consultar el resultado (${response.status}).`);
+    }
+
+    const resultado = (await response.json()) as Omit<ResultadoJob, "respuestas"> & {
+      respuestas?: Array<Omit<RespuestaCampo, "fuentes"> & { fuentes: unknown }>;
+    };
+
+    alConsultar(resultado.estado);
+
+    const respuestas = (resultado.respuestas ?? []).map((item) => ({
+      campo: item.campo,
+      respuesta: item.respuesta,
+      fuentes: normalizarFuentes(item.fuentes),
+    }));
+
+    if (resultado.estado === "COMPLETED" || resultado.estado === "FAILED") {
+      return {
+        job_id: resultado.job_id,
+        estado: resultado.estado,
+        total_respuestas: resultado.total_respuestas,
+        respuestas,
+      };
+    }
+
+    await esperar(5000, signal);
+  }
+
+  throw new Error("El worker tardó demasiado en completar el formulario.");
+}
+
 async function leerJson<T>(response: Response, recurso: string): Promise<T> {
   if (!response.ok) {
     throw new Error(`No se pudieron cargar ${recurso} (${response.status}).`);
@@ -85,8 +196,11 @@ export default function ConsultorIAPage() {
   const [formulario, setFormulario] = useState<File | null>(null);
   const [documentos, setDocumentos] = useState<File[]>([]);
   const [subiendo, setSubiendo] = useState(false);
-  const [jobId, setJobId] = useState<number | null>(null);
+  const [vista, setVista] = useState<"consultor" | "cargando" | "resultado">("consultor");
+  const [estadoJob, setEstadoJob] = useState<string | null>(null);
+  const [respuestas, setRespuestas] = useState<RespuestaCampo[]>([]);
   const [errorSubida, setErrorSubida] = useState<string | null>(null);
+  const consultaJob = useRef<AbortController | null>(null);
 
   useEffect(() => {
     const controlador = new AbortController();
@@ -155,6 +269,10 @@ export default function ConsultorIAPage() {
     return () => controlador.abort();
   }, [busqueda]);
 
+  useEffect(() => {
+    return () => consultaJob.current?.abort();
+  }, []);
+
   function enviar(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusqueda(borrador);
@@ -162,13 +280,11 @@ export default function ConsultorIAPage() {
 
   function handleFormularioChange(event: ChangeEvent<HTMLInputElement>) {
     setFormulario(event.target.files?.[0] ?? null);
-    setJobId(null);
     setErrorSubida(null);
   }
 
   function handleDocumentosChange(event: ChangeEvent<HTMLInputElement>) {
     setDocumentos(Array.from(event.target.files ?? []));
-    setJobId(null);
     setErrorSubida(null);
   }
 
@@ -189,29 +305,119 @@ export default function ConsultorIAPage() {
       cuerpo.append("documentos", documento);
     }
 
+    consultaJob.current?.abort();
+    const controlador = new AbortController();
+    consultaJob.current = controlador;
+
     setSubiendo(true);
+    setVista("cargando");
+    setEstadoJob(null);
     setErrorSubida(null);
-    setJobId(null);
+    setRespuestas([]);
 
     try {
       const response = await fetch(`${API_URL}/formularios/jobs`, {
         method: "POST",
         body: cuerpo,
+        signal: controlador.signal,
       });
 
       if (!response.ok) {
         throw new Error(`No se pudo crear el job (${response.status}).`);
       }
 
-      const job = (await response.json()) as { id: number };
-      setJobId(job.id);
+      const job = (await response.json()) as { id: number; estado?: string };
+      setEstadoJob(job.estado ?? "PENDING");
+      setSubiendo(false);
+
+      const resultado = await consultarResultado(job.id, controlador.signal, setEstadoJob);
+
+      if (resultado.estado === "FAILED") {
+        throw new Error("El worker no pudo completar el formulario.");
+      }
+
+      setRespuestas(resultado.respuestas);
+      setVista("resultado");
     } catch (err) {
+      if (controlador.signal.aborted) return;
+      setVista("consultor");
       setErrorSubida(
         err instanceof Error ? err.message : "No se pudieron subir los archivos.",
       );
     } finally {
-      setSubiendo(false);
+      if (!controlador.signal.aborted) {
+        setSubiendo(false);
+      }
     }
+  }
+
+  function volverAlConsultor() {
+    setVista("consultor");
+    setEstadoJob(null);
+    setRespuestas([]);
+    setErrorSubida(null);
+  }
+
+  if (vista === "cargando") {
+    return <Loading mensaje={mensajeEstado(estadoJob)} />;
+  }
+
+  if (vista === "resultado") {
+    return (
+      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 py-8">
+        <div className="flex items-center gap-4">
+          <div className="h-px flex-1 bg-black" />
+          <h1 className="text-2xl font-normal text-black">Consultor IA</h1>
+          <div className="h-px flex-1 bg-black" />
+        </div>
+        <p className="mt-3 text-center text-sm text-black">
+          Respuestas del formulario
+        </p>
+        <div className="mx-auto mt-10 flex w-full max-w-5xl flex-col gap-4">
+          {respuestas.length === 0 ? (
+            <p className="rounded-lg border border-neutral-300 bg-white p-4 text-sm text-neutral-800">
+              El formulario se completó sin respuestas.
+            </p>
+          ) : (
+            respuestas.map((item, index) => (
+              <article
+                key={`${item.campo}-${index}`}
+                className="rounded-lg border border-neutral-300 bg-white p-4"
+              >
+                <p className="text-sm font-medium text-black">{item.campo}</p>
+                <p className="mt-2 text-sm text-neutral-800">
+                  {item.respuesta?.trim()
+                    ? item.respuesta
+                    : "Sin información en los documentos"}
+                </p>
+                {item.fuentes.length > 0 ? (
+                  <ul className="mt-3 space-y-1">
+                    {item.fuentes.map((fuente, fuenteIndex) => (
+                      <li
+                        key={`${fuente.archivo}-${fuente.pagina ?? "s"}-${fuenteIndex}`}
+                        className="text-xs text-neutral-600"
+                      >
+                        {fuente.archivo}
+                        {fuente.pagina != null ? ` · página ${fuente.pagina}` : ""}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </article>
+            ))
+          )}
+          <div className="mt-4 flex justify-end">
+            <button
+              type="button"
+              onClick={volverAlConsultor}
+              className="border border-black bg-neutral-300 px-8 py-2 text-sm text-black"
+            >
+              Volver
+            </button>
+          </div>
+        </div>
+      </main>
+    );
   }
 
   return (
@@ -437,12 +643,6 @@ export default function ConsultorIAPage() {
         {errorSubida && (
           <div className="mt-4 rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-700">
             {errorSubida}
-          </div>
-        )}
-
-        {jobId && (
-          <div className="mt-4 rounded-lg border border-green-300 bg-green-50 p-3 text-sm text-green-700">
-            Job creado correctamente: #{jobId}
           </div>
         )}
 

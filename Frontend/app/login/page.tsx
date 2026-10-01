@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import Link from "next/link";
+import { guardarSesion } from "../lib/sesion";
 
 const requiredFields = ["usuario", "contrasena"];
 
@@ -28,7 +29,16 @@ export default function LoginPage() {
     setAttempted(true);
     setEmpty(missing);
 
-    if (missing.length === 0) return;
+    if (missing.length === 0) {
+      const usuario = String(new FormData(event.currentTarget).get("usuario") ?? "").trim();
+      guardarSesion(usuario);
+
+      const siguiente = new URLSearchParams(window.location.search).get("siguiente");
+      if (siguiente?.startsWith("/") && !siguiente.startsWith("//")) {
+        window.location.assign(siguiente);
+      }
+      return;
+    }
 
     const first = event.currentTarget.elements.namedItem(missing[0]);
     if (first instanceof HTMLElement) first.focus();
