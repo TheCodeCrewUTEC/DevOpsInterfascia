@@ -24,11 +24,13 @@ const userinfoUrl =
   `${keycloakIssuer}/protocol/openid-connect/userinfo`;
 
 
-// ============================================================
-// REFRESH TOKEN
-// ============================================================
+// Renueva el access token (dura 5 minutos) usando el refresh token.
+// Devuelve null si la sesión de Keycloak venció: Auth.js borra la sesión y el usuario queda deslogueado.
+async function refreshAccessToken(token: JWT): Promise<JWT | null> {
+  if (!token.refreshToken) {
+    return null;
+  }
 
-async function refreshAccessToken(token: JWT): Promise<JWT> {
   try {
     const response = await fetch(tokenUrl, {
       method: "POST",
@@ -39,14 +41,19 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
         grant_type: "refresh_token",
         client_id: clientId,
         client_secret: clientSecret ?? "",
-        refresh_token: token.refreshToken ?? "",
+        refresh_token: token.refreshToken,
       }),
     });
 
     const tokens = await response.json();
 
+    // Refresh token vencido o revocado: es esperable, no es un error del servidor
+    if (tokens.error === "invalid_grant" || tokens.error === "invalid_token") {
+      return null;
+    }
+
     if (!response.ok) {
-      throw tokens;
+      throw new Error(`${tokens.error}: ${tokens.error_description}`);
     }
 
     return {
@@ -61,15 +68,12 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
       error: undefined,
     };
   } catch (error) {
+    // Keycloak caído o respuesta inesperada: mantenemos la sesión marcada con error
     console.error(
-      "Error al renovar el token de Keycloak",
-      error
+      "Error al renovar el token de Keycloak:",
+      error instanceof Error ? error.message : error,
     );
-
-    return {
-      ...token,
-      error: "RefreshTokenError",
-    };
+    return { ...token, error: "RefreshTokenError" };
   }
 }
 

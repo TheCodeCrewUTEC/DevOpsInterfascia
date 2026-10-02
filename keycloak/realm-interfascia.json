@@ -61,6 +61,74 @@
     }
   ],
   "loginTheme": "interfascia",
+  "emailTheme": "interfascia",
+  "smtpServer": {
+    "host": "${SMTP_HOST:smtp.gmail.com}",
+    "port": "${SMTP_PORT:587}",
+    "from": "${SMTP_FROM:}",
+    "fromDisplayName": "Interfascia",
+    "auth": "true",
+    "user": "${SMTP_USER:}",
+    "password": "${SMTP_PASSWORD:}",
+    "starttls": "true",
+    "ssl": "false"
+  },
+  "browserFlow": "browser-email-otp",
+  "authenticationFlows": [
+    {
+      "alias": "browser-email-otp",
+      "description": "Navegador: usuario y contraseña + código por correo",
+      "providerId": "basic-flow",
+      "topLevel": true,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "auth-cookie",
+          "authenticatorFlow": false,
+          "requirement": "ALTERNATIVE",
+          "priority": 10,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "identity-provider-redirector",
+          "authenticatorFlow": false,
+          "requirement": "ALTERNATIVE",
+          "priority": 25,
+          "userSetupAllowed": false
+        },
+        {
+          "flowAlias": "browser-email-otp-forms",
+          "authenticatorFlow": true,
+          "requirement": "ALTERNATIVE",
+          "priority": 30,
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "alias": "browser-email-otp-forms",
+      "description": "Usuario y contraseña, después el código enviado al correo",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "auth-username-password-form",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "email-otp",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 20,
+          "userSetupAllowed": false
+        }
+      ]
+    }
+  ],
   "components": {
     "org.keycloak.userprofile.UserProfileProvider": [
       {
