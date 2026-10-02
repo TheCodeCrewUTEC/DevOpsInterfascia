@@ -17,11 +17,14 @@ const clientId =
 const clientSecret =
   process.env.AUTH_KEYCLOAK_SECRET;
 
+const keycloakInternalIssuer =
+  process.env.KEYCLOAK_INTERNAL_ISSUER ?? keycloakIssuer;
+
 const tokenUrl =
-  `${keycloakIssuer}/protocol/openid-connect/token`;
+  `${keycloakInternalIssuer}/protocol/openid-connect/token`;
 
 const userinfoUrl =
-  `${keycloakIssuer}/protocol/openid-connect/userinfo`;
+  `${keycloakInternalIssuer}/protocol/openid-connect/userinfo`;
 
 
 // Renueva el access token (dura 5 minutos) usando el refresh token.
