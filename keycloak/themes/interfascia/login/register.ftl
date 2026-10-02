@@ -194,7 +194,7 @@
                     <@passwordField name="password" labelKey="password"/>
                     <@passwordField name="password-confirm" labelKey="passwordConfirm"/>
 
-                    <@selectField name="departamentoResidencia" placeholderKey="seleccionaDepartamento" fallback=departamentos/>
+                    <@addableSelect name="departamentoResidencia" placeholderKey="seleccionaDepartamento" fallback=departamentos/>
                     <@addableSelect name="departamentosActuacion" placeholderKey="seleccionaDepartamento" fallback=departamentos/>
                     <@textField name="celular" type="tel" autocomplete="tel"/>
                     <@addableSelect name="instituciones" placeholderKey="seleccionaInstitucion" fallback=institucionesOpciones/>
