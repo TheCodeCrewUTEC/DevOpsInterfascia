@@ -64,6 +64,7 @@ export default function AddableSelect({
         return (
           <div key={`${id}-${index}`} className="flex items-center gap-3">
             <select
+              key={`${id}-${index}-${value}`}
               id={`${id}-${index}`}
               name={name}
               value={value}
