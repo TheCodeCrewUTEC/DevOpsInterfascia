@@ -6,8 +6,7 @@ interface ButtonProps {
   href?: string;
   type?: "button" | "submit" | "reset";
   prefetch?: boolean;
-  // Navegación completa del navegador (<a>) en vez de <Link>. Necesario para rutas que
-  // redirigen a otro origen (Keycloak): el fetch RSC de <Link> no puede seguir esa redirección.
+  // Enlace normal (no Link) para rutas que redirigen fuera de Next, como Keycloak
   recargar?: boolean;
 }
 

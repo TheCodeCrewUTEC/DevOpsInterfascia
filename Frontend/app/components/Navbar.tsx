@@ -39,22 +39,22 @@ export default async function Navbar() {
           ))}
         </div>
 
-      {/* Acciones */}
-      <div className="ml-auto flex items-center gap-3">
-        {logueado ? (
-          <>
-            <span>{session?.user?.name ?? session?.user?.email}</span>
-            <form action={cerrarSesion}>
-              <Button type="submit" variant="secondary">Cerrar sesión</Button>
-            </form>
-          </>
-        ) : (
-          <>
-            {/* Navegación completa: estas rutas redirigen a Keycloak */}
-            <Button href="/login" recargar>Iniciar sesión</Button>
-            <Button href="/registro" variant="secondary" recargar>Registrate</Button>
-          </>
-        )}
+        <div className="col-start-2 row-start-1 flex shrink-0 items-center justify-end justify-self-end gap-2 max-md:[&_a]:whitespace-nowrap max-md:[&_a]:px-3 max-md:[&_a]:py-1.5 max-md:[&_a]:text-xs md:col-start-3">
+          {logueado ? (
+            <>
+              <span className="text-sm text-ink">{session?.user?.name ?? session?.user?.email}</span>
+              <form action={cerrarSesion}>
+                <Button type="submit" variant="secondary">Cerrar sesión</Button>
+              </form>
+            </>
+          ) : (
+            <>
+              {/* Navegación completa: estas rutas redirigen a Keycloak y Link no puede seguir ese redirect */}
+              <Button href="/login" recargar>Iniciar sesión</Button>
+              <Button href="/registro" variant="secondary" recargar>Registrate</Button>
+            </>
+          )}
+        </div>
       </div>
     </nav>
   );
