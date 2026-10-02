@@ -17,40 +17,49 @@ const logosFila2 = [
   { src: "/Logo_LATITUD.png", alt: "Logo de Latitud", width: 100, height: 58 },
 ];
 
+const mitad = logos.length / 2;
+const fila1 = logos.slice(0, mitad);
+const fila2 = logos.slice(mitad);
+
 export default function Footer() {
   return (
-    <footer className="mt-auto bg-white px-8 py-6">
+    <footer className="mt-auto border-t border-pine/10 bg-pine-deep px-6 py-10 text-paper">
+      <div className="mx-auto max-w-6xl">
+        <p className="font-display text-lg">Avalado por</p>
+        <p className="mt-1 text-sm text-paper/70">
+          Instituciones que acompañan el piloto en el territorio.
+        </p>
 
-      <div className="text-left">
-        <p className="text-sm text-neutral-500">Avalado por</p>
+        <div className="mt-6 flex flex-col gap-3">
+          <FilaLogos logos={fila1} />
+          <FilaLogos logos={fila2} />
+        </div>
       </div>
-
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
-        {logosFila1.map((logo) => (
-          <Image
-            key={logo.src}
-            src={logo.src}
-            width={logo.width}
-            height={logo.height}
-            alt={logo.alt}
-            className="h-auto object-contain"
-          />
-        ))}
-      </div>
-
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
-        {logosFila2.map((logo) => (
-          <Image
-            key={logo.src}
-            src={logo.src}
-            width={logo.width}
-            height={logo.height}
-            alt={logo.alt}
-            className="h-auto object-contain"
-          />
-        ))}
-      </div>
-
     </footer>
+  );
+}
+
+function FilaLogos({
+  logos,
+}: {
+  logos: { src: string; alt: string; width: number; height: number }[];
+}) {
+  return (
+    <div className="grid grid-cols-5 items-center justify-items-stretch gap-3">
+      {logos.map((logo) => (
+        <div
+          key={logo.src}
+          className="flex h-16 items-center justify-center rounded-2xl bg-paper px-3 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-md"
+        >
+          <Image
+            src={logo.src}
+            width={logo.width}
+            height={logo.height}
+            alt={logo.alt}
+            className="h-9 w-auto max-w-full object-contain"
+          />
+        </div>
+      ))}
+    </div>
   );
 }
