@@ -121,6 +121,20 @@ export const {
 
   callbacks: {
 
+    // Consultor IA (también "Contar mi proyecto") exige sesión.
+    // false manda a /login y Auth.js conserva la ruta para volver después.
+    authorized({ auth, request }) {
+      const ruta = request.nextUrl.pathname;
+      const esConsultor =
+        ruta === "/consultor-ia" || ruta.startsWith("/consultor-ia/");
+
+      if (!esConsultor) {
+        return true;
+      }
+
+      return Boolean(auth?.user) && !auth?.error;
+    },
+
     async jwt({ token, account }) {
 
       // Primer login
