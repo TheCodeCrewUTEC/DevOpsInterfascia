@@ -5,3 +5,11 @@ pytest==9.1.1
 httpx==0.28.1
 python-dotenv
 PyJWT[crypto]==2.15.0
+python-multipart
+arq
+docling
+docling-core
+sentence-transformers
+transformers
+ftfy
+redis
