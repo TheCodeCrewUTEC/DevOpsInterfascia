@@ -57,7 +57,6 @@ type ResultadoJob = {
 type Resultado = {
   key: string;
   tipo: "Convocatoria" | "Proyecto";
-  icono: string;
   titulo: string;
   descripcion: string;
   estado: string;
@@ -231,7 +230,6 @@ export default function ConsultorIAPage() {
           ...convocatorias.items.map((item) => ({
             key: `convocatoria-${item.id}`,
             tipo: "Convocatoria" as const,
-            icono: "📢",
             titulo: texto(item.titulo, "Sin título"),
             descripcion: texto(item.descripcion, "Sin descripción"),
             estado: texto(item.estado, "Sin estado"),
@@ -240,7 +238,6 @@ export default function ConsultorIAPage() {
           ...proyectos.map((item) => ({
             key: `proyecto-${item.id}`,
             tipo: "Proyecto" as const,
-            icono: "📄",
             titulo: texto(item.nombre, "Sin nombre"),
             descripcion: texto(item.descripcion, "Sin descripción"),
             estado: texto(item.estado, "Sin estado"),
@@ -254,9 +251,10 @@ export default function ConsultorIAPage() {
         if (controlador.signal.aborted) return;
         setResultados([]);
         setInvestigadores([]);
+        const mensaje = err instanceof Error ? err.message : "";
         setError(
-          err instanceof Error
-            ? err.message
+          mensaje && mensaje !== "Failed to fetch"
+            ? mensaje
             : "No se pudo conectar con el backend.",
         );
       } finally {
@@ -364,302 +362,282 @@ export default function ConsultorIAPage() {
 
   if (vista === "resultado") {
     return (
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 py-8">
-        <div className="flex items-center gap-4">
-          <div className="h-px flex-1 bg-black" />
-          <h1 className="text-2xl font-normal text-black">Consultor IA</h1>
-          <div className="h-px flex-1 bg-black" />
-        </div>
-        <p className="mt-3 text-center text-sm text-black">
-          Respuestas del formulario
-        </p>
-        <div className="mx-auto mt-10 flex w-full max-w-5xl flex-col gap-4">
-          {respuestas.length === 0 ? (
-            <p className="rounded-lg border border-neutral-300 bg-white p-4 text-sm text-neutral-800">
-              El formulario se completó sin respuestas.
+      <main>
+        <section className="relative overflow-hidden px-6 pb-8 pt-12 sm:pt-16">
+          <div className="blob pointer-events-none absolute -left-16 top-8 h-56 w-56 rounded-full bg-gold/50 blur-3xl" />
+          <div className="blob-late pointer-events-none absolute right-0 top-16 h-64 w-64 rounded-full bg-pine/20 blur-3xl" />
+
+          <div className="relative mx-auto max-w-6xl">
+            <p className="rise text-sm font-medium tracking-[0.18em] text-clay uppercase">
+              Relacionar · Uruguay
             </p>
-          ) : (
-            respuestas.map((item, index) => (
-              <article
-                key={`${item.campo}-${index}`}
-                className="rounded-lg border border-neutral-300 bg-white p-4"
-              >
-                <p className="text-sm font-medium text-black">{item.campo}</p>
-                <p className="mt-2 text-sm text-neutral-800">
-                  {item.respuesta?.trim()
-                    ? item.respuesta
-                    : "Sin información en los documentos"}
-                </p>
-                {item.fuentes.length > 0 ? (
-                  <ul className="mt-3 space-y-1">
-                    {item.fuentes.map((fuente, fuenteIndex) => (
-                      <li
-                        key={`${fuente.archivo}-${fuente.pagina ?? "s"}-${fuenteIndex}`}
-                        className="text-xs text-neutral-600"
-                      >
-                        {fuente.archivo}
-                        {fuente.pagina != null ? ` · página ${fuente.pagina}` : ""}
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-              </article>
-            ))
-          )}
-          <div className="mt-4 flex justify-end">
-            <button
-              type="button"
-              onClick={volverAlConsultor}
-              className="border border-black bg-neutral-300 px-8 py-2 text-sm text-black"
-            >
-              Volver
-            </button>
+            <h1 className="rise rise-1 font-display mt-4 text-5xl leading-[1.05] text-ink sm:text-6xl">
+              Respuestas del formulario
+            </h1>
+            <p className="rise rise-2 mt-6 max-w-2xl text-lg leading-relaxed text-ink/75">
+              Lo que el consultor encontró en los documentos del proyecto.
+            </p>
           </div>
-        </div>
+        </section>
+
+        <section className="px-6 pb-20">
+          <div className="mx-auto flex max-w-6xl flex-col gap-4">
+            {respuestas.length === 0 ? (
+              <Estado mensaje="El formulario se completó sin respuestas." />
+            ) : (
+              respuestas.map((item, index) => (
+                <article
+                  key={`${item.campo}-${index}`}
+                  className={`rise rise-${(index % 4) + 1} rounded-3xl border border-pine/10 bg-paper p-5 shadow-sm sm:p-6`}
+                >
+                  <p className="text-xs font-medium tracking-[0.16em] text-clay uppercase">{item.campo}</p>
+                  <p className="mt-3 text-sm leading-relaxed text-ink/80">
+                    {item.respuesta?.trim() ? item.respuesta : "Sin información en los documentos"}
+                  </p>
+                  {item.fuentes.length > 0 ? (
+                    <ul className="mt-4 flex flex-col gap-1">
+                      {item.fuentes.map((fuente, fuenteIndex) => (
+                        <li
+                          key={`${fuente.archivo}-${fuente.pagina ?? "s"}-${fuenteIndex}`}
+                          className="text-xs text-pine-text"
+                        >
+                          {fuente.archivo}
+                          {fuente.pagina != null ? ` · página ${fuente.pagina}` : ""}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </article>
+              ))
+            )}
+            <div className="mt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={volverAlConsultor}
+                className="rounded-full bg-pine px-5 py-3 text-sm font-medium text-ink shadow-sm transition duration-200 hover:-translate-y-0.5 hover:bg-pine-hover"
+              >
+                Volver
+              </button>
+            </div>
+          </div>
+        </section>
       </main>
     );
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 py-8">
+    <main>
+      <section className="relative overflow-hidden px-6 pb-8 pt-12 sm:pt-16">
+        <div className="blob pointer-events-none absolute -left-16 top-8 h-56 w-56 rounded-full bg-gold/50 blur-3xl" />
+        <div className="blob-late pointer-events-none absolute right-0 top-16 h-64 w-64 rounded-full bg-pine/20 blur-3xl" />
 
-      <div className="flex items-center gap-4">
-        <div className="h-px flex-1 bg-black" />
-        <h1 className="text-2xl font-normal text-black">
-          Consultor IA
-        </h1>
-        <div className="h-px flex-1 bg-black" />
-      </div>
-
-      <p className="mt-3 text-center text-sm text-black">
-        Buscar recursos relacionados a mi proyecto
-      </p>
-
-      <form className="mt-8" onSubmit={enviar}>
-        <label htmlFor="proyecto" className="mb-2 block text-sm text-black">
-          Cuentame de qué trata tu proyecto...
-        </label>
-
-        <div className="relative">
-          <textarea
-            id="proyecto"
-            name="proyecto"
-            rows={5}
-            value={borrador}
-            onChange={(event) => setBorrador(event.target.value)}
-            placeholder="Mi proyecto trata sobre..."
-            className="w-full resize-none border border-black bg-neutral-200 px-4 py-3 pr-12 text-sm outline-none"
-          />
-          <button
-            type="submit"
-            className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center bg-neutral-700 text-white"
-            aria-label="Buscar"
-          >
-            ✈
-          </button>
-        </div>
-      </form>
-
-      {busqueda.trim() ? (
-        <p className="mt-4 text-sm text-black">
-          Resultados para: {busqueda.trim()}
-        </p>
-      ) : null}
-
-      {error ? (
-        <p className="mt-6 border border-black bg-neutral-200 px-4 py-3 text-sm text-black">
-          {error} Comprobá que el backend esté disponible en {API_URL}.
-        </p>
-      ) : null}
-
-      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
-        <div className="flex flex-col gap-4">
-          {cargando ? (
-            <p className="text-sm text-black">Cargando convocatorias y proyectos...</p>
-          ) : null}
-
-          {!cargando && !error && resultados.length === 0 ? (
-            <p className="text-sm text-black">
-              No hay convocatorias ni proyectos para esta búsqueda.
-            </p>
-          ) : null}
-
-          {resultados.map((item) => (
-            <article
-              key={item.key}
-              className="flex gap-4 bg-neutral-500 p-4 text-white"
-            >
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center bg-neutral-700 text-2xl">
-                {item.icono}
-              </div>
-
-              <div className="min-w-0 flex-1">
-                <h2 className="text-base font-semibold">
-                  “{item.titulo}”
-                </h2>
-                <p className="mt-2 text-xs leading-relaxed text-neutral-100">
-                  <span className="font-semibold">Descripción:</span>{" "}
-                  {item.descripcion}
-                </p>
-              </div>
-
-              <div className="hidden shrink-0 text-right text-xs sm:block">
-                <p>
-                  <span className="font-semibold">Tipo:</span> {item.tipo}
-                </p>
-                <p className="mt-1">
-                  <span className="font-semibold">Estado:</span> {item.estado}
-                </p>
-                <p className="mt-1">{item.detalle}</p>
-              </div>
-            </article>
-          ))}
-        </div>
-
-        <aside className="bg-neutral-500 p-4 text-white">
-          {cargando ? (
-            <p className="text-xs">Cargando investigadores...</p>
-          ) : null}
-
-          {!cargando && !error && investigadores.length === 0 ? (
-            <p className="text-xs">No hay investigadores para esta búsqueda.</p>
-          ) : null}
-
-          <div className="flex flex-col gap-5">
-            {investigadores.map((persona) => (
-              <div key={persona.id} className="flex gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-neutral-700 text-lg">
-                  👤
-                </div>
-                <div className="text-xs leading-relaxed">
-                  <p className="text-sm font-semibold">{nombreCompleto(persona)}</p>
-                  <p>
-                    <span className="font-semibold">Institución:</span>{" "}
-                    {texto(persona.institucion)}
-                  </p>
-                  <p>
-                    <span className="font-semibold">Título:</span>{" "}
-                    {texto(persona.titulo)}
-                  </p>
-                  <p>
-                    <span className="font-semibold">Investigaciones:</span>{" "}
-                    {texto(persona.investigaciones)}
-                  </p>
-                  <p>
-                    <span className="font-semibold">SNI:</span> {sni(persona)}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </aside>
-      </div>
-
-      <section className="mt-16">
-        <div className="flex items-center gap-4">
-          <div className="h-px flex-1 bg-black" />
-          <h2 className="text-2xl font-normal text-black">
+        <div className="relative mx-auto max-w-6xl">
+          <p className="rise text-sm font-medium tracking-[0.18em] text-clay uppercase">
+            Relacionar · Uruguay
+          </p>
+          <h1 className="rise rise-1 font-display mt-4 text-5xl leading-[1.05] text-ink sm:text-6xl">
             Consultor IA
-          </h2>
-          <div className="h-px flex-1 bg-black" />
-        </div>
+          </h1>
+          <p className="rise rise-2 mt-6 max-w-2xl text-lg leading-relaxed text-ink/75">
+            Contá de qué trata tu proyecto y encontrá fondos, antecedentes y personas afines.
+          </p>
 
-        <p className="mt-3 text-center text-sm text-black">
-          Completar un formulario de postulación
-        </p>
+          <form onSubmit={enviar} className="rise rise-3 mt-8">
+            <label htmlFor="proyecto" className="mb-2 block text-sm text-ink">
+              Contame de qué trata tu proyecto
+            </label>
+            <div className="relative">
+              <textarea
+                id="proyecto"
+                name="proyecto"
+                rows={5}
+                value={borrador}
+                onChange={(event) => setBorrador(event.target.value)}
+                placeholder="Mi proyecto trata sobre..."
+                className="w-full resize-none rounded-3xl border border-pine/20 bg-paper px-5 py-4 pr-16 text-sm text-ink shadow-sm outline-none transition focus:border-pine"
+              />
+              <button
+                type="submit"
+                className="absolute right-3 bottom-3 flex h-10 w-10 items-center justify-center rounded-full bg-pine text-ink transition hover:bg-pine-hover"
+                aria-label="Buscar"
+              >
+                <Lupa />
+              </button>
+            </div>
+          </form>
 
-        <div className="mx-auto mt-10 max-w-5xl">
-
-        {/* FORMULARIO DE POSTULACIÓN */}
-
-        <p className="mb-3 text-sm text-black">
-          Selecciona el formulario de postulación
-        </p>
-
-        <label
-          htmlFor="formulario-postulacion"
-          className="flex min-h-32 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-sky-500 bg-white px-6 py-8 text-center"
-        >
-          <span className="text-sm text-neutral-700">
-            {formulario
-              ? formulario.name
-              : "Seleccionar formulario de postulación"}
-          </span>
-
-          <input
-            id="formulario-postulacion"
-            type="file"
-            accept=".pdf"
-            className="sr-only"
-            onChange={handleFormularioChange}
-          />
-        </label>
-
-
-        {/* DOCUMENTOS DEL PROYECTO */}
-
-        <p className="mb-3 mt-8 text-sm text-black">
-          Adjunta documentación sobre tu Proyecto...
-        </p>
-
-          <label
-            htmlFor="archivos-proyecto"
-            className="flex min-h-64 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-sky-500 bg-white px-6 py-10 text-center"
-          >
-            <CloudUploadIcon />
-            <span className="mt-4 text-sm text-neutral-700">
-              Puede arrastrar y soltar archivos aquí para añadirlos
-            </span>
-            <input
-              id="archivos-proyecto"
-              name="documentos"
-              type="file"
-              multiple
-              className="sr-only"
-              onChange={handleDocumentosChange}
-            />
-          </label>
-
-          {documentos.length > 0 && (
-          <div className="mt-4 rounded-lg border border-neutral-300 bg-white p-4">
-
-            <p className="mb-2 text-sm font-medium text-black">
-              Documentos seleccionados:
+          {busqueda.trim() ? (
+            <p className="rise mt-4 text-sm text-pine-text">
+              Resultados para: {busqueda.trim()}
             </p>
-
-            <ul className="space-y-1">
-              {documentos.map((documento, index) => (
-                <li
-                  key={`${documento.name}-${index}`}
-                  className="text-sm text-neutral-700"
-                >
-                  {documento.name}
-                </li>
-              ))}
-            </ul>
-
-          </div>
-        )}
-        {errorSubida && (
-          <div className="mt-4 rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-700">
-            {errorSubida}
-          </div>
-        )}
-
-          <div className="mt-4 flex justify-end">
-            <button
-              type="button"
-              onClick={handleSubir}
-              disabled={subiendo}
-              className="border border-black bg-neutral-300 px-8 py-2 text-sm text-black disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {subiendo ? "Subiendo..." : "Subir"}
-            </button>
-          </div>
+          ) : null}
         </div>
       </section>
 
+      <section className="px-6 pb-8">
+        <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[1.6fr_0.9fr]">
+          {error ? (
+            <p className="rounded-2xl border border-clay/30 bg-paper px-5 py-4 text-sm text-ink lg:col-span-full" role="alert">
+              {error} Comprobá que el backend esté disponible.
+            </p>
+          ) : null}
+
+          {!error ? (
+            <div className="flex flex-col gap-4">
+              {cargando ? <Estado mensaje="Buscando fondos y antecedentes..." /> : null}
+              {!cargando && resultados.length === 0 ? (
+                <Estado mensaje="No hay convocatorias ni proyectos para esta búsqueda." />
+              ) : null}
+              {resultados.map((item, index) => (
+                <article
+                  key={item.key}
+                  className={`rise rise-${(index % 4) + 1} rounded-3xl border border-pine/10 bg-paper p-5 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-pine/30 hover:shadow-lg sm:p-6`}
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <p className="text-xs font-medium tracking-[0.16em] text-clay uppercase">{item.tipo}</p>
+                    <p className="text-xs text-pine-text">{item.detalle}</p>
+                  </div>
+                  <h2 className="font-display mt-2 text-2xl text-ink">{item.titulo}</h2>
+                  <p className="mt-3 text-sm leading-relaxed text-ink/70">{item.descripcion}</p>
+                  <p className="mt-4 text-sm text-ink/80">
+                    <span className="text-pine-text">Estado</span> · {item.estado}
+                  </p>
+                </article>
+              ))}
+            </div>
+          ) : null}
+
+          <aside className="rise rise-2 h-fit rounded-[2rem] bg-pine-deep px-6 py-8 text-paper">
+            <h2 className="font-display text-3xl">Investigación</h2>
+            <p className="mt-2 text-sm leading-relaxed text-paper/75">
+              Personas e instituciones con trayectoria en el tema.
+            </p>
+            {cargando ? <p className="mt-6 text-sm text-paper/75">Cargando investigadores...</p> : null}
+            {!cargando && error ? (
+              <p className="mt-6 text-sm text-paper/75">No se pudieron cargar los investigadores.</p>
+            ) : null}
+            {!cargando && !error && investigadores.length === 0 ? (
+              <p className="mt-6 text-sm text-paper/75">No hay investigadores para esta búsqueda.</p>
+            ) : null}
+            <ul className="mt-6 flex flex-col gap-4">
+              {investigadores.map((persona) => (
+                <li
+                  key={persona.id}
+                  className="rounded-2xl bg-white/10 p-4 ring-1 ring-white/15 transition duration-300 hover:bg-white/20"
+                >
+                  <p className="font-display text-xl">{nombreCompleto(persona)}</p>
+                  <p className="mt-2 text-sm text-paper/80">{texto(persona.institucion, "Sin institución")}</p>
+                  <p className="mt-1 text-sm text-paper/70">{texto(persona.titulo, "Sin título")}</p>
+                  <p className="mt-3 text-sm leading-relaxed text-paper/75">
+                    {texto(persona.investigaciones, "Sin investigaciones cargadas")}
+                  </p>
+                  <p className="mt-3 text-xs tracking-wide text-gold uppercase">SNI · {sni(persona)}</p>
+                </li>
+              ))}
+            </ul>
+          </aside>
+        </div>
+      </section>
+
+      <section className="px-6 pb-20">
+        <div className="mx-auto max-w-6xl">
+          <p className="text-sm font-medium tracking-[0.18em] text-clay uppercase">Postular</p>
+          <h2 className="font-display mt-3 text-4xl text-ink">Completar un formulario</h2>
+          <p className="mt-3 max-w-2xl text-ink/75">
+            Subí la postulación y los documentos del proyecto para que el consultor los lea.
+          </p>
+
+          <div className="mt-8 grid gap-4">
+            <div>
+              <p className="mb-2 text-sm text-ink">Formulario de postulación</p>
+              <label
+                htmlFor="formulario-postulacion"
+                className="flex min-h-32 cursor-pointer flex-col items-center justify-center rounded-3xl border border-dashed border-pine/30 bg-paper/70 px-6 py-8 text-center transition hover:border-pine hover:bg-paper"
+              >
+                <span className="text-sm text-ink/70">
+                  {formulario ? formulario.name : "Seleccionar formulario de postulación"}
+                </span>
+                <input
+                  id="formulario-postulacion"
+                  type="file"
+                  accept=".pdf"
+                  className="sr-only"
+                  onChange={handleFormularioChange}
+                />
+              </label>
+            </div>
+
+            <div>
+              <p className="mb-2 text-sm text-ink">Documentación del proyecto</p>
+              <label
+                htmlFor="archivos-proyecto"
+                className="flex min-h-56 cursor-pointer flex-col items-center justify-center rounded-3xl border border-dashed border-pine/30 bg-paper/70 px-6 py-10 text-center transition hover:border-pine hover:bg-paper"
+              >
+                <CloudUploadIcon />
+                <span className="mt-4 text-sm text-ink/70">
+                  Arrastrá y soltá archivos aquí, o hacé clic para añadirlos
+                </span>
+                <input
+                  id="archivos-proyecto"
+                  name="documentos"
+                  type="file"
+                  multiple
+                  className="sr-only"
+                  onChange={handleDocumentosChange}
+                />
+              </label>
+            </div>
+
+            {documentos.length > 0 ? (
+              <div className="rounded-3xl border border-pine/10 bg-paper p-5 shadow-sm">
+                <p className="text-sm text-pine-text">Documentos seleccionados</p>
+                <ul className="mt-3 flex flex-col gap-1">
+                  {documentos.map((documento, index) => (
+                    <li key={`${documento.name}-${index}`} className="text-sm text-ink/80">
+                      {documento.name}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+
+            {errorSubida ? (
+              <p className="rounded-2xl border border-clay/30 bg-paper px-5 py-4 text-sm text-ink" role="alert">
+                {errorSubida}
+              </p>
+            ) : null}
+
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={handleSubir}
+                disabled={subiendo}
+                className="rounded-full bg-pine px-5 py-3 text-sm font-medium text-ink shadow-sm transition duration-200 hover:-translate-y-0.5 hover:bg-pine-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
+              >
+                {subiendo ? "Subiendo..." : "Subir"}
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
     </main>
+  );
+}
+
+function Estado({ mensaje }: { mensaje: string }) {
+  return (
+    <p className="rounded-3xl border border-dashed border-pine/30 bg-paper/70 px-6 py-10 text-center text-sm text-ink/70">
+      {mensaje}
+    </p>
+  );
+}
+
+function Lupa() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+      <circle cx="7" cy="7" r="4.25" fill="none" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M10.2 10.2 13 13" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
   );
 }
 
@@ -672,7 +650,7 @@ function CloudUploadIcon() {
       fill="none"
       stroke="currentColor"
       strokeWidth="1.5"
-      className="text-black"
+      className="text-pine"
       aria-hidden="true"
     >
       <path d="M7 18a4.5 4.5 0 0 1 .4-9 5.5 5.5 0 0 1 10.7 1.5A3.5 3.5 0 0 1 17.5 18H7z" />
