@@ -20,3 +20,6 @@ venv/
 # Sistema operativo
 .DS_Store
 Thumbs.db
+
+# Certificados locales para Keycloak (ver docker-compose.yml)
+keycloak/truststore/
