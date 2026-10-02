@@ -1,23 +1,29 @@
 from pathlib import Path
 import json
+import os
 import re
 import time
 
 from docling.document_converter import DocumentConverter
+from dotenv import load_dotenv
 from langchain_ollama import ChatOllama
 
+load_dotenv()
 
 # ============================================================
 # CONFIGURACIÓN
 # ============================================================
 
 MODEL_NAME = "qwen2.5:3b-instruct"
+# Vacío: Ollama en esta misma máquina. Con URL, el servidor usa el Ollama de otra PC.
+OLLAMA_URL = os.getenv("OLLAMA_URL") or None
 
 
 llm = ChatOllama(
     model=MODEL_NAME,
     temperature=0,
     num_ctx=4096,
+    base_url=OLLAMA_URL,
 )
 
 # ============================================================
