@@ -5,6 +5,7 @@ interface ButtonProps {
   variant?: "primary" | "secondary";
   href?: string;
   type?: "button" | "submit" | "reset";
+  onClick?: () => void;
   prefetch?: boolean;
   // Enlace normal (no Link) para rutas que redirigen fuera de Next, como Keycloak
   recargar?: boolean;
@@ -15,6 +16,7 @@ export default function Button({
   variant = "primary",
   href,
   type = "button",
+  onClick,
   prefetch,
   recargar = false,
 }: ButtonProps) {
@@ -40,7 +42,7 @@ export default function Button({
   }
 
   return (
-    <button type={type} className={className}>
+    <button type={type} onClick={onClick} className={className}>
       {children}
     </button>
   );

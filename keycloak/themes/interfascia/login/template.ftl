@@ -1,7 +1,7 @@
 <#--
   Plantilla base del tema Interfascia.
   Replica el navbar y el footer de la app Next.js para que el login no parezca otro sitio.
-  variant="card"  -> tarjeta blanca centrada sobre fondo oscuro (login, recuperar contraseña, errores...)
+  variant="card"  -> tarjeta blanca centrada sobre el fondo de la app (login, recuperar contraseña, errores...)
   variant="page"  -> página completa en dos columnas (registro)
 -->
 <#macro registrationLayout bodyClass="" displayInfo=false displayMessage=true displayRequiredFields=false variant="card">
@@ -14,6 +14,9 @@
     <meta name="robots" content="noindex, nofollow">
     <title>${msg("loginTitle",(realm.displayName!''))}</title>
     <link rel="icon" href="${appUrl}/favicon.ico" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Geist:wght@400;500;600&display=swap" rel="stylesheet" />
     <#if properties.styles?has_content>
         <#list properties.styles?split(' ') as style>
             <link href="${url.resourcesPath}/${style}" rel="stylesheet" />
@@ -39,40 +42,53 @@
 <body class="ifx-body ${bodyClass}" data-page-id="login-${pageId}">
 
     <nav class="ifx-navbar">
-        <div class="ifx-navbar__brand">
-            <div class="ifx-navbar__logo">Logo</div>
-            <a href="${appUrl}/">Interfascia</a>
-        </div>
+        <div class="ifx-navbar__inner">
+            <a class="ifx-navbar__brand" href="${appUrl}/">
+                <span class="ifx-navbar__mark" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 18 18">
+                        <circle cx="5" cy="9" r="2.2" fill="currentColor" />
+                        <circle cx="13" cy="5" r="2.2" fill="#f26b3a" />
+                        <circle cx="13" cy="13" r="2.2" fill="#ffffff" />
+                        <path d="M7 8.2 11 5.8M7 9.8 11 12.2" stroke="currentColor" stroke-width="1.2" />
+                    </svg>
+                </span>
+                <span class="ifx-navbar__name">Interfascia</span>
+            </a>
 
-        <div class="ifx-navbar__links">
-            <a href="${appUrl}/repositorio">Repositorio</a>
-            <a href="${appUrl}/#que-es-interfascia">¿Qué es Interfascia?</a>
-            <a href="${appUrl}/consultor-ia">Consultor IA</a>
-            <a href="${appUrl}/analisis-datos">Análisis de Datos</a>
-        </div>
+            <div class="ifx-navbar__links">
+                <a href="${appUrl}/repositorio">Repositorio</a>
+                <a href="${appUrl}/#que-es-interfascia">¿Qué es Interfascia?</a>
+                <a href="${appUrl}/consultor-ia">Consultor IA</a>
+                <a href="${appUrl}/analisis-datos">Análisis de Datos</a>
+            </div>
 
-        <#-- Pasan por la app: así el registro siempre termina en el aviso de "Registro exitoso" -->
-        <div class="ifx-navbar__actions">
-            <a class="ifx-btn ifx-btn--primary" href="${appUrl}/login">Iniciar sesión</a>
-            <#if realm.registrationAllowed>
-                <a class="ifx-btn ifx-btn--secondary" href="${appUrl}/registro">Registrate</a>
-            </#if>
+            <#-- Pasan por la app: así el registro siempre termina en el aviso de "Registro exitoso" -->
+            <div class="ifx-navbar__actions">
+                <a class="ifx-btn ifx-btn--primary" href="${appUrl}/login">Iniciar sesión</a>
+                <#if realm.registrationAllowed>
+                    <a class="ifx-btn ifx-btn--secondary" href="${appUrl}/registro">Registrate</a>
+                </#if>
+            </div>
         </div>
     </nav>
 
-    <#if variant == "page">
+    <#-- El registro no comparte la tarjeta de login: es una página aparte -->
+    <#if variant == "page" || (pageId!"") == "register">
         <main class="ifx-page">
             <#nested "form">
         </main>
     <#else>
         <main class="ifx-overlay">
+            <div class="ifx-blob ifx-blob--gold" aria-hidden="true"></div>
+            <div class="ifx-blob ifx-blob--pine" aria-hidden="true"></div>
             <div class="ifx-card">
                 <a href="${appUrl}/" class="ifx-card__close" aria-label="Cerrar">&times;</a>
+                <p class="ifx-required-alert" data-required-banner hidden role="alert">${msg("requiredFieldsAlert")}</p>
 
                 <#if !(auth?has_content && auth.showUsername() && !auth.showResetCredentials())>
-                    <h1 class="ifx-card__title"><#nested "header"></h1>
+                    <div class="ifx-card__intro"><#nested "header"></div>
                 <#else>
-                    <h1 class="ifx-card__title"><#nested "header"></h1>
+                    <div class="ifx-card__intro"><#nested "header"></div>
                     <#nested "show-username">
                     <div class="ifx-attempted-user">
                         <span>${auth.attemptedUsername}</span>
@@ -95,37 +111,42 @@
                     </form>
                 </#if>
 
+                <#nested "socialProviders">
+
                 <#if displayInfo>
                     <div class="ifx-card__info">
                         <#nested "info">
                     </div>
                 </#if>
-
-                <#nested "socialProviders">
             </div>
         </main>
     </#if>
 
     <footer class="ifx-footer">
-        <p class="ifx-footer__caption">Avalado por</p>
+        <div class="ifx-footer__inner">
+            <p class="ifx-footer__caption">Avalado por</p>
+            <p class="ifx-footer__note">Instituciones que acompañan el piloto en el territorio.</p>
 
-        <div class="ifx-footer__row">
-            <img src="${appUrl}/Logo_UTEC.png" alt="Logo de UTEC" width="90" height="85">
-            <img src="${appUrl}/Logo_CURE.png" alt="Logo de CURE" width="120" height="60">
-            <img src="${appUrl}/Logo_UDELAR.png" alt="Logo de UDELAR" width="90" height="65">
-            <img src="${appUrl}/Logo_UTU1.png" alt="Logo de UTU" width="160" height="60">
-        </div>
-
-        <div class="ifx-footer__row ifx-footer__row--second">
-            <img src="${appUrl}/Logo_MIDES.png" alt="Logo de MIDES" width="110" height="55">
-            <img src="${appUrl}/Logo_MITURISMO.png" alt="Logo de Ministerio de Turismo" width="110" height="55">
-            <img src="${appUrl}/LOGO_MIEM.jpg" alt="Logo de MIEM" width="110" height="55">
-            <img src="${appUrl}/Logo_PROBIDES.png" alt="Logo de PROBIDES" width="100" height="55">
-            <img src="${appUrl}/Logo_INEFOP.png" alt="Logo de INEFOP" width="100" height="55">
-            <img src="${appUrl}/Logo_LATITUD.png" alt="Logo de Latitud" width="100" height="55">
+            <div class="ifx-footer__rows">
+                <div class="ifx-footer__row">
+                    <div class="ifx-footer__logo"><img src="${appUrl}/Logo_UTEC.png" alt="Logo de UTEC"></div>
+                    <div class="ifx-footer__logo"><img src="${appUrl}/Logo_CURE.png" alt="Logo de CURE"></div>
+                    <div class="ifx-footer__logo"><img src="${appUrl}/Logo_UDELAR.png" alt="Logo de UDELAR"></div>
+                    <div class="ifx-footer__logo"><img src="${appUrl}/Logo_UTU1.png" alt="Logo de UTU"></div>
+                    <div class="ifx-footer__logo"><img src="${appUrl}/Logo_MIDES.png" alt="Logo de MIDES"></div>
+                </div>
+                <div class="ifx-footer__row">
+                    <div class="ifx-footer__logo"><img src="${appUrl}/Logo_MITURISMO.png" alt="Logo de Ministerio de Turismo"></div>
+                    <div class="ifx-footer__logo"><img src="${appUrl}/LOGO_MIEM.jpg" alt="Logo de MIEM"></div>
+                    <div class="ifx-footer__logo"><img src="${appUrl}/Logo_PROBIDES.png" alt="Logo de PROBIDES"></div>
+                    <div class="ifx-footer__logo"><img src="${appUrl}/Logo_INEFOP.png" alt="Logo de INEFOP"></div>
+                    <div class="ifx-footer__logo"><img src="${appUrl}/Logo_LATITUD.png" alt="Logo de Latitud"></div>
+                </div>
+            </div>
         </div>
     </footer>
 
+    <script src="${url.resourcesPath}/js/required-fields.js" defer></script>
 </body>
 </html>
 </#macro>

@@ -1,4 +1,9 @@
+import shutil
+from pathlib import Path
+
 from app.database.connection import get_connection
+
+STORAGE_FORMULARIOS = Path("storage/formularios")
 
 def crear_job(formulario_path: str | None):
 
@@ -86,3 +91,25 @@ def actualizar_estado_job(job_id: int, estado: str):
 
     finally:
         conn.close()
+
+    if estado in ("COMPLETED", "FAILED"):
+        eliminar_carpeta_job(job_id)
+
+
+def eliminar_carpeta_job(job_id: int):
+    base = STORAGE_FORMULARIOS.resolve()
+    carpeta = (STORAGE_FORMULARIOS / f"job_{job_id}").resolve()
+
+    if carpeta != base and base not in carpeta.parents:
+        return
+
+    if not carpeta.is_dir():
+        return
+
+    try:
+        shutil.rmtree(carpeta)
+    except OSError as error:
+        print(f"[STORAGE] No se pudo eliminar {carpeta}: {error}")
+        return
+
+    print(f"[STORAGE] Carpeta eliminada: {carpeta}")
