@@ -17,8 +17,8 @@ export default function Button({
 }: ButtonProps) {
   const className =
     variant === "primary"
-      ? "rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-      : "rounded-lg border border-blue-600 px-4 py-2 text-blue-600 hover:bg-blue-50";
+      ? "rounded-full bg-pine px-4 py-2 text-sm font-medium text-ink shadow-sm transition duration-200 hover:-translate-y-0.5 hover:bg-pine-hover"
+      : "rounded-full border border-pine/40 bg-paper px-4 py-2 text-sm text-ink transition duration-200 hover:-translate-y-0.5 hover:border-pine hover:bg-foam";
 
   if (href) {
     return (
