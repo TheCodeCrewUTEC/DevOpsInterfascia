@@ -113,6 +113,17 @@ services:
     networks:
       - interfascia-net
 
+  redis:
+    image: redis:7.2-alpine
+    container_name: interfascia-redis
+    restart: unless-stopped
+
+    ports:
+      - "6379:6379"
+
+    networks:
+      - interfascia-net
+
   db:
     image: pgvector/pgvector:pg16
 
