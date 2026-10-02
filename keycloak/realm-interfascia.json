@@ -32,17 +32,17 @@
       "directAccessGrantsEnabled": false,
       "implicitFlowEnabled": false,
       "serviceAccountsEnabled": false,
-      "rootUrl": "http://localhost:3000",
+      "rootUrl": "https://interfasciauy.com",
       "baseUrl": "/",
       "redirectUris": [
-        "http://localhost:3000/api/auth/callback/keycloak"
+        "https://interfasciauy.com/api/auth/callback/keycloak"
       ],
       "webOrigins": [
-        "http://localhost:3000"
+        "https://interfasciauy.com"
       ],
       "attributes": {
         "pkce.code.challenge.method": "S256",
-        "post.logout.redirect.uris": "http://localhost:3000/*"
+        "post.logout.redirect.uris": "https://interfasciauy.com/*"
       },
       "protocolMappers": [
         {
