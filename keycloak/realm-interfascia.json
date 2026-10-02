@@ -1,0 +1,77 @@
+{
+  "realm": "interfascia",
+  "displayName": "Interfascia",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": true,
+  "registrationEmailAsUsername": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "rememberMe": false,
+  "verifyEmail": false,
+  "internationalizationEnabled": true,
+  "supportedLocales": [
+    "es",
+    "en"
+  ],
+  "defaultLocale": "es",
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "clients": [
+    {
+      "clientId": "interfascia-frontend",
+      "name": "Interfascia Frontend",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${KEYCLOAK_FRONTEND_CLIENT_SECRET}",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "rootUrl": "http://localhost:3000",
+      "baseUrl": "/",
+      "redirectUris": [
+        "http://localhost:3000/api/auth/callback/keycloak"
+      ],
+      "webOrigins": [
+        "http://localhost:3000"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:3000/*"
+      },
+      "protocolMappers": [
+        {
+          "name": "audiencia-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "interfascia-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "loginTheme": "interfascia",
+  "components": {
+    "org.keycloak.userprofile.UserProfileProvider": [
+      {
+        "providerId": "declarative-user-profile",
+        "subComponents": {},
+        "config": {
+          "kc.user.profile.config": [
+            "{\"attributes\": [{\"name\": \"username\", \"displayName\": \"${username}\", \"validations\": {\"length\": {\"min\": 3, \"max\": 255}, \"username-prohibited-characters\": {}, \"up-username-not-idn-homograph\": {}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": false}, {\"name\": \"firstName\", \"displayName\": \"${firstName}\", \"validations\": {\"length\": {\"max\": 255}, \"person-name-prohibited-characters\": {}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": false, \"required\": {\"roles\": [\"user\"]}}, {\"name\": \"lastName\", \"displayName\": \"${lastName}\", \"validations\": {\"length\": {\"max\": 255}, \"person-name-prohibited-characters\": {}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": false, \"required\": {\"roles\": [\"user\"]}}, {\"name\": \"email\", \"displayName\": \"${email}\", \"validations\": {\"email\": {}, \"length\": {\"max\": 255}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": false, \"required\": {\"roles\": [\"user\"]}}, {\"name\": \"departamentoResidencia\", \"displayName\": \"${departamentoResidencia}\", \"validations\": {\"options\": {\"options\": [\"Artigas\", \"Canelones\", \"Cerro Largo\", \"Colonia\", \"Durazno\", \"Flores\", \"Florida\", \"Lavalleja\", \"Maldonado\", \"Montevideo\", \"Paysandú\", \"Río Negro\", \"Rivera\", \"Rocha\", \"Salto\", \"San José\", \"Soriano\", \"Tacuarembó\", \"Treinta y Tres\"]}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": false, \"required\": {\"roles\": [\"user\"]}}, {\"name\": \"departamentosActuacion\", \"displayName\": \"${departamentosActuacion}\", \"validations\": {\"options\": {\"options\": [\"Artigas\", \"Canelones\", \"Cerro Largo\", \"Colonia\", \"Durazno\", \"Flores\", \"Florida\", \"Lavalleja\", \"Maldonado\", \"Montevideo\", \"Paysandú\", \"Río Negro\", \"Rivera\", \"Rocha\", \"Salto\", \"San José\", \"Soriano\", \"Tacuarembó\", \"Treinta y Tres\"]}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": true, \"required\": {\"roles\": [\"user\"]}}, {\"name\": \"celular\", \"displayName\": \"${celular}\", \"validations\": {\"pattern\": {\"pattern\": \"^\\\\+?[0-9 ]{8,15}$\", \"error-message\": \"invalidCelular\"}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": false}, {\"name\": \"instituciones\", \"displayName\": \"${instituciones}\", \"validations\": {\"options\": {\"options\": [\"UTEC\", \"UDELAR\", \"CURE\", \"UTU\", \"ANII\", \"Otra\"]}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": true, \"required\": {\"roles\": [\"user\"]}}, {\"name\": \"perfil\", \"displayName\": \"${perfil}\", \"validations\": {\"options\": {\"options\": [\"Investigador\", \"Inversor\", \"Emprendedor\", \"Estudiante\", \"Docente\", \"Otro\"]}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": true, \"required\": {\"roles\": [\"user\"]}}], \"groups\": [{\"name\": \"user-metadata\", \"displayHeader\": \"User metadata\", \"displayDescription\": \"Attributes, which refer to user metadata\"}], \"unmanagedAttributePolicy\": \"ADMIN_EDIT\"}"
+          ]
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,514 @@
+/*
+  Tema Interfascia para Keycloak.
+  Reproduce las clases de Tailwind que usaban las páginas de login y registro de la app
+  (Frontend/app/login y Frontend/app/registro, según el wireframe de Figma).
+*/
+
+:root {
+  --neutral-200: #e5e5e5;
+  --neutral-300: #d4d4d4;
+  --neutral-400: #a3a3a3;
+  --neutral-500: #737373;
+  --neutral-700: #404040;
+  --gray-300: #d1d5db;
+  --blue-50: #eff6ff;
+  --blue-600: #2563eb;
+  --blue-700: #1d4ed8;
+  --red-600: #dc2626;
+  color-scheme: light;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: 0 solid;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body.ifx-body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  background: #ffffff;
+  color: #171717;
+  font-family: Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+  text-decoration: inherit;
+}
+
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+/* ---------- Navbar (app/components/Navbar.tsx) ---------- */
+
+.ifx-navbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  background: #ffffff;
+  padding: 24px 32px;
+}
+
+.ifx-navbar__brand {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.ifx-navbar__logo {
+  background: var(--gray-300);
+  padding: 4px 16px;
+}
+
+.ifx-navbar__links {
+  position: absolute;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
+.ifx-navbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+
+.ifx-btn {
+  display: inline-block;
+  border-radius: 8px;
+  padding: 8px 16px;
+  text-align: center;
+}
+
+.ifx-btn--primary {
+  background: var(--blue-600);
+  color: #ffffff;
+}
+
+.ifx-btn--primary:hover {
+  background: var(--blue-700);
+}
+
+.ifx-btn--secondary {
+  border: 1px solid var(--blue-600);
+  color: var(--blue-600);
+}
+
+.ifx-btn--secondary:hover {
+  background: var(--blue-50);
+}
+
+/* ---------- Login y páginas tipo tarjeta (app/login/page.tsx) ---------- */
+
+.ifx-overlay {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  background: var(--neutral-700);
+  padding: 40px 16px;
+}
+
+.ifx-card {
+  position: relative;
+  width: 100%;
+  max-width: 28rem;
+  background: #ffffff;
+  padding: 48px 40px;
+  color: #000000;
+}
+
+.ifx-card__close {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  font-size: 24px;
+  line-height: 1;
+  color: #000000;
+}
+
+.ifx-card__title {
+  margin-bottom: 40px;
+  text-align: center;
+  font-size: 30px;
+  line-height: 36px;
+  font-weight: 700;
+  color: #000000;
+}
+
+.ifx-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.ifx-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ifx-field label {
+  font-size: 14px;
+  line-height: 20px;
+  color: #000000;
+}
+
+.ifx-field input,
+.ifx-card input[type="text"],
+.ifx-card input[type="email"],
+.ifx-card input[type="password"],
+.ifx-card input[type="tel"] {
+  height: 40px;
+  width: 100%;
+  border: 1px solid #000000;
+  background: var(--neutral-400);
+  padding: 0 12px;
+  outline: none;
+}
+
+.ifx-field input:focus,
+.ifx-field select:focus {
+  outline: 2px solid var(--blue-600);
+  outline-offset: 1px;
+}
+
+.ifx-field input[aria-invalid="true"],
+.ifx-field select[aria-invalid="true"] {
+  border-color: var(--red-600);
+}
+
+.ifx-field__error {
+  font-size: 13px;
+  color: var(--red-600);
+}
+
+.ifx-link {
+  font-size: 14px;
+  line-height: 20px;
+  color: #000000;
+  text-decoration: underline;
+}
+
+.ifx-link--center {
+  display: block;
+  margin-top: 4px;
+  text-align: center;
+}
+
+.ifx-submit,
+.ifx-card input[type="submit"],
+.ifx-card button[type="submit"] {
+  display: block;
+  margin: 8px auto 0;
+  width: 12rem;
+  border: 1px solid #000000;
+  background: var(--neutral-300);
+  padding: 8px 0;
+  text-align: center;
+  color: #000000;
+  cursor: pointer;
+}
+
+.ifx-submit:hover,
+.ifx-card input[type="submit"]:hover,
+.ifx-card button[type="submit"]:hover {
+  background: var(--neutral-400);
+}
+
+.ifx-submit:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.ifx-social {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 36px;
+}
+
+.ifx-social__button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border: 1px solid #000000;
+  background: var(--neutral-300);
+  padding: 10px 0;
+  color: #000000;
+}
+
+.ifx-social__button:hover {
+  background: var(--neutral-400);
+}
+
+.ifx-card__info {
+  margin-top: 20px;
+  font-size: 14px;
+  text-align: center;
+}
+
+.ifx-card__info a {
+  text-decoration: underline;
+}
+
+.ifx-card p,
+.ifx-card .instruction {
+  font-size: 14px;
+  line-height: 20px;
+  margin-bottom: 12px;
+}
+
+.ifx-attempted-user {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: -24px 0 24px;
+  font-size: 14px;
+}
+
+.ifx-attempted-user a {
+  text-decoration: underline;
+}
+
+.ifx-alert {
+  margin-bottom: 20px;
+  border: 1px solid #000000;
+  padding: 10px 12px;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.ifx-alert--error {
+  border-color: var(--red-600);
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.ifx-alert--warning {
+  border-color: #d97706;
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.ifx-alert--success {
+  border-color: #16a34a;
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.ifx-alert--info {
+  border-color: var(--blue-600);
+  background: var(--blue-50);
+  color: #1e40af;
+}
+
+/* Páginas base de Keycloak que no redefinimos (recuperar contraseña, errores, etc.) */
+.ifx-card form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ifx-card form label {
+  font-size: 14px;
+}
+
+.ifx-card #kc-form-options a,
+.ifx-card #kc-info-message a {
+  font-size: 14px;
+  text-decoration: underline;
+}
+
+/* ---------- Registro (app/registro/page.tsx) ---------- */
+
+.ifx-page {
+  display: flex;
+  flex: 1;
+  width: 100%;
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.ifx-register {
+  display: grid;
+  width: 100%;
+  grid-template-columns: 1fr;
+  gap: 24px;
+}
+
+.ifx-register__image {
+  display: flex;
+  min-height: 14rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #000000;
+  background: var(--neutral-200);
+}
+
+.ifx-register__image span {
+  font-size: 36px;
+  line-height: 40px;
+  color: var(--neutral-500);
+}
+
+.ifx-register__title {
+  margin-bottom: 16px;
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 700;
+  color: #000000;
+}
+
+.ifx-form--compact {
+  gap: 10px;
+}
+
+.ifx-field--compact {
+  gap: 4px;
+}
+
+.ifx-field--compact label {
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.ifx-field--compact input,
+.ifx-field--compact select {
+  height: 32px;
+  width: 100%;
+  border: 1px solid #000000;
+  background: var(--neutral-300);
+  padding: 0 8px;
+  font-size: 14px;
+  line-height: 20px;
+  color: #000000;
+  outline: none;
+}
+
+.ifx-addable__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ifx-addable__row select {
+  flex: 1;
+}
+
+/* Como en AddableSelect: el "+" solo aparece en la última fila */
+.ifx-addable__row:not(:last-of-type) .ifx-addable__add {
+  display: none;
+}
+
+.ifx-addable__add {
+  display: flex;
+  height: 32px;
+  width: 32px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #000000;
+  background: var(--neutral-300);
+  font-size: 18px;
+  line-height: 28px;
+  color: #000000;
+  cursor: pointer;
+}
+
+.ifx-submit--register {
+  margin-top: 12px;
+  width: 10rem;
+  padding: 6px 0;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+/* ---------- Footer (app/components/Footer.tsx) ---------- */
+
+.ifx-footer {
+  margin-top: auto;
+  background: #ffffff;
+  padding: 24px 32px;
+}
+
+.ifx-footer__caption {
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--neutral-500);
+}
+
+.ifx-footer__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.ifx-footer__row--second {
+  margin-top: 24px;
+}
+
+.ifx-footer__row img {
+  height: auto;
+  object-fit: contain;
+}
+
+/* ---------- Responsive ---------- */
+
+@media (min-width: 1024px) {
+  .ifx-register {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ifx-register__image {
+    min-height: 0;
+  }
+}
+
+/* En pantallas angostas los links centrales se superponen con los botones */
+@media (max-width: 900px) {
+  .ifx-navbar {
+    padding: 16px;
+  }
+
+  .ifx-navbar__links {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .ifx-card {
+    padding: 40px 24px;
+  }
+
+  .ifx-navbar__logo {
+    display: none;
+  }
+}
