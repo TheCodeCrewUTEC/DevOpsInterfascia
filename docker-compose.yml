@@ -16,12 +16,12 @@ services:
 
     environment:
       AUTH_SECRET: ${AUTH_SECRET}
-      AUTH_URL: http://localhost:3000
+      AUTH_URL: https://interfasciauy.com
       AUTH_TRUST_HOST: "true"
       AUTH_KEYCLOAK_ID: interfascia-frontend
       AUTH_KEYCLOAK_SECRET: ${KEYCLOAK_FRONTEND_CLIENT_SECRET}
       # El navegador llega a Keycloak por localhost; el contenedor, por la red de Docker
-      AUTH_KEYCLOAK_ISSUER: http://localhost:8080/realms/interfascia
+      AUTH_KEYCLOAK_ISSUER: https://auth.interfasciauy.com/realms/interfascia
       KEYCLOAK_INTERNAL_ISSUER: http://keycloak:8080/realms/interfascia
       API_URL: http://backend:80
 
@@ -49,7 +49,7 @@ services:
       - .env
 
     environment:
-      KEYCLOAK_ISSUER: http://localhost:8080/realms/interfascia
+      KEYCLOAK_ISSUER: https://auth.interfasciauy.com/realms/interfascia
       KEYCLOAK_INTERNAL_ISSUER: http://keycloak:8080/realms/interfascia
 
     depends_on:
@@ -61,7 +61,9 @@ services:
 
 
   keycloak:
-    image: quay.io/keycloak/keycloak:26.4
+    # Imagen propia: Keycloak + autenticador email-otp (ver keycloak/Dockerfile)
+    build: ./keycloak
+    image: interfascia-keycloak:26.4.7
 
     container_name: interfascia-keycloak
 
@@ -74,16 +76,23 @@ services:
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
       KC_HTTP_PORT: 8080
       # Los tokens siempre llevan localhost:8080 como emisor, aunque el pedido llegue por keycloak:8080
-      KC_HOSTNAME: http://localhost:8080
+      KC_HOSTNAME: https://auth.interfasciauy.com
+      KC_PROXY_HEADERS: xforwarded
       KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
       KEYCLOAK_FRONTEND_CLIENT_SECRET: ${KEYCLOAK_FRONTEND_CLIENT_SECRET}
       # Usada por el tema para el navbar, el footer y el botón de cerrar
-      INTERFASCIA_APP_URL: http://localhost:3000
+      INTERFASCIA_APP_URL: https://interfasciauy.com
       # Usuarios y configuración se guardan en el Postgres del proyecto (base propia de Keycloak)
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://db:5432/${KEYCLOAK_DB_NAME:-keycloak}
       KC_DB_USERNAME: ${KEYCLOAK_DB_USER:-keycloak}
       KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+      # SMTP para el código del segundo factor (Gmail: contraseña de aplicación, no la de la cuenta)
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_FROM: ${SMTP_FROM:-${SMTP_USER}}
 
     ports:
       - "8080:8080"
@@ -91,6 +100,9 @@ services:
     volumes:
       - ./keycloak/realm-interfascia.json:/opt/keycloak/data/import/realm-interfascia.json:ro
       - ./keycloak/themes/interfascia:/opt/keycloak/themes/interfascia:ro
+      # Certificados extra en los que confía Keycloak (.pem). Ej.: la raíz de un antivirus que
+      # intercepta TLS (Avast Mail Shield) y rompe el envío de correos. No se versiona: es de cada PC.
+      - ./keycloak/truststore:/opt/keycloak/conf/truststores:ro
 
     depends_on:
       db:
