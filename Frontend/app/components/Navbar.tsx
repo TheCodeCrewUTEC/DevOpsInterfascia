@@ -49,9 +49,9 @@ export default async function Navbar() {
             </>
           ) : (
             <>
-              {/* Sin prefetch: estas rutas redirigen a Keycloak */}
-              <Button href="/login" prefetch={false}>Iniciar sesión</Button>
-              <Button href="/registro" variant="secondary" prefetch={false}>Registrate</Button>
+              {/* Navegación completa: estas rutas redirigen a Keycloak y Link no puede seguir ese redirect */}
+              <Button href="/login" recargar>Iniciar sesión</Button>
+              <Button href="/registro" variant="secondary" recargar>Registrate</Button>
             </>
           )}
         </div>
