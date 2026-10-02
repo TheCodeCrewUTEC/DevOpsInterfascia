@@ -311,6 +311,58 @@ El archivo `.env.example` sí debe mantenerse en el repositorio como referencia 
 
 ---
 
+# 11.1 Autenticación con Keycloak
+
+El login y el registro los maneja **Keycloak**. Las rutas `/login` y `/registro` de la app redirigen a sus pantallas y, al terminar, vuelven a la app con la sesión iniciada.
+
+1. Generar dos secretos (uno para `AUTH_SECRET` y otro para `KEYCLOAK_FRONTEND_CLIENT_SECRET`):
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+```
+
+2. Completar en el `.env` de la raíz: `AUTH_SECRET`, `KEYCLOAK_FRONTEND_CLIENT_SECRET`, `KEYCLOAK_ADMIN_PASSWORD` y `KEYCLOAK_DB_PASSWORD`.
+
+3. Levantar Keycloak (arranca también `db`; la primera vez importa el realm `interfascia` desde `keycloak/realm-interfascia.json`):
+
+```bash
+docker compose up -d keycloak
+```
+
+Keycloak guarda usuarios y configuración en **PostgreSQL**, en una base propia (`keycloak` por defecto) dentro del contenedor `interfascia-db`. El script `db/init/01-keycloak.sh` la crea automáticamente, pero **solo si el volumen de Postgres es nuevo**. Si ya tenías el volumen `interfascia_postgres_data`, crearla una vez a mano (usar la misma contraseña que `KEYCLOAK_DB_PASSWORD`):
+
+```bash
+docker exec interfascia-db psql -U interfascia -d interfascia -c "CREATE ROLE keycloak LOGIN PASSWORD 'la-clave-del-env';" -c "CREATE DATABASE keycloak OWNER keycloak;"
+```
+
+4. Para correr el frontend con `npm run dev`, copiar `Frontend/.env.example` a `Frontend/.env.local` y poner los mismos secretos.
+
+| Servicio | URL |
+|---|---|
+| Consola de administración | http://localhost:8080/admin (usuario `admin`) |
+| Realm de la app | http://localhost:8080/realms/interfascia |
+
+> El realm solo se importa si todavía no existe en la base. Si se modifica `realm-interfascia.json`, hay que aplicar el cambio desde la consola de administración, o borrar y recrear la base de Keycloak (se pierden los usuarios registrados).
+
+**Diseño de las pantallas.** Las pantallas de login, registro y recuperar contraseña usan el tema propio `keycloak/themes/interfascia/`, que replica el wireframe de Figma (navbar y footer de la app incluidos):
+
+| Archivo | Qué es |
+|---|---|
+| `login/template.ftl` | Estructura común: navbar, tarjeta o página, footer |
+| `login/login.ftl` | Formulario de inicio de sesión |
+| `login/register.ftl` | Formulario de registro en dos columnas |
+| `login/resources/css/interfascia.css` | Estilos (equivalentes a las clases Tailwind de la app) |
+| `login/resources/js/addable-select.js` | Botón "+" de los campos con varios valores |
+| `login/messages/messages_es.properties` | Textos de las pantallas |
+
+En modo desarrollo Keycloak no cachea el tema: alcanza con guardar y recargar el navegador.
+
+Los campos extra del registro (departamento de residencia, departamentos de actuación, celular, instituciones y roles) están definidos en el perfil de usuario dentro de `realm-interfascia.json` (componente `UserProfileProvider`). Las opciones de cada lista se editan ahí.
+
+En el Backend, las rutas que requieren usuario usan la dependencia `obtener_usuario_actual` (o `requiere_rol("...")`) de `app/auth.py`, que valida el token de Keycloak. Ejemplo: `GET /api/auth/me`.
+
+---
+
 # 12. Docker Compose
 
 El proyecto utiliza Docker Compose para ejecutar los servicios mediante contenedores.
