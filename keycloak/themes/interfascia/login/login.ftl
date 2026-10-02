@@ -1,10 +1,12 @@
 <#import "template.ftl" as layout>
-<@layout.registrationLayout displayMessage=!messagesPerField.existsError('username','password') displayInfo=false; section>
+<@layout.registrationLayout displayMessage=!messagesPerField.existsError('username','password') displayInfo=true; section>
     <#if section = "header">
-        ${msg("loginAccountTitle")}
+        <p class="ifx-eyebrow">${msg("loginEyebrow")}</p>
+        <h1 class="ifx-title">${msg("loginAccountTitle")}</h1>
+        <p class="ifx-lede">${msg("loginLede")}</p>
     <#elseif section = "form">
         <#if realm.password>
-            <form id="kc-form-login" class="ifx-form" onsubmit="login.disabled = true; return true;" action="${url.loginAction}" method="post">
+            <form id="kc-form-login" class="ifx-form" action="${url.loginAction}" method="post" novalidate>
 
                 <#if !usernameHidden??>
                     <div class="ifx-field">
@@ -28,17 +30,18 @@
                 </#if>
 
                 <#if realm.resetPasswordAllowed>
-                    <a class="ifx-link ifx-link--center" href="${url.loginResetCredentialsUrl}">${msg("doForgotPassword")}</a>
+                    <a class="ifx-link" href="${url.loginResetCredentialsUrl}">${msg("doForgotPassword")}</a>
                 </#if>
 
                 <input type="hidden" id="id-hidden-input" name="credentialId" <#if auth.selectedCredential?has_content>value="${auth.selectedCredential}"</#if>/>
                 <button class="ifx-submit ifx-submit--login" name="login" id="kc-login" type="submit">${msg("doLogIn")}</button>
 
-                <#if realm.registrationAllowed && !registrationDisabled??>
-                    <#-- Por la app (no url.registrationUrl) para que el registro termine en el aviso de éxito -->
-                    <a class="ifx-link ifx-link--center" href="${(properties.appUrl!'http://localhost:3000')?remove_ending('/')}/registro">${msg("noAccountRegister")}</a>
-                </#if>
             </form>
+        </#if>
+    <#elseif section = "info">
+        <#if realm.registrationAllowed && !registrationDisabled??>
+            <#-- Por la app (no url.registrationUrl) para que el registro termine en el aviso de éxito -->
+            <p class="ifx-account">${msg("noAccount")} <a href="${(properties.appUrl!'http://localhost:3000')?remove_ending('/')}/registro">${msg("registerNow")}</a></p>
         </#if>
     <#elseif section = "socialProviders">
         <#if realm.password && social?? && social.providers?has_content>
