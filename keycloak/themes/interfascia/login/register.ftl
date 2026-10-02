@@ -119,7 +119,7 @@
         </#if>
         <#assign valores = valoresDe(attribute)>
     </#if>
-    <div class="ifx-field ifx-field--compact" data-addable-select>
+    <div class="ifx-field ifx-field--compact" data-addable-select <#if isRequired>data-required="true"</#if>>
         <label for="${name}-0">${msg(name)}<#if isRequired>*</#if></label>
         <#list valores as valor>
             <div class="ifx-addable__row">
@@ -131,6 +131,7 @@
                         <option value="${opcion}" <#if opcion == valor>selected</#if>>${opcion}</option>
                     </#list>
                 </select>
+                <button type="button" class="ifx-addable__remove" aria-label="${msg('quitarSeleccion')}" <#if !valor?has_content && valores?size == 1>hidden</#if>>×</button>
                 <button type="button" class="ifx-addable__add" aria-label="${msg('agregarOtro')}">+</button>
             </div>
         </#list>

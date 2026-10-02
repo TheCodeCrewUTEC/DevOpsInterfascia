@@ -710,8 +710,31 @@ textarea {
   flex: 1;
 }
 
-.ifx-addable__row:not(:last-of-type) .ifx-addable__add {
+.ifx-addable__row:not(:last-of-type) .ifx-addable__add,
+.ifx-addable__add[hidden],
+.ifx-addable__remove[hidden] {
   display: none;
+}
+
+.ifx-addable__remove {
+  display: flex;
+  height: 44px;
+  width: 44px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgb(242 107 58 / 0.3);
+  border-radius: 0.75rem;
+  background: transparent;
+  font-size: 1.125rem;
+  line-height: 1;
+  color: var(--clay);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.ifx-addable__remove:hover {
+  background: rgb(242 107 58 / 0.1);
 }
 
 .ifx-addable__add {
