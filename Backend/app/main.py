@@ -1,6 +1,16 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
+
+from app.database.connection import ensure_schema
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    ensure_schema()
+    yield
 
 from app.routers import formularios
 from app.routers import convocatorias
@@ -13,7 +23,8 @@ from app.routers import proyectos
 
 app = FastAPI(
     title="Interfascia API",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan,
 )
 
 

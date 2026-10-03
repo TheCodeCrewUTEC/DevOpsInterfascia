@@ -54,6 +54,14 @@ services:
     environment:
       KEYCLOAK_ISSUER: https://auth.interfasciauy.com/realms/interfascia
       KEYCLOAK_INTERNAL_ISSUER: http://keycloak:8080/realms/interfascia
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: interfascia
+      DB_USER: interfascia
+      DB_PASSWORD: interfascia
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_DB: "0"
 
     depends_on:
       - db
@@ -75,6 +83,16 @@ services:
 
     env_file:
       - .env
+
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: interfascia
+      DB_USER: interfascia
+      DB_PASSWORD: interfascia
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_DB: "0"
 
     depends_on:
       - redis
