@@ -39,6 +39,8 @@ services:
       context: ./Backend
       dockerfile: Dockerfile
 
+    image: interfascia-backend
+
     container_name: interfascia-backend
 
     restart: unless-stopped
@@ -56,6 +58,27 @@ services:
     depends_on:
       - db
       - keycloak
+      - redis
+
+    networks:
+      - interfascia-net
+
+
+  worker:
+    image: interfascia-backend
+
+    container_name: interfascia-worker
+
+    restart: unless-stopped
+
+    command: ["python", "-m", "arq", "worker.worker.WorkerSettings"]
+
+    env_file:
+      - .env
+
+    depends_on:
+      - redis
+      - db
 
     networks:
       - interfascia-net
