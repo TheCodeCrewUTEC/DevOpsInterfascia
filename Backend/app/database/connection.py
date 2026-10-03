@@ -1,13 +1,16 @@
 import os
+import time
+
 import psycopg2
 from dotenv import load_dotenv
 
 load_dotenv()
 
 def get_connection():
+    port = os.getenv("DB_PORT")
     return psycopg2.connect(
         host=os.getenv("DB_HOST"),
-        port=os.getenv("DB_PORT"),
+        port=int(port) if port else None,
         database=os.getenv("DB_NAME"),
         user=os.getenv("DB_USER"),
         password=os.getenv("DB_PASSWORD")
@@ -15,7 +18,20 @@ def get_connection():
 
 
 def ensure_schema():
-    conn = get_connection()
+    conn = None
+    ultimo_error = None
+
+    for intento in range(1, 11):
+        try:
+            conn = get_connection()
+            break
+        except psycopg2.OperationalError as error:
+            ultimo_error = error
+            print(f"[DB] Intento {intento}/10 falló: {error}")
+            time.sleep(3)
+
+    if conn is None:
+        raise ultimo_error
 
     try:
         with conn.cursor() as cur:

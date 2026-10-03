@@ -55,18 +55,21 @@ services:
       KEYCLOAK_ISSUER: https://auth.interfasciauy.com/realms/interfascia
       KEYCLOAK_INTERNAL_ISSUER: http://keycloak:8080/realms/interfascia
       DB_HOST: db
-      DB_PORT: "5432"
-      DB_NAME: interfascia
-      DB_USER: interfascia
-      DB_PASSWORD: interfascia
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME:-interfascia}
+      DB_USER: ${DB_USER:-interfascia}
+      DB_PASSWORD: ${DB_PASSWORD:-${POSTGRES_PASSWORD:-interfascia}}
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       REDIS_DB: "0"
 
     depends_on:
-      - db
-      - keycloak
-      - redis
+      db:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+      redis:
+        condition: service_started
 
     networks:
       - interfascia-net
@@ -86,17 +89,19 @@ services:
 
     environment:
       DB_HOST: db
-      DB_PORT: "5432"
-      DB_NAME: interfascia
-      DB_USER: interfascia
-      DB_PASSWORD: interfascia
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME:-interfascia}
+      DB_USER: ${DB_USER:-interfascia}
+      DB_PASSWORD: ${DB_PASSWORD:-${POSTGRES_PASSWORD:-interfascia}}
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       REDIS_DB: "0"
 
     depends_on:
-      - redis
-      - db
+      redis:
+        condition: service_started
+      db:
+        condition: service_healthy
 
     networks:
       - interfascia-net
