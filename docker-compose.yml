@@ -55,10 +55,10 @@ services:
       KEYCLOAK_ISSUER: https://auth.interfasciauy.com/realms/interfascia
       KEYCLOAK_INTERNAL_ISSUER: http://keycloak:8080/realms/interfascia
       DB_HOST: db
-      DB_PORT: ${DB_PORT:-5432}
-      DB_NAME: ${DB_NAME:-interfascia}
-      DB_USER: ${DB_USER:-interfascia}
-      DB_PASSWORD: ${DB_PASSWORD:-${POSTGRES_PASSWORD:-interfascia}}
+      DB_PORT: "5432"
+      DB_NAME: interfascia
+      DB_USER: interfascia
+      DB_PASSWORD: interfascia
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       REDIS_DB: "0"
@@ -70,6 +70,9 @@ services:
         condition: service_started
       redis:
         condition: service_started
+
+    volumes:
+      - formularios_storage:/app/storage
 
     networks:
       - interfascia-net
@@ -89,10 +92,10 @@ services:
 
     environment:
       DB_HOST: db
-      DB_PORT: ${DB_PORT:-5432}
-      DB_NAME: ${DB_NAME:-interfascia}
-      DB_USER: ${DB_USER:-interfascia}
-      DB_PASSWORD: ${DB_PASSWORD:-${POSTGRES_PASSWORD:-interfascia}}
+      DB_PORT: "5432"
+      DB_NAME: interfascia
+      DB_USER: interfascia
+      DB_PASSWORD: interfascia
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       REDIS_DB: "0"
@@ -102,6 +105,9 @@ services:
         condition: service_started
       db:
         condition: service_healthy
+
+    volumes:
+      - formularios_storage:/app/storage
 
     networks:
       - interfascia-net
@@ -202,6 +208,7 @@ services:
 
 volumes:
   postgres_data:
+  formularios_storage:
 
 # Misma red (nombre y clave) que el compose de infraestructura, para que ambos compartan la base
 networks:
