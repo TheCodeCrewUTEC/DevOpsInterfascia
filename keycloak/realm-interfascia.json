@@ -136,10 +136,43 @@
         "subComponents": {},
         "config": {
           "kc.user.profile.config": [
-            "{\"attributes\": [{\"name\": \"username\", \"displayName\": \"${username}\", \"validations\": {\"length\": {\"min\": 3, \"max\": 255}, \"username-prohibited-characters\": {}, \"up-username-not-idn-homograph\": {}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": false}, {\"name\": \"firstName\", \"displayName\": \"${firstName}\", \"validations\": {\"length\": {\"max\": 255}, \"person-name-prohibited-characters\": {}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": false, \"required\": {\"roles\": [\"user\"]}}, {\"name\": \"lastName\", \"displayName\": \"${lastName}\", \"validations\": {\"length\": {\"max\": 255}, \"person-name-prohibited-characters\": {}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": false, \"required\": {\"roles\": [\"user\"]}}, {\"name\": \"email\", \"displayName\": \"${email}\", \"validations\": {\"email\": {}, \"length\": {\"max\": 255}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": false, \"required\": {\"roles\": [\"user\"]}}, {\"name\": \"departamentoResidencia\", \"displayName\": \"${departamentoResidencia}\", \"validations\": {\"options\": {\"options\": [\"Artigas\", \"Canelones\", \"Cerro Largo\", \"Colonia\", \"Durazno\", \"Flores\", \"Florida\", \"Lavalleja\", \"Maldonado\", \"Montevideo\", \"Paysandú\", \"Río Negro\", \"Rivera\", \"Rocha\", \"Salto\", \"San José\", \"Soriano\", \"Tacuarembó\", \"Treinta y Tres\"]}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": false, \"required\": {\"roles\": [\"user\"]}}, {\"name\": \"departamentosActuacion\", \"displayName\": \"${departamentosActuacion}\", \"validations\": {\"options\": {\"options\": [\"Artigas\", \"Canelones\", \"Cerro Largo\", \"Colonia\", \"Durazno\", \"Flores\", \"Florida\", \"Lavalleja\", \"Maldonado\", \"Montevideo\", \"Paysandú\", \"Río Negro\", \"Rivera\", \"Rocha\", \"Salto\", \"San José\", \"Soriano\", \"Tacuarembó\", \"Treinta y Tres\"]}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": true, \"required\": {\"roles\": [\"user\"]}}, {\"name\": \"celular\", \"displayName\": \"${celular}\", \"validations\": {\"pattern\": {\"pattern\": \"^\\\\+?[0-9 ]{8,15}$\", \"error-message\": \"invalidCelular\"}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": false}, {\"name\": \"instituciones\", \"displayName\": \"${instituciones}\", \"validations\": {\"options\": {\"options\": [\"UTEC\", \"UDELAR\", \"CURE\", \"UTU\", \"ANII\", \"Otra\"]}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": true, \"required\": {\"roles\": [\"user\"]}}, {\"name\": \"perfil\", \"displayName\": \"${perfil}\", \"validations\": {\"options\": {\"options\": [\"Investigador\", \"Inversor\", \"Emprendedor\", \"Estudiante\", \"Docente\", \"Otro\"]}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": true, \"required\": {\"roles\": [\"user\"]}}], \"groups\": [{\"name\": \"user-metadata\", \"displayHeader\": \"User metadata\", \"displayDescription\": \"Attributes, which refer to user metadata\"}], \"unmanagedAttributePolicy\": \"ADMIN_EDIT\"}"
+            "{\"attributes\": [{\"name\": \"username\",\"displayName\": \"${username}\",\"validations\": {\"length\": {\"min\": 3,\"max\": 255},\"username-prohibited-characters\": {},\"up-username-not-idn-homograph\": {}},\"permissions\": {\"view\": [\"admin\",\"user\"],\"edit\": [\"admin\",\"user\"]},\"multivalued\": false},{\"name\": \"firstName\",\"displayName\": \"${firstName}\",\"validations\": {\"length\": {\"max\": 255},\"person-name-prohibited-characters\": {}},\"permissions\": {\"view\": [\"admin\",\"user\"],\"edit\": [\"admin\",\"user\"]},\"multivalued\": false,\"required\": {\"roles\": [\"user\"]}},{\"name\": \"lastName\",\"displayName\": \"${lastName}\",\"validations\": {\"length\": {\"max\": 255},\"person-name-prohibited-characters\": {}},\"permissions\": {\"view\": [\"admin\",\"user\"],\"edit\": [\"admin\",\"user\"]},\"multivalued\": false,\"required\": {\"roles\": [\"user\"]}},{\"name\": \"email\",\"displayName\": \"${email}\",\"validations\": {\"email\": {},\"length\": {\"max\": 255}},\"permissions\": {\"view\": [\"admin\",\"user\"],\"edit\": [\"admin\",\"user\"]},\"multivalued\": false,\"required\": {\"roles\": [\"user\"]}},{\"name\": \"departamentoResidencia\",\"displayName\": \"${departamentoResidencia}\",\"validations\": {\"options\": {\"options\": [\"Artigas\",\"Canelones\",\"Cerro Largo\",\"Colonia\",\"Durazno\",\"Flores\",\"Florida\",\"Lavalleja\",\"Maldonado\",\"Montevideo\",\"Paysandú\",\"Río Negro\",\"Rivera\",\"Rocha\",\"Salto\",\"San José\",\"Soriano\",\"Tacuarembó\",\"Treinta y Tres\"]}},\"permissions\": {\"view\": [\"admin\",\"user\"],\"edit\": [\"admin\",\"user\"]},\"multivalued\": false,\"required\": {\"roles\": [\"user\"]}},{\"name\": \"departamentosActuacion\",\"displayName\": \"${departamentosActuacion}\",\"validations\": {\"options\": {\"options\": [\"Artigas\",\"Canelones\",\"Cerro Largo\",\"Colonia\",\"Durazno\",\"Flores\",\"Florida\",\"Lavalleja\",\"Maldonado\",\"Montevideo\",\"Paysandú\",\"Río Negro\",\"Rivera\",\"Rocha\",\"Salto\",\"San José\",\"Soriano\",\"Tacuarembó\",\"Treinta y Tres\"]}},\"permissions\": {\"view\": [\"admin\",\"user\"],\"edit\": [\"admin\",\"user\"]},\"multivalued\": true,\"required\": {\"roles\": [\"user\"]}},{\"name\": \"celular\",\"displayName\": \"${celular}\",\"validations\": {\"pattern\": {\"pattern\": \"^\\\\+?[0-9 ]{8,15}$\",\"error-message\": \"invalidCelular\"}},\"permissions\": {\"view\": [\"admin\",\"user\"],\"edit\": [\"admin\",\"user\"]},\"multivalued\": false},{\"name\": \"instituciones\",\"displayName\": \"${instituciones}\",\"validations\": {\"options\": {\"options\": [\"UTEC\",\"UDELAR\",\"CURE\",\"UTU\",\"ANII\",\"Otra\"]}},\"permissions\": {\"view\": [\"admin\",\"user\"],\"edit\": [\"admin\",\"user\"]},\"multivalued\": true,\"required\": {\"roles\": [\"user\"]}},{\"name\": \"perfil\",\"displayName\": \"${perfil}\",\"validations\": {\"options\": {\"options\": [\"Administrador\",\"Gestor/a de innovación\",\"Investigador/a\",\"Emprendedor/a / Empresario/a\",\"Otros\"]}},\"permissions\": {\"view\": [\"admin\",\"user\"],\"edit\": [\"admin\",\"user\"]},\"multivalued\": false,\"required\": {\"roles\": [\"user\"]}},{\"name\": \"perfilOtro\",\"displayName\": \"${perfilOtro}\",\"validations\": {\"length\": {\"max\": 255}},\"permissions\": {\"view\": [\"admin\",\"user\"],\"edit\": [\"admin\",\"user\"]},\"multivalued\": false},{\"name\": \"estadoAprobacion\",\"displayName\": \"${estadoAprobacion}\",\"permissions\": {\"view\": [\"admin\"],\"edit\": [\"admin\"]},\"multivalued\": false}],\"groups\": [{\"name\": \"user-metadata\",\"displayHeader\": \"User metadata\",\"displayDescription\": \"Attributes, which refer to user metadata\"}],\"unmanagedAttributePolicy\": \"ADMIN_EDIT\"}"
           ]
         }
       }
     ]
-  }
+  },
+  "roles": {
+    "realm": [
+      {
+        "name": "admin",
+        "description": "Administrador: acceso total y gestión de permisos",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "gestor_innovacion",
+        "description": "Gestor/a de innovación: acceso a analítica de datos",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "investigador",
+        "description": "Investigador/a: consultas IA",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "emprendedor",
+        "description": "Emprendedor/a / Empresario/a: demandas al foro",
+        "composite": false,
+        "clientRole": false
+      }
+    ]
+  },
+  "eventsEnabled": true,
+  "eventsListeners": [
+    "jboss-logging",
+    "registration-approval"
+  ]
 }

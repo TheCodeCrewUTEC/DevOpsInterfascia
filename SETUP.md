@@ -359,6 +359,18 @@ En modo desarrollo Keycloak no cachea el tema: alcanza con guardar y recargar el
 
 Los campos extra del registro (departamento de residencia, departamentos de actuación, celular, instituciones y roles) están definidos en el perfil de usuario dentro de `realm-interfascia.json` (componente `UserProfileProvider`). Las opciones de cada lista se editan ahí.
 
+Roles del combo de registro y permisos de realm asociados:
+
+| Rol en el combo | Rol de realm | Permiso orientativo |
+|---|---|---|
+| Administrador | `admin` | Acceso total / gestión de permisos |
+| Gestor/a de innovación | `gestor_innovacion` | Analítica de datos |
+| Investigador/a | `investigador` | Consultas IA |
+| Emprendedor/a / Empresario/a | `emprendedor` | Demandas al foro |
+| Otros | `emprendedor` | Igual que emprendedor; puede escribir el rol en `perfilOtro` |
+
+Al registrarse, el listener `registration-approval` deja la cuenta **deshabilitada** (`estadoAprobacion=pendiente`) hasta que un administrador la habilite en la consola de Keycloak (`Users` → usuario → **Enabled** ON). Si el realm ya existía, aplicar con `bash keycloak/configurar-roles-aprobacion.sh` tras rebuild de la imagen de Keycloak.
+
 En el Backend, las rutas que requieren usuario usan la dependencia `obtener_usuario_actual` (o `requiere_rol("...")`) de `app/auth.py`, que valida el token de Keycloak. Ejemplo: `GET /api/auth/me`.
 
 ---

@@ -24,4 +24,7 @@ Thumbs.db
 # Certificados locales para Keycloak (ver docker-compose.yml)
 keycloak/truststore/
 
+# Build local del plugin de Keycloak
+keycloak/email-otp/target/
+
 ##Frontend/tsconfig.tsbuildinfo
