@@ -25,8 +25,8 @@ public class RegistrationApprovalListenerProvider implements EventListenerProvid
 
     private static final Logger LOG = Logger.getLogger(RegistrationApprovalListenerProvider.class);
 
+    // Sin "Administrador": el rol admin nunca se obtiene registrándose, se asigna a mano
     private static final Map<String, String> ROL_POR_PERFIL = Map.of(
-            "Administrador", "admin",
             "Gestor/a de innovación", "gestor_innovacion",
             "Investigador/a", "investigador",
             "Emprendedor/a / Empresario/a", "emprendedor",

@@ -9,7 +9,7 @@
 
 <#assign departamentos = ["Artigas", "Canelones", "Cerro Largo", "Colonia", "Durazno", "Flores", "Florida", "Lavalleja", "Maldonado", "Montevideo", "Paysandú", "Río Negro", "Rivera", "Rocha", "Salto", "San José", "Soriano", "Tacuarembó", "Treinta y Tres"]>
 <#assign institucionesOpciones = ["UTEC", "UDELAR", "CURE", "UTU", "ANII", "Otra"]>
-<#assign rolesOpciones = ["Administrador", "Gestor/a de innovación", "Investigador/a", "Emprendedor/a / Empresario/a", "Otros"]>
+<#assign rolesOpciones = ["Gestor/a de innovación", "Investigador/a", "Emprendedor/a / Empresario/a", "Otros"]>
 
 <#function opciones attribute>
     <#if attribute?? && attribute.validators?? && attribute.validators.options?? && attribute.validators.options.options??>

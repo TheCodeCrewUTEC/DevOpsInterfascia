@@ -47,25 +47,18 @@ echo "Activando listener registration-approval..."
 kc update "realms/$R" -s eventsEnabled=true -s 'eventsListeners=["jboss-logging","registration-approval"]'
 
 echo "Actualizando perfil de usuario..."
-COMP_ID=$(kc get components -r "$R" -q name=declarative-user-profile --fields id --format csv --noquotes | head -n1)
-if [ -z "$COMP_ID" ]; then
-  echo "AVISO: no se encontro el UserProfileProvider; actualiza el perfil desde la consola admin."
-else
-  TMP_DIR=$(mktemp -d)
-  kc get "components/$COMP_ID" -r "$R" > "$TMP_DIR/component.json"
+# En Keycloak 26 el perfil se lee y se escribe por el endpoint users/profile.
+# Va por tuberías (sin archivos temporales) porque en Git Bash el Python de Windows
+# no entiende las rutas /tmp de mktemp.
+ACTUALIZAR_PERFIL=$(cat <<'PY'
+import io, json, sys
 
-  python - "$TMP_DIR/component.json" <<'PY'
-import json, sys
+profile = json.load(io.TextIOWrapper(sys.stdin.buffer, encoding="utf-8"))
 
-path = sys.argv[1]
-with open(path, encoding="utf-8") as f:
-    comp = json.load(f)
-
-profile = json.loads(comp["config"]["kc.user.profile.config"][0])
 attrs = {a["name"]: a for a in profile["attributes"]}
 
+# Administrador no se ofrece en el registro: el rol admin se asigna a mano
 roles_perfil = [
-    "Administrador",
     "Gestor/a de innovación",
     "Investigador/a",
     "Emprendedor/a / Empresario/a",
@@ -99,21 +92,17 @@ orden = [
     "departamentoResidencia", "departamentosActuacion", "celular",
     "instituciones", "perfil", "perfilOtro", "estadoAprobacion",
 ]
-profile["attributes"] = [attrs[n] for n in orden if n in attrs]
-comp["config"]["kc.user.profile.config"] = [
-    json.dumps(profile, ensure_ascii=False, separators=(",", ": "))
+# Los atributos que no están en la lista (agregados después) se conservan al final
+profile["attributes"] = [attrs[n] for n in orden if n in attrs] + [
+    a for n, a in attrs.items() if n not in orden
 ]
 
-with open(path, "w", encoding="utf-8") as f:
-    json.dump(comp, f, ensure_ascii=False)
+sys.stdout.buffer.write(json.dumps(profile, ensure_ascii=False).encode("utf-8"))
 PY
+)
 
-  docker cp "$TMP_DIR/component.json" "$CONTENEDOR:/tmp/user-profile-component.json"
-  kc update "components/$COMP_ID" -r "$R" -f /tmp/user-profile-component.json
-  docker exec -i "$CONTENEDOR" rm -f /tmp/user-profile-component.json
-  rm -rf "$TMP_DIR"
-  echo "Perfil de usuario actualizado."
-fi
+kc get users/profile -r "$R" | python -c "$ACTUALIZAR_PERFIL" | kc update users/profile -r "$R" -f -
+echo "Perfil de usuario actualizado."
 
 docker exec -i "$CONTENEDOR" rm -f "$CFG"
 echo "Listo. Las cuentas nuevas quedan deshabilitadas hasta que un admin las habilite en Keycloak."
