@@ -47,6 +47,10 @@ echo "Aplicando politica de contrasenas..."
 # Minimo 12 caracteres, un numero, una mayuscula, un caracter especial y distinta del usuario/mail
 kc update "realms/$R" -s 'passwordPolicy=length(12) and digits(1) and upperCase(1) and specialChars(1) and notUsername(undefined) and notEmail(undefined)'
 
+echo "Activando proteccion contra fuerza bruta..."
+# 5 intentos fallidos bloquean la cuenta 15 minutos; un admin puede desbloquearla antes
+kc update "realms/$R" -s bruteForceProtected=true -s permanentLockout=false -s failureFactor=5   -s waitIncrementSeconds=900 -s maxFailureWaitSeconds=900 -s maxDeltaTimeSeconds=43200   -s minimumQuickLoginWaitSeconds=60 -s quickLoginCheckMilliSeconds=1000
+
 echo "Activando listener registration-approval..."
 kc update "realms/$R" -s eventsEnabled=true -s 'eventsListeners=["jboss-logging","registration-approval"]'
 
