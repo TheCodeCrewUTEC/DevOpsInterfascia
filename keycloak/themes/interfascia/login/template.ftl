@@ -143,6 +143,7 @@
     </footer>
 
     <script src="${url.resourcesPath}/js/required-fields.js?v=${properties.recursosVersion!'1'}" defer></script>
+    <script src="${url.resourcesPath}/js/mostrar-contrasena.js?v=${properties.recursosVersion!'1'}" defer></script>
 </body>
 </html>
 </#macro>

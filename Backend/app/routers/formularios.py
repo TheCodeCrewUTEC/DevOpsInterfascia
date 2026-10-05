@@ -2,10 +2,19 @@ from pathlib import Path
 
 from fastapi import (
     APIRouter,
+    Depends,
     File,
     UploadFile,
     HTTPException
 )
+from pydantic import BaseModel
+
+from app.auth import (
+    es_admin,
+    obtener_usuario_actual,
+    obtener_usuario_opcional,
+)
+from app.services.respuesta_service_db import actualizar_respuestas
 
 from app.schemas.formulario_job import FormularioJobResponse
 
@@ -27,6 +36,40 @@ router = APIRouter(
 
 STORAGE_PATH = Path("storage/formularios")
 
+
+class CambioRespuesta(BaseModel):
+    id: int
+    respuesta: str | None = None
+
+
+def verificar_acceso_job(cur, job_id: int, usuario: dict | None):
+    """Devuelve (id, estado) del job si el usuario puede verlo.
+
+    Un job con dueño solo lo ven su dueño y los admin. Los jobs viejos (sin dueño)
+    siguen visibles como antes. Se responde 404 para no revelar jobs ajenos.
+    """
+
+    cur.execute(
+        """
+        SELECT id, estado, usuario_sub
+        FROM formulario_job
+        WHERE id = %s
+        """,
+        (job_id,)
+    )
+
+    job = cur.fetchone()
+
+    if job:
+        dueno = job[2]
+        if dueno is None or es_admin(usuario) or (usuario and usuario.get("sub") == dueno):
+            return job[0], job[1]
+
+    raise HTTPException(
+        status_code=404,
+        detail=f"No existe el Job {job_id}"
+    )
+
 @router.post(
     "/jobs",
     response_model=FormularioJobResponse
@@ -36,7 +79,8 @@ async def crear_formulario_job(
     documentos: list[UploadFile] = File(
         ...,
         media_type="multipart/form-data"
-    )
+    ),
+    usuario: dict | None = Depends(obtener_usuario_opcional),
 ):
 
     # VALIDAR FORMULARIO
@@ -53,7 +97,7 @@ async def crear_formulario_job(
         )
 
     # CREAR JOB
-    job = crear_job(None)
+    job = crear_job(None, usuario.get("sub") if usuario else None)
 
     job_id = job["id"]
 
@@ -171,7 +215,10 @@ async def crear_formulario_job(
         
 
 @router.get("/jobs/{job_id}/resultado")
-def obtener_resultado_job(job_id: int):
+def obtener_resultado_job(
+    job_id: int,
+    usuario: dict | None = Depends(obtener_usuario_opcional),
+):
 
     conn = get_connection()
 
@@ -183,24 +230,7 @@ def obtener_resultado_job(job_id: int):
             # 1. OBTENER JOB
             # ========================================================
 
-            cur.execute(
-                """
-                SELECT id, estado
-                FROM formulario_job
-                WHERE id = %s
-                """,
-                (job_id,)
-            )
-
-            job = cur.fetchone()
-
-            if not job:
-                raise HTTPException(
-                    status_code=404,
-                    detail=f"No existe el Job {job_id}"
-                )
-
-            job_id_db, estado = job
+            job_id_db, estado = verificar_acceso_job(cur, job_id, usuario)
 
             # ========================================================
             # 2. OBTENER RESPUESTAS
@@ -209,9 +239,14 @@ def obtener_resultado_job(job_id: int):
             cur.execute(
                 """
                 SELECT
+                    id,
                     campo,
                     respuesta,
-                    fuentes
+                    fuentes,
+                    tipo,
+                    pagina,
+                    respuesta_ia,
+                    editada
                 FROM respuesta_formulario
                 WHERE job_id = %s
                 ORDER BY id
@@ -223,12 +258,20 @@ def obtener_resultado_job(job_id: int):
 
             respuestas = []
 
-            for campo, respuesta, fuentes in filas:
+            for (
+                respuesta_id, campo, respuesta, fuentes,
+                tipo, pagina, respuesta_ia, editada,
+            ) in filas:
 
                 respuestas.append({
+                    "id": respuesta_id,
                     "campo": campo,
                     "respuesta": respuesta,
-                    "fuentes": fuentes or []
+                    "fuentes": fuentes or [],
+                    "tipo": tipo,
+                    "pagina": pagina,
+                    "respuesta_ia": respuesta_ia,
+                    "editada": editada,
                 })
 
             # ========================================================
@@ -244,3 +287,27 @@ def obtener_resultado_job(job_id: int):
 
     finally:
         conn.close()
+
+
+@router.put("/jobs/{job_id}/respuestas")
+def guardar_correcciones(
+    job_id: int,
+    cambios: list[CambioRespuesta],
+    usuario: dict = Depends(obtener_usuario_actual),
+):
+    """Guarda lo que el usuario corrigió en el formulario completado."""
+
+    conn = get_connection()
+
+    try:
+        with conn.cursor() as cur:
+            verificar_acceso_job(cur, job_id, usuario)
+    finally:
+        conn.close()
+
+    actualizados = actualizar_respuestas(
+        job_id,
+        [cambio.model_dump() for cambio in cambios]
+    )
+
+    return {"actualizados": actualizados}

@@ -373,6 +373,8 @@ async def procesar_formulario(
                 campo=nombre_campo,
                 respuesta=respuesta,
                 fuentes=fuentes_unicas,
+                tipo=tipo_campo,
+                pagina=campo.get("pagina"),
             )
 
             # ============================================================

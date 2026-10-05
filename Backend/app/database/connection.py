@@ -60,6 +60,33 @@ def ensure_schema():
                 )
                 """
             )
+            # Formulario editable: tipo y página de cada campo, y la respuesta original
+            # de la IA para saber qué corrigió el usuario. usuario_sub = dueño del job.
+            cur.execute(
+                """
+                ALTER TABLE respuesta_formulario
+                    ADD COLUMN IF NOT EXISTS tipo TEXT,
+                    ADD COLUMN IF NOT EXISTS pagina INTEGER,
+                    ADD COLUMN IF NOT EXISTS respuesta_ia TEXT,
+                    ADD COLUMN IF NOT EXISTS editada BOOLEAN NOT NULL DEFAULT FALSE
+                """
+            )
+            # Respuestas anteriores a la columna: lo guardado es lo que propuso la IA
+            cur.execute(
+                """
+                UPDATE respuesta_formulario
+                SET respuesta_ia = respuesta
+                WHERE respuesta_ia IS NULL
+                  AND respuesta IS NOT NULL
+                  AND NOT editada
+                """
+            )
+            cur.execute(
+                """
+                ALTER TABLE formulario_job
+                    ADD COLUMN IF NOT EXISTS usuario_sub TEXT
+                """
+            )
             # Las consulta el Consultor IA; sin ellas /api/proyectos y /api/investigadores dan 500
             cur.execute(
                 """

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
 
 const API_URL = (process.env.API_URL ?? "http://localhost:8000").replace(/\/$/, "");
 
@@ -21,6 +22,13 @@ async function proxy(
 
   const headers = new Headers(request.headers);
   headers.delete("host");
+
+  // El token de Keycloak vive en la sesión del servidor, no en el navegador:
+  // se agrega acá para que la API sepa quién hace el pedido.
+  const session = await auth();
+  if (session?.accessToken && !session.error) {
+    headers.set("Authorization", `Bearer ${session.accessToken}`);
+  }
 
   try {
     const response = await fetch(destino, {

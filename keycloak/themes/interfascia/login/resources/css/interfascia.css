@@ -922,3 +922,39 @@ textarea {
     font-size: 1.25rem;
   }
 }
+
+/* Botón para ver la contraseña (js/mostrar-contrasena.js) */
+.ifx-password {
+  position: relative;
+}
+
+.ifx-card .ifx-password input {
+  padding-right: 44px;
+}
+
+.ifx-password__toggle {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  transform: translateY(-50%);
+  border-radius: 0.5rem;
+  background: transparent;
+  color: rgb(16 42 60 / 0.55);
+  cursor: pointer;
+  transition: color 0.2s, background 0.2s;
+}
+
+.ifx-password__toggle:hover {
+  color: var(--pine-text);
+  background: rgb(0 174 239 / 0.08);
+}
+
+.ifx-password__toggle:focus-visible {
+  outline: 2px solid var(--pine);
+  outline-offset: 1px;
+}
