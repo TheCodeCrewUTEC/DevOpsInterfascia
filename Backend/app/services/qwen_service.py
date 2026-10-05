@@ -22,7 +22,8 @@ OLLAMA_URL = os.getenv("OLLAMA_URL") or None
 llm = ChatOllama(
     model=MODEL_NAME,
     temperature=0,
-    num_ctx=4096,
+    # Igual que respuesta_service: si difieren, Ollama recarga el modelo en cada job
+    num_ctx=8192,
     base_url=OLLAMA_URL,
 )
 

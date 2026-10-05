@@ -887,3 +887,34 @@ textarea {
     transition: none;
   }
 }
+
+/* Código de verificación: una caja por dígito (js/codigo-cajas.js) */
+.ifx-otp {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.ifx-card .ifx-otp input.ifx-otp__box {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 52px;
+  height: 56px;
+  padding: 0;
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  caret-color: var(--pine);
+}
+
+@media (max-width: 380px) {
+  .ifx-otp {
+    gap: 6px;
+  }
+
+  .ifx-card .ifx-otp input.ifx-otp__box {
+    height: 48px;
+    font-size: 1.25rem;
+  }
+}

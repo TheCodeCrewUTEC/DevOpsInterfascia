@@ -106,6 +106,8 @@ services:
       REDIS_PORT: "6379"
       REDIS_DB: "0"
       OLLAMA_URL: http://ollama:11434
+      # Sin esto los print del worker salen todos juntos al final y no se ve el avance
+      PYTHONUNBUFFERED: "1"
 
     depends_on:
       redis:
