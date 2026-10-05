@@ -46,6 +46,30 @@ crear_rol emprendedor "Emprendedor/a / Empresario/a: demandas al foro"
 echo "Activando listener registration-approval..."
 kc update "realms/$R" -s eventsEnabled=true -s 'eventsListeners=["jboss-logging","registration-approval"]'
 
+echo "Configurando cliente interfascia-backend (cuenta de servicio de la API)..."
+# El secreto se lee del entorno del contenedor para no pasarlo por la línea de comandos
+if ! docker exec -i "$CONTENEDOR" bash -c '[ -n "$KEYCLOAK_BACKEND_CLIENT_SECRET" ]'; then
+  echo "ERROR: el contenedor no tiene KEYCLOAK_BACKEND_CLIENT_SECRET (revisá el .env y recreá keycloak)."
+  exit 1
+fi
+BACKEND_ID=$(kc get clients -r "$R" -q clientId=interfascia-backend --fields id --format csv --noquotes | tr -d '\r' | head -n1)
+if [ -z "$BACKEND_ID" ]; then
+  docker exec -i "$CONTENEDOR" bash -c '/opt/keycloak/bin/kcadm.sh create clients -r '"$R"' --config '"$CFG"' \
+    -s clientId=interfascia-backend -s "name=Interfascia API (cuenta de servicio)" \
+    -s publicClient=false -s clientAuthenticatorType=client-secret -s serviceAccountsEnabled=true \
+    -s standardFlowEnabled=false -s directAccessGrantsEnabled=false -s implicitFlowEnabled=false \
+    -s "secret=$KEYCLOAK_BACKEND_CLIENT_SECRET" >/dev/null'
+  echo "Cliente interfascia-backend creado."
+else
+  # Mantiene el secreto igual al del .env (por si se cambió)
+  docker exec -i "$CONTENEDOR" bash -c '/opt/keycloak/bin/kcadm.sh update clients/'"$BACKEND_ID"' -r '"$R"' --config '"$CFG"' \
+    -s serviceAccountsEnabled=true -s "secret=$KEYCLOAK_BACKEND_CLIENT_SECRET"'
+  echo "Cliente interfascia-backend ya existía: secreto actualizado."
+fi
+kc add-roles -r "$R" --uusername service-account-interfascia-backend --cclientid realm-management \
+  --rolename view-users --rolename query-users --rolename manage-users
+echo "Permisos de usuarios asignados a la cuenta de servicio."
+
 echo "Actualizando perfil de usuario..."
 # En Keycloak 26 el perfil se lee y se escribe por el endpoint users/profile.
 # Va por tuberías (sin archivos temporales) porque en Git Bash el Python de Windows

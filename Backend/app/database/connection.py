@@ -89,6 +89,31 @@ def ensure_schema():
                 )
                 """
             )
+            # Copia de los datos del registro. Keycloak sigue manejando login y contraseñas;
+            # el estado de aprobación se cambia desde la página de admin.
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS usuarios (
+                    id SERIAL PRIMARY KEY,
+                    keycloak_id TEXT NOT NULL UNIQUE,
+                    email TEXT,
+                    nombre TEXT,
+                    apellido TEXT,
+                    celular TEXT,
+                    departamento_residencia TEXT,
+                    departamentos_actuacion TEXT[] NOT NULL DEFAULT '{}',
+                    instituciones TEXT[] NOT NULL DEFAULT '{}',
+                    perfil TEXT,
+                    perfil_otro TEXT,
+                    rol TEXT,
+                    estado TEXT NOT NULL DEFAULT 'pendiente',
+                    revisado_por TEXT,
+                    revisado_en TIMESTAMPTZ,
+                    creado TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    actualizado TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+                """
+            )
         conn.commit()
     finally:
         conn.close()

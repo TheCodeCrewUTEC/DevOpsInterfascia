@@ -58,6 +58,20 @@
           }
         }
       ]
+    },
+    {
+      "clientId": "interfascia-backend",
+      "name": "Interfascia API (cuenta de servicio)",
+      "description": "La API la usa para leer usuarios y aprobar registros",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${KEYCLOAK_BACKEND_CLIENT_SECRET}",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": true
     }
   ],
   "loginTheme": "interfascia",
@@ -174,5 +188,19 @@
   "eventsListeners": [
     "jboss-logging",
     "registration-approval"
+  ],
+  "users": [
+    {
+      "username": "service-account-interfascia-backend",
+      "enabled": true,
+      "serviceAccountClientId": "interfascia-backend",
+      "clientRoles": {
+        "realm-management": [
+          "view-users",
+          "query-users",
+          "manage-users"
+        ]
+      }
+    }
   ]
 }

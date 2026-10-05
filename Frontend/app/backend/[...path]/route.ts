@@ -9,6 +9,12 @@ async function proxy(
   context: { params: Promise<{ path: string[] }> },
 ) {
   const { path } = await context.params;
+
+  // /internal/... solo lo usa Keycloak por la red de Docker; no se expone a Internet
+  if (path.find(Boolean)?.toLowerCase() === "internal") {
+    return NextResponse.json({ detail: "No encontrado." }, { status: 404 });
+  }
+
   const slash = request.nextUrl.pathname.endsWith("/") ? "/" : "";
   const destino = new URL(`${API_URL}/${path.join("/")}${slash}`);
   destino.search = request.nextUrl.search;

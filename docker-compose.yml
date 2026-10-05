@@ -144,7 +144,12 @@ services:
       KC_PROXY_HEADERS: xforwarded
 
       KEYCLOAK_FRONTEND_CLIENT_SECRET: ${KEYCLOAK_FRONTEND_CLIENT_SECRET}
+      # Cuenta de servicio con la que la API lee usuarios y aprueba registros
+      KEYCLOAK_BACKEND_CLIENT_SECRET: ${KEYCLOAK_BACKEND_CLIENT_SECRET}
       INTERFASCIA_APP_URL: https://interfasciauy.com
+      # El listener registration-approval avisa cada registro a la API (POST /internal/usuarios)
+      INTERFASCIA_API_URL: http://backend:80
+      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
 
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://db:5432/${KEYCLOAK_DB_NAME:-keycloak}

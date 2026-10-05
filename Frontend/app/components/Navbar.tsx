@@ -2,6 +2,7 @@ import Link from "next/link";
 import Button from "./Button";
 import { auth } from "@/auth";
 import { cerrarSesion } from "../actions/auth";
+import { esAdmin } from "@/lib/roles";
 
 const links = [
   { href: "/repositorio", label: "Repositorio" },
@@ -15,6 +16,9 @@ export default async function Navbar() {
   // Si no se pudo renovar el token, la sesión de Keycloak venció
   const logueado = Boolean(session?.user) && !session?.error;
   const nombre = session?.user?.name ?? session?.user?.email;
+  const enlaces = logueado && esAdmin(session)
+    ? [...links, { href: "/admin/usuarios", label: "Usuarios" }]
+    : links;
 
   return (
     <nav className="sticky top-0 z-50 border-b border-pine/10 bg-sand/80 px-6 py-4 backdrop-blur-md">
@@ -29,7 +33,7 @@ export default async function Navbar() {
         </Link>
 
         <div className="col-span-2 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-center md:col-span-1 md:col-start-2 md:row-start-1 md:flex-nowrap">
-          {links.map((link) => (
+          {enlaces.map((link) => (
             <Link
               key={link.href}
               href={link.href}
