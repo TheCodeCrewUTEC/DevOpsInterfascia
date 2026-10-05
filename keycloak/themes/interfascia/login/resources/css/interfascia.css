@@ -891,16 +891,21 @@ textarea {
 /* Código de verificación: una caja por dígito (js/codigo-cajas.js) */
 .ifx-otp {
   display: flex;
+  flex-direction: row;
   justify-content: center;
-  gap: 8px;
+  gap: 10px;
 }
 
+/* Cajas cuadradas: le ganan al width 100% / height 44px de los inputs de la tarjeta */
 .ifx-card .ifx-otp input.ifx-otp__box {
-  flex: 1 1 0;
+  flex: 0 1 56px;
+  width: 56px;
   min-width: 0;
-  max-width: 52px;
-  height: 56px;
+  height: auto;
+  aspect-ratio: 1 / 1;
   padding: 0;
+  border-width: 1.5px;
+  border-radius: 0.875rem;
   text-align: center;
   font-size: 1.5rem;
   font-weight: 500;
@@ -914,7 +919,6 @@ textarea {
   }
 
   .ifx-card .ifx-otp input.ifx-otp__box {
-    height: 48px;
     font-size: 1.25rem;
   }
 }

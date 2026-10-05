@@ -232,7 +232,7 @@
             </section>
 
         </div>
-        <script src="${url.resourcesPath}/js/addable-select.js" defer></script>
-        <script src="${url.resourcesPath}/js/rol-otro.js" defer></script>
+        <script src="${url.resourcesPath}/js/addable-select.js?v=${properties.recursosVersion!'1'}" defer></script>
+        <script src="${url.resourcesPath}/js/rol-otro.js?v=${properties.recursosVersion!'1'}" defer></script>
     </#if>
 </@layout.registrationLayout>

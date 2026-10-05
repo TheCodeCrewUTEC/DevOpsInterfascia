@@ -25,7 +25,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Geist:wght@400;500;600&display=swap" rel="stylesheet" />
     <#if properties.styles?has_content>
         <#list properties.styles?split(' ') as style>
-            <link href="${url.resourcesPath}/${style}" rel="stylesheet" />
+            <link href="${url.resourcesPath}/${style}?v=${properties.recursosVersion!'1'}" rel="stylesheet" />
         </#list>
     </#if>
     <#if scripts??>
@@ -142,7 +142,7 @@
         </div>
     </footer>
 
-    <script src="${url.resourcesPath}/js/required-fields.js" defer></script>
+    <script src="${url.resourcesPath}/js/required-fields.js?v=${properties.recursosVersion!'1'}" defer></script>
 </body>
 </html>
 </#macro>

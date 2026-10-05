@@ -18,7 +18,7 @@
             <button class="ifx-submit ifx-submit--login" name="login" type="submit">${msg("emailCodeSubmit")}</button>
         </form>
         <#-- Sin defer: arma las 6 cajas antes de que cargue required-fields.js -->
-        <script src="${url.resourcesPath}/js/codigo-cajas.js"></script>
+        <script src="${url.resourcesPath}/js/codigo-cajas.js?v=${properties.recursosVersion!'1'}"></script>
 
         <#-- Formulario aparte: el reenvío no necesita el campo "code" (que es required) -->
         <form id="kc-email-code-resend" action="${url.loginAction}" method="post">
