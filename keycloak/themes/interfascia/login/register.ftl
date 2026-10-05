@@ -74,7 +74,17 @@
     <div class="ifx-field ifx-field--compact">
         <label for="${name}">${msg(labelKey)}*</label>
         <input id="${name}" name="${name}" type="password" autocomplete="${autocomplete}" required
+               <#if name == "password">aria-describedby="password-reglas"</#if>
                aria-invalid="<#if messagesPerField.existsError(name)>true</#if>" />
+        <#if name == "password">
+            <#-- Misma política que el realm (passwordPolicy); js/reglas-contrasena.js las tilda al escribir -->
+            <ul id="password-reglas" class="ifx-reglas" data-reglas-password>
+                <li data-regla="largo">${msg("reglaPasswordLargo")}</li>
+                <li data-regla="numero">${msg("reglaPasswordNumero")}</li>
+                <li data-regla="mayuscula">${msg("reglaPasswordMayuscula")}</li>
+                <li data-regla="especial">${msg("reglaPasswordEspecial")}</li>
+            </ul>
+        </#if>
         <@fieldError name/>
     </div>
 </#macro>
@@ -234,5 +244,6 @@
         </div>
         <script src="${url.resourcesPath}/js/addable-select.js?v=${properties.recursosVersion!'1'}" defer></script>
         <script src="${url.resourcesPath}/js/rol-otro.js?v=${properties.recursosVersion!'1'}" defer></script>
+        <script src="${url.resourcesPath}/js/reglas-contrasena.js?v=${properties.recursosVersion!'1'}" defer></script>
     </#if>
 </@layout.registrationLayout>

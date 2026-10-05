@@ -8,6 +8,7 @@
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
   "resetPasswordAllowed": true,
+  "passwordPolicy": "length(12) and digits(1) and upperCase(1) and specialChars(1) and notUsername(undefined) and notEmail(undefined)",
   "rememberMe": false,
   "verifyEmail": false,
   "internationalizationEnabled": true,
