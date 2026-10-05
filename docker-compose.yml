@@ -62,7 +62,6 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       REDIS_DB: "0"
-      OLLAMA_URL: http://ollama:11434
 
     depends_on:
       db:
@@ -70,8 +69,6 @@ services:
       keycloak:
         condition: service_started
       redis:
-        condition: service_started
-      ollama:
         condition: service_started
 
     volumes:
@@ -105,7 +102,6 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       REDIS_DB: "0"
-      OLLAMA_URL: http://ollama:11434
       # Sin esto los print del worker salen todos juntos al final y no se ve el avance
       PYTHONUNBUFFERED: "1"
 
@@ -114,8 +110,6 @@ services:
         condition: service_started
       db:
         condition: service_healthy
-      ollama:
-        condition: service_started
 
     volumes:
       - formularios_storage:/app/storage
@@ -181,27 +175,6 @@ services:
     networks:
       - interfascia-net
 
-  # Qwen para el Consultor IA. Corre en CPU: la Radeon R9 200 (2 GB) genera texto inválido con Vulkan
-  # y Docker Desktop solo expone GPUs NVIDIA a los contenedores.
-  ollama:
-    image: ollama/ollama:0.9.6
-
-    container_name: interfascia-llm
-
-    restart: unless-stopped
-
-    cpus: 3
-
-    environment:
-      # Mantiene Qwen cargado entre campos para no recargarlo en cada consulta
-      OLLAMA_KEEP_ALIVE: 30m
-
-    volumes:
-      - ollama_data:/root/.ollama
-
-    networks:
-      - interfascia-net
-
   redis:
     image: redis:7.2-alpine
     container_name: interfascia-redis
@@ -246,10 +219,6 @@ services:
 volumes:
   postgres_data:
   formularios_storage:
-  # Volumen que ya tiene descargado qwen2.5:3b-instruct
-  ollama_data:
-    name: interfascia_ollama_data
-    external: true
 
 # Misma red (nombre y clave) que el compose de infraestructura, para que ambos compartan la base
 networks:
