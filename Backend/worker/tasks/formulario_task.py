@@ -175,7 +175,8 @@ async def procesar_formulario(
         )
 
         campos = extraer_campos_formulario(
-            ruta_formulario
+            ruta_formulario,
+            formulario["documento"]
         )
 
         # ==========================================
@@ -218,7 +219,11 @@ async def procesar_formulario(
         print("[WORKER] Procesando documentos del usuario")
         print("=" * 60)
 
-        chunks = generar_chunks_documentos(carpeta_job)
+        # Reutiliza las conversiones de Docling del paso 4
+        chunks = generar_chunks_documentos(
+            carpeta_job,
+            {r["nombre"]: r["documento"] for r in resultados}
+        )
 
         print(
             f"[WORKER] Chunks generados: {len(chunks)}"

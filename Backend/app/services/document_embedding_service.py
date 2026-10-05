@@ -55,10 +55,12 @@ converter = DocumentConverter()
 # PROCESAR UN DOCUMENTO
 # ============================================================
 
-def procesar_documento(ruta: Path) -> list[dict[str, Any]]:
+def procesar_documento(ruta: Path, documento=None) -> list[dict[str, Any]]:
     """
     Procesa un PDF con Docling y genera chunks.
 
+    Si ya viene el DoclingDocument (convertido antes en el mismo job), no se
+    vuelve a convertir: en CPU cada conversión tarda minutos.
     No guarda nada en la base de datos.
     """
 
@@ -67,9 +69,8 @@ def procesar_documento(ruta: Path) -> list[dict[str, Any]]:
     print(f"[DOCLING] Procesando: {ruta.name}")
     print("=" * 60)
 
-    resultado = converter.convert(str(ruta))
-
-    documento = resultado.document
+    if documento is None:
+        documento = converter.convert(str(ruta)).document
 
     chunks = []
 
@@ -111,7 +112,11 @@ def procesar_documento(ruta: Path) -> list[dict[str, Any]]:
 
 def generar_chunks_documentos(
     carpeta_job: Path,
+    documentos: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
+    """documentos: nombre de archivo → DoclingDocument ya convertido."""
+
+    documentos = documentos or {}
 
     print()
     print("=" * 60)
@@ -146,7 +151,8 @@ def generar_chunks_documentos(
         try:
 
             chunks = procesar_documento(
-                archivo
+                archivo,
+                documentos.get(archivo.name),
             )
 
             todos_los_chunks.extend(

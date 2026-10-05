@@ -807,7 +807,7 @@ def limpiar_campos(campos):
 # EXTRAER PÁGINAS CON DOCLING
 # ============================================================
 
-def extraer_paginas_docling(ruta_formulario):
+def extraer_paginas_docling(ruta_formulario, documento=None):
 
     ruta_formulario = Path(
         ruta_formulario
@@ -825,13 +825,11 @@ def extraer_paginas_docling(ruta_formulario):
             f"{ruta_formulario}"
         )
 
-    converter = DocumentConverter()
-
-    resultado = converter.convert(
-        str(ruta_formulario)
-    )
-
-    documento = resultado.document
+    # Si el worker ya lo convirtió, se reutiliza (cada conversión tarda minutos en CPU)
+    if documento is None:
+        documento = DocumentConverter().convert(
+            str(ruta_formulario)
+        ).document
 
     paginas = {}
 
@@ -960,7 +958,8 @@ def eliminar_duplicados_globales(campos):
 # ============================================================
 
 def extraer_campos_formulario(
-    ruta_formulario: Path
+    ruta_formulario: Path,
+    documento=None
 ):
 
     inicio_total = time.time()
@@ -990,7 +989,8 @@ def extraer_campos_formulario(
     # ========================================================
 
     paginas = extraer_paginas_docling(
-        ruta_formulario
+        ruta_formulario,
+        documento
     )
 
     if not paginas:
