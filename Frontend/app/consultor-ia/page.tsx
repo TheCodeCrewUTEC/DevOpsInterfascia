@@ -142,14 +142,40 @@ async function consultarResultado(
   signal: AbortSignal,
   alConsultar: (estado: string) => void,
 ): Promise<ResultadoJob> {
-  const limite = Date.now() + 10 * 60 * 1000;
+  // Qwen corre en CPU: un formulario puede tardar más de 20 minutos
+  const limite = Date.now() + 45 * 60 * 1000;
+  // Tolera cortes breves (p. ej. un 502 mientras el túnel de Cloudflare se reconecta)
+  const maxFallosSeguidos = 24;
+  let fallosSeguidos = 0;
 
   while (Date.now() < limite) {
-    const response = await fetch(`${API_URL}/formularios/jobs/${jobId}/resultado`, { signal });
+    let response: Response;
+
+    try {
+      response = await fetch(`${API_URL}/formularios/jobs/${jobId}/resultado`, { signal });
+    } catch (error) {
+      if (signal.aborted) throw error;
+      fallosSeguidos += 1;
+      if (fallosSeguidos >= maxFallosSeguidos) {
+        throw new Error("No se pudo conectar con el servidor para consultar el resultado.");
+      }
+      await esperar(5000, signal);
+      continue;
+    }
 
     if (!response.ok) {
-      throw new Error(`No se pudo consultar el resultado (${response.status}).`);
+      if (response.status < 500) {
+        throw new Error(`No se pudo consultar el resultado (${response.status}).`);
+      }
+      fallosSeguidos += 1;
+      if (fallosSeguidos >= maxFallosSeguidos) {
+        throw new Error(`No se pudo consultar el resultado (${response.status}).`);
+      }
+      await esperar(5000, signal);
+      continue;
     }
+
+    fallosSeguidos = 0;
 
     const resultado = (await response.json()) as Omit<ResultadoJob, "respuestas"> & {
       respuestas?: Array<Omit<RespuestaCampo, "fuentes"> & { fuentes: unknown }>;

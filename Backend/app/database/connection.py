@@ -60,6 +60,35 @@ def ensure_schema():
                 )
                 """
             )
+            # Las consulta el Consultor IA; sin ellas /api/proyectos y /api/investigadores dan 500
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS proyectos (
+                    id SERIAL PRIMARY KEY,
+                    nombre TEXT,
+                    estado TEXT,
+                    anio TEXT,
+                    descripcion TEXT,
+                    investigadores TEXT,
+                    creado TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+                """
+            )
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS investigadores (
+                    id SERIAL PRIMARY KEY,
+                    nombre TEXT,
+                    apellido TEXT,
+                    institucion TEXT,
+                    titulo TEXT,
+                    investigaciones TEXT,
+                    nivel_sni TEXT,
+                    categoria_sni TEXT,
+                    creado TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+                """
+            )
         conn.commit()
     finally:
         conn.close()
