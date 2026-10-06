@@ -72,6 +72,21 @@ def obtener_usuario_actual(
         raise _no_autorizado("Token inválido")
 
 
+def obtener_usuario_opcional(
+    credenciales: HTTPAuthorizationCredentials | None = Depends(bearer)
+) -> dict | None:
+    """Como obtener_usuario_actual, pero sin token devuelve None en vez de 401."""
+
+    if credenciales is None:
+        return None
+
+    return obtener_usuario_actual(credenciales)
+
+
+def es_admin(usuario: dict | None) -> bool:
+    return bool(usuario) and "admin" in usuario.get("realm_access", {}).get("roles", [])
+
+
 def requiere_rol(rol: str):
     """Dependencia que exige un rol de realm de Keycloak."""
 

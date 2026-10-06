@@ -5,7 +5,7 @@ from app.database.connection import get_connection
 
 STORAGE_FORMULARIOS = Path("storage/formularios")
 
-def crear_job(formulario_path: str | None):
+def crear_job(formulario_path: str | None, usuario_sub: str | None = None):
 
     conn = get_connection()
 
@@ -16,14 +16,16 @@ def crear_job(formulario_path: str | None):
                 """
                 INSERT INTO formulario_job (
                     estado,
-                    formulario_path
+                    formulario_path,
+                    usuario_sub
                 )
-                VALUES (%s, %s)
+                VALUES (%s, %s, %s)
                 RETURNING id, estado, creado
                 """,
                 (
                     "PENDING",
-                    formulario_path
+                    formulario_path,
+                    usuario_sub
                 )
             )
 

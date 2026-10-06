@@ -2,6 +2,8 @@
 
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 import Loading from "../components/Loading";
+import FormularioCompletado from "./FormularioCompletado";
+import type { CampoFormulario, Fuente } from "./formulario";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "/backend";
 
@@ -36,16 +38,7 @@ type Investigador = {
   categoria_sni: string | null;
 };
 
-type Fuente = {
-  pagina: number | null;
-  archivo: string;
-};
-
-type RespuestaCampo = {
-  campo: string;
-  respuesta: string | null;
-  fuentes: Fuente[];
-};
+type RespuestaCampo = CampoFormulario;
 
 type ResultadoJob = {
   job_id: number;
@@ -168,8 +161,11 @@ async function consultarResultado(
     alConsultar(resultado.estado);
 
     const respuestas = (resultado.respuestas ?? []).map((item) => ({
-      campo: item.campo,
-      respuesta: item.respuesta,
+      ...item,
+      respuesta_ia: item.respuesta_ia ?? null,
+      editada: Boolean(item.editada),
+      tipo: item.tipo ?? null,
+      pagina: item.pagina ?? null,
       fuentes: normalizarFuentes(item.fuentes),
     }));
 
@@ -208,6 +204,7 @@ export default function ConsultorIAPage() {
   const [vista, setVista] = useState<"consultor" | "cargando" | "resultado">("consultor");
   const [estadoJob, setEstadoJob] = useState<string | null>(null);
   const [respuestas, setRespuestas] = useState<RespuestaCampo[]>([]);
+  const [jobId, setJobId] = useState<number | null>(null);
   const [errorSubida, setErrorSubida] = useState<string | null>(null);
   const consultaJob = useRef<AbortController | null>(null);
 
@@ -335,19 +332,20 @@ export default function ConsultorIAPage() {
       }
 
       const job = (await response.json()) as { id?: number; estado?: string };
-      const jobId = job.id;
-      if (typeof jobId !== "number" || !Number.isInteger(jobId)) {
+      const idJob = job.id;
+      if (typeof idJob !== "number" || !Number.isInteger(idJob)) {
         throw new Error("La API no devolvió el identificador del formulario.");
       }
       setEstadoJob(job.estado ?? "PENDING");
       setSubiendo(false);
 
-      const resultado = await consultarResultado(jobId, controlador.signal, setEstadoJob);
+      const resultado = await consultarResultado(idJob, controlador.signal, setEstadoJob);
 
       if (resultado.estado === "FAILED") {
         throw new Error("El worker no pudo completar el formulario.");
       }
 
+      setJobId(idJob);
       setRespuestas(resultado.respuestas);
       setVista("resultado");
     } catch (err) {
@@ -367,6 +365,7 @@ export default function ConsultorIAPage() {
     setVista("consultor");
     setEstadoJob(null);
     setRespuestas([]);
+    setJobId(null);
     setErrorSubida(null);
   }
 
@@ -374,7 +373,7 @@ export default function ConsultorIAPage() {
     return <Loading mensaje={mensajeEstado(estadoJob)} />;
   }
 
-  if (vista === "resultado") {
+  if (vista === "resultado" && jobId != null) {
     return (
       <main>
         <section className="relative overflow-hidden px-6 pb-8 pt-12 sm:pt-16">
@@ -386,53 +385,18 @@ export default function ConsultorIAPage() {
               Relacionar · Uruguay
             </p>
             <h1 className="rise rise-1 font-display mt-4 text-5xl leading-[1.05] text-ink sm:text-6xl">
-              Respuestas del formulario
+              Formulario completado
             </h1>
             <p className="rise rise-2 mt-6 max-w-2xl text-lg leading-relaxed text-ink/75">
-              Lo que el consultor encontró en los documentos del proyecto.
+              El consultor llenó el formulario con lo que encontró en los documentos del proyecto.
+              Revisalo, corregí lo que haga falta y descargalo en PDF.
             </p>
           </div>
         </section>
 
         <section className="px-6 pb-20">
-          <div className="mx-auto flex max-w-6xl flex-col gap-4">
-            {respuestas.length === 0 ? (
-              <Estado mensaje="El formulario se completó sin respuestas." />
-            ) : (
-              respuestas.map((item, index) => (
-                <article
-                  key={`${item.campo}-${index}`}
-                  className={`rise rise-${(index % 4) + 1} rounded-3xl border border-pine/10 bg-paper p-5 shadow-sm sm:p-6`}
-                >
-                  <p className="text-xs font-medium tracking-[0.16em] text-clay uppercase">{item.campo}</p>
-                  <p className="mt-3 text-sm leading-relaxed text-ink/80">
-                    {item.respuesta?.trim() ? item.respuesta : "Sin información en los documentos"}
-                  </p>
-                  {item.fuentes.length > 0 ? (
-                    <ul className="mt-4 flex flex-col gap-1">
-                      {item.fuentes.map((fuente, fuenteIndex) => (
-                        <li
-                          key={`${fuente.archivo}-${fuente.pagina ?? "s"}-${fuenteIndex}`}
-                          className="text-xs text-pine-text"
-                        >
-                          {fuente.archivo}
-                          {fuente.pagina != null ? ` · página ${fuente.pagina}` : ""}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : null}
-                </article>
-              ))
-            )}
-            <div className="mt-2 flex justify-end">
-              <button
-                type="button"
-                onClick={volverAlConsultor}
-                className="rounded-full bg-pine px-5 py-3 text-sm font-medium text-ink shadow-sm transition duration-200 hover:-translate-y-0.5 hover:bg-pine-hover"
-              >
-                Volver
-              </button>
-            </div>
+          <div className="mx-auto max-w-4xl">
+            <FormularioCompletado jobId={jobId} campos={respuestas} onVolver={volverAlConsultor} />
           </div>
         </section>
       </main>

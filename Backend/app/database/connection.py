@@ -60,6 +60,30 @@ def ensure_schema():
                 )
                 """
             )
+            cur.execute(
+                """
+                ALTER TABLE respuesta_formulario
+                    ADD COLUMN IF NOT EXISTS tipo TEXT,
+                    ADD COLUMN IF NOT EXISTS pagina INTEGER,
+                    ADD COLUMN IF NOT EXISTS respuesta_ia TEXT,
+                    ADD COLUMN IF NOT EXISTS editada BOOLEAN NOT NULL DEFAULT FALSE
+                """
+            )
+            cur.execute(
+                """
+                UPDATE respuesta_formulario
+                SET respuesta_ia = respuesta
+                WHERE respuesta_ia IS NULL
+                  AND respuesta IS NOT NULL
+                  AND NOT editada
+                """
+            )
+            cur.execute(
+                """
+                ALTER TABLE formulario_job
+                    ADD COLUMN IF NOT EXISTS usuario_sub TEXT
+                """
+            )
         conn.commit()
     finally:
         conn.close()

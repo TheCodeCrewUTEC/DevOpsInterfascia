@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
 
 const API_URL = (process.env.API_URL ?? "http://localhost:8000").replace(/\/$/, "");
 
@@ -18,6 +19,12 @@ async function fetchApi(request: NextRequest, destino: URL) {
   const tipo = request.headers.get("content-type");
   const conCuerpo = request.method !== "GET" && request.method !== "HEAD";
   if (tipo && conCuerpo) headers.set("content-type", tipo);
+
+  // El token de Keycloak vive en la sesión del servidor, no en el navegador.
+  const session = await auth();
+  if (session?.accessToken && !session.error) {
+    headers.set("Authorization", `Bearer ${session.accessToken}`);
+  }
 
   let actual = destino;
   let response = await fetch(actual, {

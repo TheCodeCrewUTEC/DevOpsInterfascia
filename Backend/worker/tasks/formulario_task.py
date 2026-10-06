@@ -367,11 +367,15 @@ async def procesar_formulario(
             # 6. GUARDAR EN BASE DE DATOS
             # ============================================================
 
+            pagina = campo.get("pagina")
+
             guardar_respuesta(
                 job_id=job_id,
                 campo=nombre_campo,
                 respuesta=respuesta,
                 fuentes=fuentes_unicas,
+                tipo=tipo_campo,
+                pagina=pagina if isinstance(pagina, int) else None,
             )
 
             # ============================================================
