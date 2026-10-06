@@ -3,7 +3,6 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import { apiFetch } from "@/lib/api";
 import { esAdmin, idDeSesion } from "@/lib/roles";
-import { sincronizarUsuarios } from "./actions";
 import TablaUsuarios, { type Usuario } from "./TablaUsuarios";
 
 export const metadata: Metadata = {
@@ -22,7 +21,7 @@ const PESTANIAS = [
 export default async function AdminUsuariosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ estado?: string; mensaje?: string; tipo?: string }>;
+  searchParams: Promise<{ estado?: string }>;
 }) {
   const params = await searchParams;
   const session = await auth();
@@ -54,39 +53,22 @@ export default async function AdminUsuariosPage({
 
   return (
     <Encabezado titulo="Gestión de usuarios">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <nav className="flex flex-wrap gap-2" aria-label="Filtrar por estado">
-          {PESTANIAS.map((pestania) => (
-            <Link
-              key={pestania.valor}
-              href={`/admin/usuarios?estado=${pestania.valor}`}
-              aria-current={pestania.valor === estado ? "page" : undefined}
-              className={
-                pestania.valor === estado
-                  ? "rounded-full bg-pine px-4 py-2 text-sm font-medium text-ink"
-                  : "rounded-full border border-pine/30 bg-paper px-4 py-2 text-sm text-ink transition hover:border-pine hover:bg-foam"
-              }
-            >
-              {pestania.label}
-            </Link>
-          ))}
-        </nav>
-
-        <form action={sincronizarUsuarios}>
-          <input type="hidden" name="estado_vista" value={estado} />
-          <button
-            type="submit"
-            title="Copia a la base los usuarios de Keycloak (por ejemplo, registros anteriores a esta página)"
-            className="rounded-full border border-pine/40 bg-paper px-4 py-2 text-sm text-ink transition hover:border-pine hover:bg-foam"
+      <nav className="flex flex-wrap gap-2" aria-label="Filtrar por estado">
+        {PESTANIAS.map((pestania) => (
+          <Link
+            key={pestania.valor}
+            href={`/admin/usuarios?estado=${pestania.valor}`}
+            aria-current={pestania.valor === estado ? "page" : undefined}
+            className={
+              pestania.valor === estado
+                ? "rounded-full bg-pine px-4 py-2 text-sm font-medium text-ink"
+                : "rounded-full border border-pine/30 bg-paper px-4 py-2 text-sm text-ink transition hover:border-pine hover:bg-foam"
+            }
           >
-            Sincronizar con Keycloak
-          </button>
-        </form>
-      </div>
-
-      {params.mensaje ? (
-        <Aviso tipo={params.tipo === "error" ? "error" : "ok"} texto={params.mensaje} />
-      ) : null}
+            {pestania.label}
+          </Link>
+        ))}
+      </nav>
 
       {error ? <Aviso tipo="error" texto={error} /> : null}
 

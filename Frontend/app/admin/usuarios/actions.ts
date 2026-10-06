@@ -1,13 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { apiFetch } from "@/lib/api";
-
-function volver(estado: string, mensaje: string, tipo: "ok" | "error") {
-  const params = new URLSearchParams({ estado, mensaje, tipo });
-  redirect(`/admin/usuarios?${params}`);
-}
 
 async function detalleError(response: Response) {
   try {
@@ -64,18 +58,4 @@ export async function cambiarRol(
   }
 
   return { ok: true, mensaje: `Se actualizó el rol de ${nombre}.` };
-}
-
-export async function sincronizarUsuarios(formData: FormData) {
-  const estado = String(formData.get("estado_vista") ?? "todos");
-  const response = await apiFetch("/api/admin/usuarios/sincronizar", { method: "POST" });
-
-  revalidatePath("/admin/usuarios");
-
-  if (!response.ok) {
-    volver(estado, `No se pudo sincronizar: ${await detalleError(response)}`, "error");
-  }
-
-  const { sincronizados } = (await response.json()) as { sincronizados: number };
-  volver(estado, `Se sincronizaron ${sincronizados} usuarios desde Keycloak.`, "ok");
 }
