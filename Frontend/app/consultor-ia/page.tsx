@@ -142,13 +142,23 @@ async function consultarResultado(
   signal: AbortSignal,
   alConsultar: (estado: string) => void,
 ): Promise<ResultadoJob> {
-  const limite = Date.now() + 10 * 60 * 1000;
+  const limite = Date.now() + 60 * 60 * 1000;
 
   while (Date.now() < limite) {
-    const response = await fetch(`${API_URL}/formularios/jobs/${jobId}/resultado`, { signal });
+    const response = await fetch(`${API_URL}/formularios/jobs/${jobId}/resultado`, {
+      signal,
+      cache: "no-store",
+    });
 
     if (!response.ok) {
-      throw new Error(`No se pudo consultar el resultado (${response.status}).`);
+      let detalle = "";
+      try {
+        const cuerpo = (await response.json()) as { detail?: unknown };
+        if (typeof cuerpo.detail === "string") detalle = ` ${cuerpo.detail}`;
+      } catch {
+        detalle = "";
+      }
+      throw new Error(`No se pudo consultar el resultado (${response.status}).${detalle}`);
     }
 
     const resultado = (await response.json()) as Omit<ResultadoJob, "respuestas"> & {
@@ -324,11 +334,15 @@ export default function ConsultorIAPage() {
         throw new Error(`No se pudo crear el job (${response.status}).`);
       }
 
-      const job = (await response.json()) as { id: number; estado?: string };
+      const job = (await response.json()) as { id?: number; estado?: string };
+      const jobId = job.id;
+      if (typeof jobId !== "number" || !Number.isInteger(jobId)) {
+        throw new Error("La API no devolvió el identificador del formulario.");
+      }
       setEstadoJob(job.estado ?? "PENDING");
       setSubiendo(false);
 
-      const resultado = await consultarResultado(job.id, controlador.signal, setEstadoJob);
+      const resultado = await consultarResultado(jobId, controlador.signal, setEstadoJob);
 
       if (resultado.estado === "FAILED") {
         throw new Error("El worker no pudo completar el formulario.");
