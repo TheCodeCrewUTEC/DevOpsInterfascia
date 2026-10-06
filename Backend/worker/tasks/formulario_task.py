@@ -63,6 +63,21 @@ async def procesar_formulario(
                 f"No existe el Job {job_id}"
             )
 
+        formulario_path = job[2]
+
+        if not formulario_path:
+            raise Exception(
+                f"El Job {job_id} no tiene "
+                "la ruta del formulario"
+            )
+
+        nombre_formulario = Path(formulario_path).name
+
+        print(
+            f"[WORKER] Formulario esperado: "
+            f"{nombre_formulario}"
+        )
+
         # ==========================================
         # 3. UBICAR CARPETA
         # ==========================================
@@ -120,15 +135,20 @@ async def procesar_formulario(
                 resultado
                 for resultado in resultados
                 if resultado["nombre"]
-                == "FormularioPostulacion.pdf"
+                == nombre_formulario
             ),
             None
         )
 
         if not formulario:
+            nombres = ", ".join(
+                resultado["nombre"]
+                for resultado in resultados
+            )
             raise Exception(
                 "No se encontró el formulario "
-                "de postulación"
+                f"de postulación: {nombre_formulario}. "
+                f"Archivos: {nombres}"
             )
 
         print(
@@ -218,7 +238,10 @@ async def procesar_formulario(
         print("[WORKER] Procesando documentos del usuario")
         print("=" * 60)
 
-        chunks = generar_chunks_documentos(carpeta_job)
+        chunks = generar_chunks_documentos(
+            carpeta_job,
+            excluir=nombre_formulario,
+        )
 
         print(
             f"[WORKER] Chunks generados: {len(chunks)}"
