@@ -109,6 +109,30 @@ def rol_de_usuario(keycloak_id: str) -> str | None:
     return next((rol for rol in ROLES_APP if rol in nombres), None)
 
 
+def cambiar_rol(keycloak_id: str, rol: str | None) -> None:
+    """Deja al usuario con un solo rol de la app (o ninguno, si rol es None)."""
+
+    asignados = _pedir("GET", f"/users/{keycloak_id}/role-mappings/realm").json()
+    sobrantes = [r for r in asignados if r["name"] in ROLES_APP and r["name"] != rol]
+
+    if sobrantes:
+        _pedir("DELETE", f"/users/{keycloak_id}/role-mappings/realm", json=sobrantes)
+
+    if rol is None or any(r["name"] == rol for r in asignados):
+        return
+
+    # "available" solo pide manage-users (GET /roles/{nombre} pediría view-realm)
+    disponibles = _pedir(
+        "GET", f"/users/{keycloak_id}/role-mappings/realm/available"
+    ).json()
+    nuevo = next((r for r in disponibles if r["name"] == rol), None)
+
+    if nuevo is None:
+        raise KeycloakAdminError(f"El rol {rol} no existe en el realm")
+
+    _pedir("POST", f"/users/{keycloak_id}/role-mappings/realm", json=[nuevo])
+
+
 def cambiar_aprobacion(keycloak_id: str, habilitado: bool, estado: str) -> None:
     """Habilita o deshabilita la cuenta y deja el estado en el atributo estadoAprobacion."""
 

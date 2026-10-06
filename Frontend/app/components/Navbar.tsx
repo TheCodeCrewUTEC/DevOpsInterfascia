@@ -3,6 +3,7 @@ import Button from "./Button";
 import { auth } from "@/auth";
 import { cerrarSesion } from "../actions/auth";
 import { esAdmin } from "@/lib/roles";
+import UsuarioMenu from "./UsuarioMenu";
 
 const links = [
   { href: "/repositorio", label: "Repositorio" },
@@ -16,9 +17,6 @@ export default async function Navbar() {
   // Si no se pudo renovar el token, la sesión de Keycloak venció
   const logueado = Boolean(session?.user) && !session?.error;
   const nombre = session?.user?.name ?? session?.user?.email;
-  const enlaces = logueado && esAdmin(session)
-    ? [...links, { href: "/admin/usuarios", label: "Usuarios" }]
-    : links;
 
   return (
     <nav className="sticky top-0 z-50 border-b border-pine/10 bg-sand/80 px-6 py-4 backdrop-blur-md">
@@ -33,7 +31,7 @@ export default async function Navbar() {
         </Link>
 
         <div className="col-span-2 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-center md:col-span-1 md:col-start-2 md:row-start-1 md:flex-nowrap">
-          {enlaces.map((link) => (
+          {links.map((link) => (
             <Link
               key={link.href}
               href={link.href}
@@ -47,9 +45,7 @@ export default async function Navbar() {
         <div className="col-start-2 row-start-1 flex shrink-0 items-center justify-end justify-self-end gap-3 max-md:[&_a]:whitespace-nowrap max-md:[&_a]:px-3 max-md:[&_a]:py-1.5 max-md:[&_a]:text-xs max-md:[&_button]:whitespace-nowrap max-md:[&_button]:px-3 max-md:[&_button]:py-1.5 max-md:[&_button]:text-xs md:col-start-3">
           {logueado ? (
             <>
-              <span className="max-w-40 truncate text-sm text-ink" title={nombre ?? undefined}>
-                {nombre}
-              </span>
+              <UsuarioMenu nombre={nombre ?? ""} admin={esAdmin(session)} />
               <form action={cerrarSesion}>
                 <Button type="submit" variant="secondary">Cerrar sesión</Button>
               </form>

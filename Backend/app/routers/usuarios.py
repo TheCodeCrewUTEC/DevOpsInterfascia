@@ -106,6 +106,34 @@ def rechazar_usuario(
     return _revisar(keycloak_id, "rechazado", admin)
 
 
+class CambioRol(BaseModel):
+    rol: str | None = None
+
+
+@router.put("/api/admin/usuarios/{keycloak_id}/rol")
+def cambiar_rol(
+    keycloak_id: str,
+    cambio: CambioRol,
+    admin: dict = Depends(requiere_rol("admin")),
+):
+    rol = cambio.rol or None
+
+    if rol is not None and rol not in keycloak.ROLES_APP:
+        raise HTTPException(status_code=400, detail="Rol inválido")
+
+    if keycloak_id == admin.get("sub") and rol != "admin":
+        raise HTTPException(
+            status_code=400,
+            detail="No podés quitarte el rol de administrador",
+        )
+
+    try:
+        keycloak.cambiar_rol(keycloak_id, rol)
+        return _importar_desde_keycloak(keycloak_id)
+    except keycloak.KeycloakAdminError as error:
+        raise _error_keycloak(error)
+
+
 @router.post("/api/admin/usuarios/sincronizar")
 def sincronizar_usuarios(_admin: dict = Depends(requiere_rol("admin"))):
     try:
