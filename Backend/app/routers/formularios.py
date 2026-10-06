@@ -171,6 +171,7 @@ async def crear_formulario_job(
         
 
 @router.get("/jobs/{job_id}/resultado")
+@router.get("/jobs/{job_id}/resultado/")
 def obtener_resultado_job(job_id: int):
 
     conn = get_connection()
