@@ -26,6 +26,7 @@
   ],
   "defaultLocale": "es",
   "accessTokenLifespan": 300,
+  "accessCodeLifespanLogin": 3600,
   "ssoSessionIdleTimeout": 1800,
   "ssoSessionMaxLifespan": 36000,
   "clients": [

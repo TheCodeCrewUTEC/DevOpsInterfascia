@@ -51,6 +51,10 @@ echo "Activando proteccion contra fuerza bruta..."
 # 5 intentos fallidos bloquean la cuenta 15 minutos; un admin puede desbloquearla antes
 kc update "realms/$R" -s bruteForceProtected=true -s permanentLockout=false -s failureFactor=5   -s waitIncrementSeconds=900 -s maxFailureWaitSeconds=900 -s maxDeltaTimeSeconds=43200   -s minimumQuickLoginWaitSeconds=60 -s quickLoginCheckMilliSeconds=1000
 
+echo "Dando 1 hora para completar el inicio de sesion..."
+# Pasado ese tiempo con la página de login abierta, Keycloak reinicia el login ("tardó demasiado")
+kc update "realms/$R" -s accessCodeLifespanLogin=3600
+
 echo "Activando listener registration-approval..."
 kc update "realms/$R" -s eventsEnabled=true -s 'eventsListeners=["jboss-logging","registration-approval"]'
 
