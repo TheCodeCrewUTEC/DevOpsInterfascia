@@ -83,10 +83,16 @@ echo "Usando $FLUJO como flujo de login y el tema de correo interfascia..."
 kc update "realms/$R" -s browserFlow="$FLUJO" -s emailTheme=interfascia
 
 if [ -n "${SMTP_USER:-}" ] && [ -n "${SMTP_PASSWORD:-}" ]; then
-  echo "Configurando SMTP ($SMTP_HOST:$SMTP_PORT como $SMTP_USER)..."
+  # Remitente: SMTP_FROM solo si es un correo (un valor de ejemplo como "..." rompe el envío)
+  REMITENTE="${SMTP_FROM:-}"
+  case "$REMITENTE" in
+    *@*) ;;
+    *) REMITENTE="$SMTP_USER" ;;
+  esac
+  echo "Configurando SMTP ($SMTP_HOST:$SMTP_PORT como $SMTP_USER, remitente $REMITENTE)..."
   kc update "realms/$R" \
     -s "smtpServer.host=$SMTP_HOST" -s "smtpServer.port=$SMTP_PORT" \
-    -s "smtpServer.from=${SMTP_FROM:-$SMTP_USER}" -s "smtpServer.fromDisplayName=Interfascia" \
+    -s "smtpServer.from=$REMITENTE" -s "smtpServer.fromDisplayName=Interfascia" \
     -s "smtpServer.auth=true" -s "smtpServer.starttls=true" -s "smtpServer.ssl=false" \
     -s "smtpServer.user=$SMTP_USER" -s "smtpServer.password=$SMTP_PASSWORD"
 else
