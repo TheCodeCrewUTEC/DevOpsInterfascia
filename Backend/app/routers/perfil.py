@@ -1,4 +1,7 @@
+import math
+import os
 import re
+import time
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -28,6 +31,29 @@ REGLAS_CONTRASENA = (
         "La contraseña debe incluir al menos un carácter especial (por ejemplo ! @ # $ %).",
     ),
 )
+
+
+# Misma protección de fuerza bruta del realm (failureFactor, waitIncrementSeconds, maxDeltaTimeSeconds).
+# La cuenta de servicio no puede leer la configuración del realm, por eso se repite acá.
+INTENTOS_PERMITIDOS = int(os.getenv("KEYCLOAK_INTENTOS_PERMITIDOS", "5"))
+MINUTOS_BLOQUEO = int(os.getenv("KEYCLOAK_MINUTOS_BLOQUEO", "15"))
+HORAS_OLVIDO_FALLAS = 12
+
+
+def _minutos(cantidad: int) -> str:
+    return "1 minuto" if cantidad == 1 else f"{cantidad} minutos"
+
+
+def _mensaje_bloqueado(minutos: int) -> str:
+    return f"Usuario bloqueado por intentos fallidos. Podés volver a intentar en {_minutos(minutos)}."
+
+
+def _fallas_vigentes(estado: dict) -> int:
+    # Como Keycloak: si la última falla es muy vieja, la próxima empieza de cero
+    ultima = estado.get("lastFailure") or 0
+    if ultima and time.time() * 1000 - ultima > HORAS_OLVIDO_FALLAS * 3600 * 1000:
+        return 0
+    return estado.get("numFailures") or 0
 
 
 class CambioPerfil(BaseModel):
@@ -139,8 +165,21 @@ def cambiar_contrasena(
             if valor and cambio.nueva.lower() == valor.lower():
                 raise _invalido("La contraseña no puede ser igual a tu usuario ni a tu correo.")
 
+        # Keycloak suma la falla en segundo plano: se lee el estado antes de probar
+        bloqueo = keycloak.estado_bloqueo(usuario["sub"])
+        if bloqueo.get("disabled"):
+            segundos = (bloqueo.get("failedLoginNotBefore") or 0) - time.time()
+            raise _invalido(_mensaje_bloqueado(max(1, math.ceil(segundos / 60))))
+
         if not keycloak.verificar_contrasena(datos["username"], cambio.actual):
-            raise _invalido("La contraseña actual no es correcta.")
+            restantes = INTENTOS_PERMITIDOS - (_fallas_vigentes(bloqueo) + 1)
+            if restantes <= 0:
+                raise _invalido(_mensaje_bloqueado(MINUTOS_BLOQUEO))
+            intentos = "Te queda 1 intento" if restantes == 1 else f"Te quedan {restantes} intentos"
+            raise _invalido(
+                f"La contraseña actual no es correcta. {intentos} antes de que la cuenta "
+                f"se bloquee por {_minutos(MINUTOS_BLOQUEO)}."
+            )
 
         keycloak.cambiar_contrasena(usuario["sub"], cambio.nueva)
         # Cierra todas las sesiones: hay que volver a entrar con la contraseña nueva

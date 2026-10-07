@@ -214,3 +214,9 @@ def cambiar_contrasena(keycloak_id: str, contrasena: str) -> None:
 
 def cerrar_sesiones(keycloak_id: str) -> None:
     _pedir("POST", f"/users/{keycloak_id}/logout")
+
+
+def estado_bloqueo(keycloak_id: str) -> dict:
+    """Estado de la protección de fuerza bruta: disabled, numFailures, lastFailure, failedLoginNotBefore..."""
+
+    return _pedir("GET", f"/attack-detection/brute-force/users/{keycloak_id}").json()

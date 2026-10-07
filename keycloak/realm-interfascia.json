@@ -130,13 +130,13 @@
     },
     {
       "alias": "browser-email-otp-forms",
-      "description": "Usuario y contraseña, después el código enviado al correo",
+      "description": "Usuario y contraseña (con contador de intentos), después el código enviado al correo",
       "providerId": "basic-flow",
       "topLevel": false,
       "builtIn": false,
       "authenticationExecutions": [
         {
-          "authenticator": "auth-username-password-form",
+          "authenticator": "auth-username-password-form-intentos",
           "authenticatorFlow": false,
           "requirement": "REQUIRED",
           "priority": 10,

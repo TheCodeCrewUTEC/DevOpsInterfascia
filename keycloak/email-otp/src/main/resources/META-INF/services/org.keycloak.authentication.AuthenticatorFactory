@@ -1,1 +1,2 @@
 uy.interfascia.keycloak.EmailOtpAuthenticatorFactory
+uy.interfascia.keycloak.LoginConIntentosAuthenticatorFactory

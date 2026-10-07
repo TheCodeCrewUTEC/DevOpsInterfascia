@@ -991,3 +991,48 @@ textarea {
   border-color: var(--pine);
   background: var(--pine) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 8.5 2.5 2.5L12 5.5'/%3E%3C/svg%3E") center / 10px no-repeat;
 }
+
+/* Aviso de cuenta bloqueada por intentos fallidos (login.ftl) */
+.ifx-bloqueo {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 4px;
+  border: 1px solid var(--red-600);
+  border-radius: 0.75rem;
+  background: #fef2f2;
+  padding: 12px 14px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #991b1b;
+}
+
+.ifx-bloqueo__icono {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* Contador de intentos restantes */
+.ifx-intentos {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8125rem;
+  color: #92400e;
+}
+
+.ifx-intentos__puntos {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.ifx-intentos__punto {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #e5e7eb;
+}
+
+.ifx-intentos__punto--libre {
+  background: #d97706;
+}
