@@ -44,8 +44,9 @@ crear_rol investigador "Investigador/a: consultas IA"
 crear_rol emprendedor "Emprendedor/a / Empresario/a: demandas al foro"
 
 echo "Aplicando politica de contrasenas..."
-# Minimo 12 caracteres, un numero, una mayuscula, un caracter especial y distinta del usuario/mail
-kc update "realms/$R" -s 'passwordPolicy=length(12) and digits(1) and upperCase(1) and specialChars(1) and notUsername(undefined) and notEmail(undefined)'
+# Minimo 12 caracteres, 3 de 4 categorias (mayuscula, minuscula, numero, especial; ver
+# ComplejidadPasswordPolicyProvider del modulo email-otp) y distinta del usuario/mail
+kc update "realms/$R" -s 'passwordPolicy=length(12) and complejidad(3) and notUsername(undefined) and notEmail(undefined)'
 
 echo "Activando proteccion contra fuerza bruta..."
 # 5 intentos fallidos bloquean la cuenta 15 minutos; un admin puede desbloquearla antes

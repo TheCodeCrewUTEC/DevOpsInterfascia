@@ -983,6 +983,11 @@ textarea {
   border-radius: 999px;
 }
 
+/* Categorías de la regla "3 de estas 4" */
+.ifx-reglas li.ifx-reglas__sub {
+  padding-left: 22px;
+}
+
 .ifx-reglas li.cumple {
   color: var(--pine-text);
 }

@@ -8,7 +8,7 @@
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
   "resetPasswordAllowed": true,
-  "passwordPolicy": "length(12) and digits(1) and upperCase(1) and specialChars(1) and notUsername(undefined) and notEmail(undefined)",
+  "passwordPolicy": "length(12) and complejidad(3) and notUsername(undefined) and notEmail(undefined)",
   "bruteForceProtected": true,
   "permanentLockout": false,
   "failureFactor": 5,

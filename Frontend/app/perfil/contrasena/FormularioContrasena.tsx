@@ -4,12 +4,21 @@ import { useActionState, useState } from "react";
 import { cambiarContrasena } from "../actions";
 import { Aviso, Campo, ESTILO_INPUT } from "../campos";
 
-// Mismas reglas que la passwordPolicy del realm (la API y Keycloak las vuelven a validar)
+// Mismas reglas que la passwordPolicy del realm: length(12) y complejidad(3)
+// (la API y Keycloak las vuelven a validar)
+const CATEGORIAS_MINIMAS = 3;
+const CATEGORIAS = [
+  { texto: "Una mayúscula", cumple: (valor: string) => /\p{Lu}/u.test(valor) },
+  { texto: "Una minúscula", cumple: (valor: string) => /\p{Ll}/u.test(valor) },
+  { texto: "Un número", cumple: (valor: string) => /\p{Nd}/u.test(valor) },
+  { texto: "Un carácter especial", cumple: (valor: string) => /[^\p{L}\p{N}]/u.test(valor) },
+];
 const REGLAS = [
   { texto: "Al menos 12 caracteres", cumple: (valor: string) => valor.length >= 12 },
-  { texto: "Al menos un número", cumple: (valor: string) => /\p{Nd}/u.test(valor) },
-  { texto: "Al menos una mayúscula", cumple: (valor: string) => /\p{Lu}/u.test(valor) },
-  { texto: "Al menos un carácter especial", cumple: (valor: string) => /[^\p{L}\p{N}]/u.test(valor) },
+  {
+    texto: `Al menos ${CATEGORIAS_MINIMAS} de estas 4:`,
+    cumple: (valor: string) => CATEGORIAS.filter((categoria) => categoria.cumple(valor)).length >= CATEGORIAS_MINIMAS,
+  },
 ];
 
 export default function FormularioContrasena() {
@@ -43,7 +52,7 @@ export default function FormularioContrasena() {
         />
       </Campo>
 
-      <ul className="grid gap-1 text-xs sm:grid-cols-2" aria-label="Requisitos de la contraseña">
+      <ul className="grid gap-1 text-xs" aria-label="Requisitos de la contraseña">
         {REGLAS.map((regla) => {
           const cumple = regla.cumple(nueva);
           return (
@@ -52,6 +61,18 @@ export default function FormularioContrasena() {
             </li>
           );
         })}
+        <li>
+          <ul className="grid gap-1 pl-4 sm:grid-cols-2">
+            {CATEGORIAS.map((categoria) => {
+              const cumple = categoria.cumple(nueva);
+              return (
+                <li key={categoria.texto} className={cumple ? "text-pine-text" : "text-ink/50"}>
+                  {cumple ? "✓" : "○"} {categoria.texto}
+                </li>
+              );
+            })}
+          </ul>
+        </li>
       </ul>
 
       <Campo id="confirmacion" label="Repetí la contraseña nueva" requerido>

@@ -21,14 +21,21 @@ DEPARTAMENTOS = (
 INSTITUCIONES = ("UTEC", "UDELAR", "CURE", "UTU", "ANII", "Otra")
 PATRON_CELULAR = re.compile(r"^\+?[0-9 ]{8,15}$")
 
-# Misma passwordPolicy del realm: length(12) and digits(1) and upperCase(1) and specialChars(1)
+# Misma passwordPolicy del realm: length(12) and complejidad(3), o sea 3 de las 4 categorías
+CATEGORIAS_MINIMAS = 3
+CATEGORIAS_CONTRASENA = (str.isupper, str.islower, str.isdigit, lambda ch: not ch.isalnum())
+
+
+def _categorias(contrasena: str) -> int:
+    return sum(any(es(ch) for ch in contrasena) for es in CATEGORIAS_CONTRASENA)
+
+
 REGLAS_CONTRASENA = (
     (lambda c: len(c) >= 12, "La contraseña debe tener al menos 12 caracteres."),
-    (lambda c: any(ch.isdigit() for ch in c), "La contraseña debe incluir al menos un número."),
-    (lambda c: any(ch.isupper() for ch in c), "La contraseña debe incluir al menos una letra mayúscula."),
     (
-        lambda c: any(not ch.isalnum() for ch in c),
-        "La contraseña debe incluir al menos un carácter especial (por ejemplo ! @ # $ %).",
+        lambda c: _categorias(c) >= CATEGORIAS_MINIMAS,
+        f"La contraseña debe combinar al menos {CATEGORIAS_MINIMAS} de estas 4: "
+        "mayúscula, minúscula, número y carácter especial.",
     ),
 )
 

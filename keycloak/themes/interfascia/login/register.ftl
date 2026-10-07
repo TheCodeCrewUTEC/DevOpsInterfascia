@@ -80,9 +80,11 @@
             <#-- Misma política que el realm (passwordPolicy); js/reglas-contrasena.js las tilda al escribir -->
             <ul id="password-reglas" class="ifx-reglas" data-reglas-password>
                 <li data-regla="largo">${msg("reglaPasswordLargo")}</li>
-                <li data-regla="numero">${msg("reglaPasswordNumero")}</li>
-                <li data-regla="mayuscula">${msg("reglaPasswordMayuscula")}</li>
-                <li data-regla="especial">${msg("reglaPasswordEspecial")}</li>
+                <li data-regla="complejidad">${msg("reglaPasswordComplejidad")}</li>
+                <li class="ifx-reglas__sub" data-regla="mayuscula">${msg("reglaPasswordMayuscula")}</li>
+                <li class="ifx-reglas__sub" data-regla="minuscula">${msg("reglaPasswordMinuscula")}</li>
+                <li class="ifx-reglas__sub" data-regla="numero">${msg("reglaPasswordNumero")}</li>
+                <li class="ifx-reglas__sub" data-regla="especial">${msg("reglaPasswordEspecial")}</li>
             </ul>
         </#if>
         <@fieldError name/>
