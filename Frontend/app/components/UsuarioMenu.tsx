@@ -10,6 +10,11 @@ type UsuarioMenuProps = {
 
 // Nombre del usuario logueado; al hacer click despliega sus opciones
 export default function UsuarioMenu({ nombre, admin }: UsuarioMenuProps) {
+  const opciones = [
+    { href: "/perfil", label: "Mi perfil" },
+    { href: "/perfil/contrasena", label: "Cambiar contraseña" },
+    ...(admin ? [{ href: "/admin/usuarios", label: "Gestión de usuarios" }] : []),
+  ];
   const [abierto, setAbierto] = useState(false);
   const contenedor = useRef<HTMLDivElement>(null);
 
@@ -30,14 +35,6 @@ export default function UsuarioMenu({ nombre, admin }: UsuarioMenuProps) {
       document.removeEventListener("keydown", tecla);
     };
   }, [abierto]);
-
-  if (!admin) {
-    return (
-      <span className="max-w-40 truncate text-sm text-ink" title={nombre}>
-        {nombre}
-      </span>
-    );
-  }
 
   return (
     <div ref={contenedor} className="relative">
@@ -66,14 +63,17 @@ export default function UsuarioMenu({ nombre, admin }: UsuarioMenuProps) {
           role="menu"
           className="absolute right-0 z-50 mt-2 min-w-48 rounded-2xl border border-pine/10 bg-paper p-1.5 shadow-lg"
         >
-          <Link
-            href="/admin/usuarios"
-            role="menuitem"
-            onClick={() => setAbierto(false)}
-            className="block rounded-xl px-3 py-2 text-sm whitespace-nowrap text-ink transition hover:bg-foam"
-          >
-            Gestión de usuarios
-          </Link>
+          {opciones.map((opcion) => (
+            <Link
+              key={opcion.href}
+              href={opcion.href}
+              role="menuitem"
+              onClick={() => setAbierto(false)}
+              className="block rounded-xl px-3 py-2 text-sm whitespace-nowrap text-ink transition hover:bg-foam"
+            >
+              {opcion.label}
+            </Link>
+          ))}
         </div>
       ) : null}
     </div>

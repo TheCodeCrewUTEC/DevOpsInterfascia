@@ -55,6 +55,7 @@ echo "Activando listener registration-approval..."
 kc update "realms/$R" -s eventsEnabled=true -s 'eventsListeners=["jboss-logging","registration-approval"]'
 
 echo "Configurando cliente interfascia-backend (cuenta de servicio de la API)..."
+# Login directo habilitado: la API verifica la contraseña actual cuando el usuario la cambia
 # El secreto se lee del entorno del contenedor para no pasarlo por la línea de comandos
 if ! docker exec -i "$CONTENEDOR" bash -c '[ -n "$KEYCLOAK_BACKEND_CLIENT_SECRET" ]'; then
   echo "ERROR: el contenedor no tiene KEYCLOAK_BACKEND_CLIENT_SECRET (revisá el .env y recreá keycloak)."
@@ -65,13 +66,13 @@ if [ -z "$BACKEND_ID" ]; then
   docker exec -i "$CONTENEDOR" bash -c '/opt/keycloak/bin/kcadm.sh create clients -r '"$R"' --config '"$CFG"' \
     -s clientId=interfascia-backend -s "name=Interfascia API (cuenta de servicio)" \
     -s publicClient=false -s clientAuthenticatorType=client-secret -s serviceAccountsEnabled=true \
-    -s standardFlowEnabled=false -s directAccessGrantsEnabled=false -s implicitFlowEnabled=false \
+    -s standardFlowEnabled=false -s directAccessGrantsEnabled=true -s implicitFlowEnabled=false \
     -s "secret=$KEYCLOAK_BACKEND_CLIENT_SECRET" >/dev/null'
   echo "Cliente interfascia-backend creado."
 else
   # Mantiene el secreto igual al del .env (por si se cambió)
   docker exec -i "$CONTENEDOR" bash -c '/opt/keycloak/bin/kcadm.sh update clients/'"$BACKEND_ID"' -r '"$R"' --config '"$CFG"' \
-    -s serviceAccountsEnabled=true -s "secret=$KEYCLOAK_BACKEND_CLIENT_SECRET"'
+    -s serviceAccountsEnabled=true -s directAccessGrantsEnabled=true -s "secret=$KEYCLOAK_BACKEND_CLIENT_SECRET"'
   echo "Cliente interfascia-backend ya existía: secreto actualizado."
 fi
 kc add-roles -r "$R" --uusername service-account-interfascia-backend --cclientid realm-management \

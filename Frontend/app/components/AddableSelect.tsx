@@ -13,6 +13,7 @@ interface AddableSelectProps {
   options: string[];
   required?: boolean;
   invalid?: boolean;
+  defaultValues?: string[];
 }
 
 export default function AddableSelect({
@@ -23,8 +24,9 @@ export default function AddableSelect({
   options,
   required = false,
   invalid = false,
+  defaultValues = [],
 }: AddableSelectProps) {
-  const [values, setValues] = useState<string[]>([""]);
+  const [values, setValues] = useState<string[]>(defaultValues.length > 0 ? defaultValues : [""]);
 
   const selected = new Set(values.filter((value) => value !== ""));
   const canAdd =

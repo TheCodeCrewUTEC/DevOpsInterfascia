@@ -26,7 +26,9 @@ _token_cache: dict = {"valor": None, "vence": 0.0}
 
 
 class KeycloakAdminError(Exception):
-    pass
+    def __init__(self, mensaje: str, status: int | None = None):
+        super().__init__(mensaje)
+        self.status = status
 
 
 def _token() -> str:
@@ -74,7 +76,8 @@ def _pedir(metodo: str, ruta: str, **kwargs) -> httpx.Response:
 
     if response.status_code >= 400:
         raise KeycloakAdminError(
-            f"Keycloak respondió {response.status_code} en {ruta}: {response.text[:200]}"
+            f"Keycloak respondió {response.status_code} en {ruta}: {response.text[:200]}",
+            status=response.status_code,
         )
 
     return response
@@ -142,3 +145,72 @@ def cambiar_aprobacion(keycloak_id: str, habilitado: bool, estado: str) -> None:
     usuario.setdefault("attributes", {})["estadoAprobacion"] = [estado]
 
     _pedir("PUT", f"/users/{keycloak_id}", json=usuario)
+
+
+class ContrasenaRechazada(KeycloakAdminError):
+    """Keycloak no aceptó la contraseña nueva (política del realm)."""
+
+
+def actualizar_usuario(keycloak_id: str, campos: dict, atributos: dict) -> dict:
+    """Cambia campos básicos (firstName, lastName) y atributos del perfil, y devuelve el usuario."""
+
+    # PUT reemplaza la representación: se manda la actual con los cambios
+    usuario = obtener_usuario(keycloak_id)
+    usuario.update(campos)
+    actuales = usuario.setdefault("attributes", {})
+
+    for nombre, valores in atributos.items():
+        if valores:
+            actuales[nombre] = valores
+        else:
+            actuales.pop(nombre, None)
+
+    _pedir("PUT", f"/users/{keycloak_id}", json=usuario)
+    return obtener_usuario(keycloak_id)
+
+
+def verificar_contrasena(usuario: str, contrasena: str) -> bool:
+    """Prueba la contraseña con un login directo (cuenta como intento para la protección de fuerza bruta)."""
+
+    try:
+        response = httpx.post(
+            TOKEN_URL,
+            data={
+                "grant_type": "password",
+                "client_id": CLIENT_ID,
+                "client_secret": CLIENT_SECRET,
+                "username": usuario,
+                "password": contrasena,
+                "scope": "openid",
+            },
+            timeout=10,
+        )
+    except httpx.HTTPError as error:
+        raise KeycloakAdminError(f"No se pudo contactar a Keycloak: {error}")
+
+    if response.status_code == 200:
+        return True
+
+    if response.status_code == 401 and response.json().get("error") == "invalid_grant":
+        return False
+
+    raise KeycloakAdminError(
+        f"Keycloak no pudo verificar la contraseña ({response.status_code}): {response.text[:200]}"
+    )
+
+
+def cambiar_contrasena(keycloak_id: str, contrasena: str) -> None:
+    try:
+        _pedir(
+            "PUT",
+            f"/users/{keycloak_id}/reset-password",
+            json={"type": "password", "value": contrasena, "temporary": False},
+        )
+    except KeycloakAdminError as error:
+        if error.status == 400:
+            raise ContrasenaRechazada(str(error), status=400)
+        raise
+
+
+def cerrar_sesiones(keycloak_id: str) -> None:
+    _pedir("POST", f"/users/{keycloak_id}/logout")

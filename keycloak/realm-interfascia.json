@@ -71,14 +71,14 @@
     {
       "clientId": "interfascia-backend",
       "name": "Interfascia API (cuenta de servicio)",
-      "description": "La API la usa para leer usuarios y aprobar registros",
+      "description": "La API la usa para leer usuarios y aprobar registros; el login directo verifica la contraseña actual al cambiarla",
       "enabled": true,
       "protocol": "openid-connect",
       "publicClient": false,
       "clientAuthenticatorType": "client-secret",
       "secret": "${KEYCLOAK_BACKEND_CLIENT_SECRET}",
       "standardFlowEnabled": false,
-      "directAccessGrantsEnabled": false,
+      "directAccessGrantsEnabled": true,
       "implicitFlowEnabled": false,
       "serviceAccountsEnabled": true
     }

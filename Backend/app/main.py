@@ -20,6 +20,7 @@ from app.routers import auth
 from app.routers import investigadores
 from app.routers import proyectos
 from app.routers import usuarios
+from app.routers import perfil
 
 
 app = FastAPI(
@@ -48,6 +49,7 @@ app.include_router(formularios.router)
 app.include_router(investigadores.router)
 app.include_router(proyectos.router)
 app.include_router(usuarios.router)
+app.include_router(perfil.router)
 
 def custom_openapi():
     if app.openapi_schema:

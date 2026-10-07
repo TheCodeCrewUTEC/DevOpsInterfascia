@@ -22,15 +22,6 @@ def _error_keycloak(error: keycloak.KeycloakAdminError) -> HTTPException:
     return HTTPException(status_code=502, detail=str(error))
 
 
-def _importar_desde_keycloak(keycloak_id: str) -> dict:
-    usuario = keycloak.obtener_usuario(keycloak_id)
-    rol = keycloak.rol_de_usuario(keycloak_id)
-    return usuario_service.guardar_usuario(
-        usuario_service.datos_desde_keycloak(usuario, rol),
-        actualizar_estado=True,
-    )
-
-
 @router.post("/internal/usuarios", include_in_schema=False)
 def recibir_registro(
     aviso: AvisoRegistro,
@@ -42,7 +33,7 @@ def recibir_registro(
         raise HTTPException(status_code=401, detail="No autorizado")
 
     try:
-        usuario = _importar_desde_keycloak(aviso.keycloak_id)
+        usuario = usuario_service.importar_desde_keycloak(aviso.keycloak_id)
     except keycloak.KeycloakAdminError as error:
         raise _error_keycloak(error)
 
@@ -74,7 +65,7 @@ def _revisar(keycloak_id: str, estado: str, admin: dict) -> dict:
             habilitado=estado == "aprobado",
             estado=estado,
         )
-        _importar_desde_keycloak(keycloak_id)
+        usuario_service.importar_desde_keycloak(keycloak_id)
     except keycloak.KeycloakAdminError as error:
         raise _error_keycloak(error)
 
@@ -129,7 +120,7 @@ def cambiar_rol(
 
     try:
         keycloak.cambiar_rol(keycloak_id, rol)
-        return _importar_desde_keycloak(keycloak_id)
+        return usuario_service.importar_desde_keycloak(keycloak_id)
     except keycloak.KeycloakAdminError as error:
         raise _error_keycloak(error)
 

@@ -143,6 +143,16 @@ def datos_desde_keycloak(usuario: dict, rol: str | None) -> dict:
     }
 
 
+def importar_desde_keycloak(keycloak_id: str, usuario: dict | None = None) -> dict:
+    """Guarda en la tabla los datos actuales de Keycloak (Keycloak manda sobre el estado)."""
+
+    if usuario is None:
+        usuario = keycloak.obtener_usuario(keycloak_id)
+
+    rol = keycloak.rol_de_usuario(keycloak_id)
+    return guardar_usuario(datos_desde_keycloak(usuario, rol), actualizar_estado=True)
+
+
 def sincronizar_desde_keycloak() -> int:
     """Copia todos los usuarios de Keycloak a la tabla (Keycloak manda sobre el estado)."""
 
