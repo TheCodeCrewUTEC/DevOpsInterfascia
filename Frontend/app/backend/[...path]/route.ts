@@ -19,9 +19,16 @@ async function proxy(
   const slash = request.nextUrl.pathname.endsWith("/") ? "/" : "";
   const destino = new URL(`${API_URL}/${path.join("/")}${slash}`);
   destino.search = request.nextUrl.search;
+  return destino;
+}
 
-  const headers = new Headers(request.headers);
-  headers.delete("host");
+// La API responde el redirect con su hostname interno (backend:80).
+// Si ese Location llega al navegador, la página pública responde 404.
+async function fetchApi(request: NextRequest, destino: URL) {
+  const headers = new Headers();
+  const tipo = request.headers.get("content-type");
+  const conCuerpo = request.method !== "GET" && request.method !== "HEAD";
+  if (tipo && conCuerpo) headers.set("content-type", tipo);
 
   // El token de Keycloak vive en la sesión del servidor, no en el navegador:
   // se agrega acá para que la API sepa quién hace el pedido.
@@ -34,16 +41,23 @@ async function proxy(
     const response = await fetch(destino, {
       method: request.method,
       headers,
-      body: request.method === "GET" || request.method === "HEAD" ? undefined : request.body,
-      // @ts-expect-error Node fetch exige duplex al reenviar un body en stream.
-      duplex: "half",
+      cache: "no-store",
       redirect: "manual",
     });
+  }
+
+  return response;
+}
+
+async function proxy(request: NextRequest) {
+  try {
+    const response = await fetchApi(request, destinoDesde(request));
 
     const respuestaHeaders = new Headers(response.headers);
     respuestaHeaders.delete("content-encoding");
     respuestaHeaders.delete("content-length");
     respuestaHeaders.delete("transfer-encoding");
+    respuestaHeaders.delete("location");
 
     return new NextResponse(response.body, {
       status: response.status,

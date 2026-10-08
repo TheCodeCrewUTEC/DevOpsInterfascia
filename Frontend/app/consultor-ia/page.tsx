@@ -347,11 +347,15 @@ export default function ConsultorIAPage() {
         throw new Error(`No se pudo crear el job (${response.status}).`);
       }
 
-      const job = (await response.json()) as { id: number; estado?: string };
+      const job = (await response.json()) as { id?: number; estado?: string };
+      const jobId = job.id;
+      if (typeof jobId !== "number" || !Number.isInteger(jobId)) {
+        throw new Error("La API no devolvió el identificador del formulario.");
+      }
       setEstadoJob(job.estado ?? "PENDING");
       setSubiendo(false);
 
-      const resultado = await consultarResultado(job.id, controlador.signal, setEstadoJob);
+      const resultado = await consultarResultado(jobId, controlador.signal, setEstadoJob);
 
       if (resultado.estado === "FAILED") {
         throw new Error("El worker no pudo completar el formulario.");

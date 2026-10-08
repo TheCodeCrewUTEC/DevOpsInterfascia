@@ -16,8 +16,6 @@ from sentence_transformers import SentenceTransformer
 
 EMBEDDING_MODEL = "intfloat/multilingual-e5-small"
 
-FORMULARIO_NOMBRE = "FormularioPostulacion.pdf"
-
 TOP_K = 3
 
 
@@ -135,7 +133,7 @@ def generar_chunks_documentos(
             continue
 
         # El formulario se procesa aparte
-        if archivo.name.lower() == FORMULARIO_NOMBRE.lower():
+        if excluir and archivo.name.lower() == excluir.lower():
             print(
                 f"[DOCLING] Omitiendo formulario: {archivo.name}"
             )
