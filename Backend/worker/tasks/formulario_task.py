@@ -245,7 +245,8 @@ async def procesar_formulario(
         # Reutiliza las conversiones de Docling del paso 4
         chunks = generar_chunks_documentos(
             carpeta_job,
-            {r["nombre"]: r["documento"] for r in resultados}
+            {r["nombre"]: r["documento"] for r in resultados},
+            excluir=nombre_formulario,
         )
 
         print(

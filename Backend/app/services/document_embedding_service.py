@@ -111,6 +111,7 @@ def procesar_documento(ruta: Path, documento=None) -> list[dict[str, Any]]:
 def generar_chunks_documentos(
     carpeta_job: Path,
     documentos: dict[str, Any] | None = None,
+    excluir: str | None = None,
 ) -> list[dict[str, Any]]:
     """documentos: nombre de archivo → DoclingDocument ya convertido."""
 
