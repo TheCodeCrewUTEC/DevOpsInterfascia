@@ -16,6 +16,7 @@ def guardar_respuesta(
         with conn:
             with conn.cursor() as cur:
 
+                # respuesta_ia conserva lo que propuso la IA aunque el usuario edite
                 cur.execute(
                     """
                     INSERT INTO respuesta_formulario

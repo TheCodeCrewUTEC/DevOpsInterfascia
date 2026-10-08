@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import RedireccionLogin from "./RedireccionLogin";
+import RedireccionInicio from "./RedireccionInicio";
 
 export const metadata: Metadata = {
   title: "Registro exitoso | Interfascia",
 };
 
-const SEGUNDOS = 5;
+const SEGUNDOS = 8;
 
 export default function RegistroConfirmadoPage() {
   return (
@@ -25,18 +25,18 @@ export default function RegistroConfirmadoPage() {
         </h1>
 
         <p className="mb-8 text-sm text-black">
-          Tu cuenta fue creada correctamente. Iniciá sesión con tu email y contraseña para ingresar.
+          Tu cuenta fue creada y quedó pendiente de aprobación.
+          Un administrador la validará antes de que puedas iniciar sesión.
         </p>
 
-        {/* Enlace normal (no Link): /login es una ruta que redirige a Keycloak */}
         <a
-          href="/login"
+          href="/"
           className="mx-auto block w-48 border border-black bg-neutral-300 py-2 text-black"
         >
-          Iniciar Sesión
+          Volver al inicio
         </a>
 
-        <RedireccionLogin segundos={SEGUNDOS} />
+        <RedireccionInicio segundos={SEGUNDOS} />
 
       </div>
 

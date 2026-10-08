@@ -56,7 +56,17 @@ async function fetchApi(request: NextRequest, destino: URL) {
   return response;
 }
 
-async function proxy(request: NextRequest) {
+async function proxy(
+  request: NextRequest,
+  context: { params: Promise<{ path: string[] }> },
+) {
+  const { path } = await context.params;
+
+  // /internal/... solo lo usa Keycloak por la red de Docker; no se expone a Internet
+  if (path.find(Boolean)?.toLowerCase() === "internal") {
+    return NextResponse.json({ detail: "No encontrado." }, { status: 404 });
+  }
+
   try {
     const response = await fetchApi(request, destinoDesde(request));
 

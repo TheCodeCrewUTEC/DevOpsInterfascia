@@ -124,14 +124,15 @@ export const {
 
   callbacks: {
 
-    // Consultor IA (también "Contar mi proyecto") exige sesión.
+    // Consultor IA (también "Contar mi proyecto"), el perfil y las páginas de admin exigen sesión.
     // false manda a /login y Auth.js conserva la ruta para volver después.
     authorized({ auth, request }) {
       const ruta = request.nextUrl.pathname;
-      const esConsultor =
-        ruta === "/consultor-ia" || ruta.startsWith("/consultor-ia/");
+      const protegida = ["/consultor-ia", "/perfil", "/admin"].some(
+        (base) => ruta === base || ruta.startsWith(`${base}/`),
+      );
 
-      if (!esConsultor) {
+      if (!protegida) {
         return true;
       }
 

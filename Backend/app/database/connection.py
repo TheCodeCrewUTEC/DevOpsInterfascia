@@ -60,6 +60,8 @@ def ensure_schema():
                 )
                 """
             )
+            # Formulario editable: tipo y página de cada campo, y la respuesta original
+            # de la IA para saber qué corrigió el usuario. usuario_sub = dueño del job.
             cur.execute(
                 """
                 ALTER TABLE respuesta_formulario
@@ -69,6 +71,7 @@ def ensure_schema():
                     ADD COLUMN IF NOT EXISTS editada BOOLEAN NOT NULL DEFAULT FALSE
                 """
             )
+            # Respuestas anteriores a la columna: lo guardado es lo que propuso la IA
             cur.execute(
                 """
                 UPDATE respuesta_formulario
@@ -82,6 +85,60 @@ def ensure_schema():
                 """
                 ALTER TABLE formulario_job
                     ADD COLUMN IF NOT EXISTS usuario_sub TEXT
+                """
+            )
+            # Las consulta el Consultor IA; sin ellas /api/proyectos y /api/investigadores dan 500
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS proyectos (
+                    id SERIAL PRIMARY KEY,
+                    nombre TEXT,
+                    estado TEXT,
+                    anio TEXT,
+                    descripcion TEXT,
+                    investigadores TEXT,
+                    creado TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+                """
+            )
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS investigadores (
+                    id SERIAL PRIMARY KEY,
+                    nombre TEXT,
+                    apellido TEXT,
+                    institucion TEXT,
+                    titulo TEXT,
+                    investigaciones TEXT,
+                    nivel_sni TEXT,
+                    categoria_sni TEXT,
+                    creado TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+                """
+            )
+            # Copia de los datos del registro. Keycloak sigue manejando login y contraseñas;
+            # el estado de aprobación se cambia desde la página de admin.
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS usuarios (
+                    id SERIAL PRIMARY KEY,
+                    keycloak_id TEXT NOT NULL UNIQUE,
+                    email TEXT,
+                    nombre TEXT,
+                    apellido TEXT,
+                    celular TEXT,
+                    departamento_residencia TEXT,
+                    departamentos_actuacion TEXT[] NOT NULL DEFAULT '{}',
+                    instituciones TEXT[] NOT NULL DEFAULT '{}',
+                    perfil TEXT,
+                    perfil_otro TEXT,
+                    rol TEXT,
+                    estado TEXT NOT NULL DEFAULT 'pendiente',
+                    revisado_por TEXT,
+                    revisado_en TIMESTAMPTZ,
+                    creado TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    actualizado TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
                 """
             )
         conn.commit()

@@ -17,7 +17,10 @@ from app.services.document_embedding_service import (
     buscar_chunks_relevantes,
 )
 
-from app.services.respuesta_service import generar_respuesta
+from app.services.respuesta_service import (
+    cabe_documento_completo,
+    generar_respuesta,
+)
 
 
 def fuente_desde_chunk(chunk: dict):
@@ -195,7 +198,8 @@ async def procesar_formulario(
         )
 
         campos = extraer_campos_formulario(
-            ruta_formulario
+            ruta_formulario,
+            formulario["documento"]
         )
 
         # ==========================================
@@ -238,9 +242,10 @@ async def procesar_formulario(
         print("[WORKER] Procesando documentos del usuario")
         print("=" * 60)
 
+        # Reutiliza las conversiones de Docling del paso 4
         chunks = generar_chunks_documentos(
             carpeta_job,
-            excluir=nombre_formulario,
+            {r["nombre"]: r["documento"] for r in resultados}
         )
 
         print(
@@ -264,6 +269,17 @@ async def procesar_formulario(
 
         respuestas = []
 
+        usar_documento_completo = cabe_documento_completo(chunks)
+
+        print(
+            "[WORKER] Contexto por campo: "
+            + (
+                "documento completo (caché de Ollama)"
+                if usar_documento_completo
+                else "5 chunks más relevantes"
+            )
+        )
+
         for campo in lista_campos:
 
             nombre_campo = campo.get("campo")
@@ -278,10 +294,15 @@ async def procesar_formulario(
             # 1. BÚSQUEDA SEMÁNTICA
             # ============================================================
 
-            resultados = buscar_chunks_relevantes(
-                nombre_campo,
-                chunks,
-                top_k=5,
+            # Documento chico: siempre los mismos chunks y en el mismo orden
+            resultados = (
+                chunks
+                if usar_documento_completo
+                else buscar_chunks_relevantes(
+                    nombre_campo,
+                    chunks,
+                    top_k=5,
+                )
             )
 
             print(f"[WORKER] Chunks encontrados: {len(resultados)}")

@@ -8,6 +8,17 @@
         <#if realm.password>
             <form id="kc-form-login" class="ifx-form" action="${url.loginAction}" method="post" novalidate>
 
+                <#-- Lo pone el autenticador auth-username-password-form-intentos cuando la cuenta está bloqueada -->
+                <#if bloqueoMinutos??>
+                    <div class="ifx-bloqueo" role="alert">
+                        <svg class="ifx-bloqueo__icono" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <rect x="4" y="11" width="16" height="10" rx="2"/>
+                            <path d="M8 11V7a4 4 0 0 1 8 0v4"/>
+                        </svg>
+                        <span>${kcSanitize(messagesPerField.getFirstError('username','password'))?no_esc}</span>
+                    </div>
+                </#if>
+
                 <#if !usernameHidden??>
                     <div class="ifx-field">
                         <label for="username">${msg("usernameOrEmail")}</label>
@@ -23,10 +34,23 @@
                            aria-invalid="<#if messagesPerField.existsError('username','password')>true</#if>" />
                 </div>
 
-                <#if messagesPerField.existsError('username','password')>
+                <#if messagesPerField.existsError('username','password') && !bloqueoMinutos??>
                     <span class="ifx-field__error" aria-live="polite">
                         ${kcSanitize(messagesPerField.getFirstError('username','password'))?no_esc}
                     </span>
+                </#if>
+
+                <#-- Contador: un punto por intento permitido, los usados quedan apagados -->
+                <#if intentosRestantes?? && intentosPermitidos??>
+                    <div class="ifx-intentos" aria-hidden="true">
+                        <span>${msg("intentosRestantesLabel")}</span>
+                        <span class="ifx-intentos__puntos">
+                            <#list 1..intentosPermitidos as i>
+                                <span class="ifx-intentos__punto<#if i <= intentosRestantes> ifx-intentos__punto--libre</#if>"></span>
+                            </#list>
+                        </span>
+                        <strong>${intentosRestantes}/${intentosPermitidos}</strong>
+                    </div>
                 </#if>
 
                 <#if realm.resetPasswordAllowed>

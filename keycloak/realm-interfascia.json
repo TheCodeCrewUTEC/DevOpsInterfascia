@@ -8,6 +8,15 @@
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
   "resetPasswordAllowed": true,
+  "passwordPolicy": "length(12) and complejidad(3) and notUsername(undefined) and notEmail(undefined)",
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "failureFactor": 5,
+  "waitIncrementSeconds": 900,
+  "maxFailureWaitSeconds": 900,
+  "maxDeltaTimeSeconds": 43200,
+  "minimumQuickLoginWaitSeconds": 60,
+  "quickLoginCheckMilliSeconds": 1000,
   "rememberMe": false,
   "verifyEmail": false,
   "internationalizationEnabled": true,
@@ -17,6 +26,7 @@
   ],
   "defaultLocale": "es",
   "accessTokenLifespan": 300,
+  "accessCodeLifespanLogin": 3600,
   "ssoSessionIdleTimeout": 1800,
   "ssoSessionMaxLifespan": 36000,
   "clients": [
@@ -58,6 +68,20 @@
           }
         }
       ]
+    },
+    {
+      "clientId": "interfascia-backend",
+      "name": "Interfascia API (cuenta de servicio)",
+      "description": "La API la usa para leer usuarios y aprobar registros; el login directo verifica la contraseña actual al cambiarla",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${KEYCLOAK_BACKEND_CLIENT_SECRET}",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": true
     }
   ],
   "loginTheme": "interfascia",
@@ -107,13 +131,13 @@
     },
     {
       "alias": "browser-email-otp-forms",
-      "description": "Usuario y contraseña, después el código enviado al correo",
+      "description": "Usuario y contraseña (con contador de intentos), después el código enviado al correo",
       "providerId": "basic-flow",
       "topLevel": false,
       "builtIn": false,
       "authenticationExecutions": [
         {
-          "authenticator": "auth-username-password-form",
+          "authenticator": "auth-username-password-form-intentos",
           "authenticatorFlow": false,
           "requirement": "REQUIRED",
           "priority": 10,
@@ -136,10 +160,57 @@
         "subComponents": {},
         "config": {
           "kc.user.profile.config": [
-            "{\"attributes\": [{\"name\": \"username\", \"displayName\": \"${username}\", \"validations\": {\"length\": {\"min\": 3, \"max\": 255}, \"username-prohibited-characters\": {}, \"up-username-not-idn-homograph\": {}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": false}, {\"name\": \"firstName\", \"displayName\": \"${firstName}\", \"validations\": {\"length\": {\"max\": 255}, \"person-name-prohibited-characters\": {}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": false, \"required\": {\"roles\": [\"user\"]}}, {\"name\": \"lastName\", \"displayName\": \"${lastName}\", \"validations\": {\"length\": {\"max\": 255}, \"person-name-prohibited-characters\": {}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": false, \"required\": {\"roles\": [\"user\"]}}, {\"name\": \"email\", \"displayName\": \"${email}\", \"validations\": {\"email\": {}, \"length\": {\"max\": 255}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": false, \"required\": {\"roles\": [\"user\"]}}, {\"name\": \"departamentoResidencia\", \"displayName\": \"${departamentoResidencia}\", \"validations\": {\"options\": {\"options\": [\"Artigas\", \"Canelones\", \"Cerro Largo\", \"Colonia\", \"Durazno\", \"Flores\", \"Florida\", \"Lavalleja\", \"Maldonado\", \"Montevideo\", \"Paysandú\", \"Río Negro\", \"Rivera\", \"Rocha\", \"Salto\", \"San José\", \"Soriano\", \"Tacuarembó\", \"Treinta y Tres\"]}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": false, \"required\": {\"roles\": [\"user\"]}}, {\"name\": \"departamentosActuacion\", \"displayName\": \"${departamentosActuacion}\", \"validations\": {\"options\": {\"options\": [\"Artigas\", \"Canelones\", \"Cerro Largo\", \"Colonia\", \"Durazno\", \"Flores\", \"Florida\", \"Lavalleja\", \"Maldonado\", \"Montevideo\", \"Paysandú\", \"Río Negro\", \"Rivera\", \"Rocha\", \"Salto\", \"San José\", \"Soriano\", \"Tacuarembó\", \"Treinta y Tres\"]}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": true, \"required\": {\"roles\": [\"user\"]}}, {\"name\": \"celular\", \"displayName\": \"${celular}\", \"validations\": {\"pattern\": {\"pattern\": \"^\\\\+?[0-9 ]{8,15}$\", \"error-message\": \"invalidCelular\"}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": false}, {\"name\": \"instituciones\", \"displayName\": \"${instituciones}\", \"validations\": {\"options\": {\"options\": [\"UTEC\", \"UDELAR\", \"CURE\", \"UTU\", \"ANII\", \"Otra\"]}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": true, \"required\": {\"roles\": [\"user\"]}}, {\"name\": \"perfil\", \"displayName\": \"${perfil}\", \"validations\": {\"options\": {\"options\": [\"Investigador\", \"Inversor\", \"Emprendedor\", \"Estudiante\", \"Docente\", \"Otro\"]}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": true, \"required\": {\"roles\": [\"user\"]}}], \"groups\": [{\"name\": \"user-metadata\", \"displayHeader\": \"User metadata\", \"displayDescription\": \"Attributes, which refer to user metadata\"}], \"unmanagedAttributePolicy\": \"ADMIN_EDIT\"}"
+            "{\"attributes\": [{\"name\": \"username\",\"displayName\": \"${username}\",\"validations\": {\"length\": {\"min\": 3,\"max\": 255},\"username-prohibited-characters\": {},\"up-username-not-idn-homograph\": {}},\"permissions\": {\"view\": [\"admin\",\"user\"],\"edit\": [\"admin\",\"user\"]},\"multivalued\": false},{\"name\": \"firstName\",\"displayName\": \"${firstName}\",\"validations\": {\"length\": {\"max\": 255},\"person-name-prohibited-characters\": {}},\"permissions\": {\"view\": [\"admin\",\"user\"],\"edit\": [\"admin\",\"user\"]},\"multivalued\": false,\"required\": {\"roles\": [\"user\"]}},{\"name\": \"lastName\",\"displayName\": \"${lastName}\",\"validations\": {\"length\": {\"max\": 255},\"person-name-prohibited-characters\": {}},\"permissions\": {\"view\": [\"admin\",\"user\"],\"edit\": [\"admin\",\"user\"]},\"multivalued\": false,\"required\": {\"roles\": [\"user\"]}},{\"name\": \"email\",\"displayName\": \"${email}\",\"validations\": {\"email\": {},\"length\": {\"max\": 255}},\"permissions\": {\"view\": [\"admin\",\"user\"],\"edit\": [\"admin\",\"user\"]},\"multivalued\": false,\"required\": {\"roles\": [\"user\"]}},{\"name\": \"departamentoResidencia\",\"displayName\": \"${departamentoResidencia}\",\"validations\": {\"options\": {\"options\": [\"Artigas\",\"Canelones\",\"Cerro Largo\",\"Colonia\",\"Durazno\",\"Flores\",\"Florida\",\"Lavalleja\",\"Maldonado\",\"Montevideo\",\"Paysandú\",\"Río Negro\",\"Rivera\",\"Rocha\",\"Salto\",\"San José\",\"Soriano\",\"Tacuarembó\",\"Treinta y Tres\"]}},\"permissions\": {\"view\": [\"admin\",\"user\"],\"edit\": [\"admin\",\"user\"]},\"multivalued\": false,\"required\": {\"roles\": [\"user\"]}},{\"name\": \"departamentosActuacion\",\"displayName\": \"${departamentosActuacion}\",\"validations\": {\"options\": {\"options\": [\"Artigas\",\"Canelones\",\"Cerro Largo\",\"Colonia\",\"Durazno\",\"Flores\",\"Florida\",\"Lavalleja\",\"Maldonado\",\"Montevideo\",\"Paysandú\",\"Río Negro\",\"Rivera\",\"Rocha\",\"Salto\",\"San José\",\"Soriano\",\"Tacuarembó\",\"Treinta y Tres\"]}},\"permissions\": {\"view\": [\"admin\",\"user\"],\"edit\": [\"admin\",\"user\"]},\"multivalued\": true,\"required\": {\"roles\": [\"user\"]}},{\"name\": \"celular\",\"displayName\": \"${celular}\",\"validations\": {\"pattern\": {\"pattern\": \"^\\\\+?[0-9 ]{8,15}$\",\"error-message\": \"invalidCelular\"}},\"permissions\": {\"view\": [\"admin\",\"user\"],\"edit\": [\"admin\",\"user\"]},\"multivalued\": false},{\"name\": \"instituciones\",\"displayName\": \"${instituciones}\",\"validations\": {\"options\": {\"options\": [\"UTEC\",\"UDELAR\",\"CURE\",\"UTU\",\"ANII\",\"Otra\"]}},\"permissions\": {\"view\": [\"admin\",\"user\"],\"edit\": [\"admin\",\"user\"]},\"multivalued\": true,\"required\": {\"roles\": [\"user\"]}},{\"name\": \"perfil\",\"displayName\": \"${perfil}\",\"validations\": {\"options\": {\"options\": [\"Gestor/a de innovación\",\"Investigador/a\",\"Emprendedor/a / Empresario/a\",\"Otros\"]}},\"permissions\": {\"view\": [\"admin\",\"user\"],\"edit\": [\"admin\",\"user\"]},\"multivalued\": false,\"required\": {\"roles\": [\"user\"]}},{\"name\": \"perfilOtro\",\"displayName\": \"${perfilOtro}\",\"validations\": {\"length\": {\"max\": 255}},\"permissions\": {\"view\": [\"admin\",\"user\"],\"edit\": [\"admin\",\"user\"]},\"multivalued\": false},{\"name\": \"estadoAprobacion\",\"displayName\": \"${estadoAprobacion}\",\"permissions\": {\"view\": [\"admin\"],\"edit\": [\"admin\"]},\"multivalued\": false}],\"groups\": [{\"name\": \"user-metadata\",\"displayHeader\": \"User metadata\",\"displayDescription\": \"Attributes, which refer to user metadata\"}],\"unmanagedAttributePolicy\": \"ADMIN_EDIT\"}"
           ]
         }
       }
     ]
-  }
+  },
+  "roles": {
+    "realm": [
+      {
+        "name": "admin",
+        "description": "Administrador: acceso total y gestión de permisos",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "gestor_innovacion",
+        "description": "Gestor/a de innovación: acceso a analítica de datos",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "investigador",
+        "description": "Investigador/a: consultas IA",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "emprendedor",
+        "description": "Emprendedor/a / Empresario/a: demandas al foro",
+        "composite": false,
+        "clientRole": false
+      }
+    ]
+  },
+  "eventsEnabled": true,
+  "eventsListeners": [
+    "jboss-logging",
+    "registration-approval"
+  ],
+  "users": [
+    {
+      "username": "service-account-interfascia-backend",
+      "enabled": true,
+      "serviceAccountClientId": "interfascia-backend",
+      "clientRoles": {
+        "realm-management": [
+          "view-users",
+          "query-users",
+          "manage-users"
+        ]
+      }
+    }
+  ]
 }
