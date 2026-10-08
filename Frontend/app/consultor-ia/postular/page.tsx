@@ -358,7 +358,7 @@ export default function PostularPage() {
                   name="documentos"
                   type="file"
                   multiple
-                  accept=".pdf,.docx,.xlsx,.xls,.txt"
+                  accept=".pdf,.docx,.xlsx,.xls,.txt,.csv"
                   className="sr-only"
                   onChange={handleDocumentosChange}
                 />

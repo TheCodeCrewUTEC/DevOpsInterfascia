@@ -8,6 +8,7 @@ EXTENSIONES_PERMITIDAS = {
     ".xlsx",
     ".xls",
     ".txt",
+    ".csv",
 }
 
 def validar_extension(nombre: str) -> bool:
