@@ -65,13 +65,24 @@ def kc(monkeypatch):
 
 @pytest.mark.parametrize(
     "nueva",
-    ["Corta#1A", "SinNumeros#Largos", "sinmayuscula#123", "SinEspecial12345"],
+    ["Corta#1A", "SoloLetrasLargas", "sinmayusculas1234", "SINMINUSCULAS123"],
 )
 def test_contrasena_que_no_cumple_la_politica(kc, nueva):
     response = client.post("/api/perfil/contrasena", json={"actual": kc.contrasena, "nueva": nueva})
 
     assert response.status_code == 400
     assert kc.cambios == []
+
+
+@pytest.mark.parametrize(
+    "nueva",
+    ["SinNumeros#Largos", "sinmayuscula#123", "SinEspecial12345"],
+)
+def test_contrasena_con_tres_de_cuatro_categorias(kc, nueva):
+    response = client.post("/api/perfil/contrasena", json={"actual": kc.contrasena, "nueva": nueva})
+
+    assert response.status_code == 200
+    assert kc.cambios == [nueva]
 
 
 def test_contrasena_actual_incorrecta(kc):
