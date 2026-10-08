@@ -15,12 +15,28 @@ MODEL_NAME = "qwen2.5:3b-instruct"
 # Vacío: Ollama en esta misma máquina. Con URL, el servidor usa el Ollama de otra PC.
 OLLAMA_URL = os.getenv("OLLAMA_URL") or None
 
+# Mismo num_ctx que qwen_service: si cambia, Ollama recarga el modelo entre etapas
+NUM_CTX = 8192
+
 llm = ChatOllama(
     model=MODEL_NAME,
     temperature=0,
-    num_ctx=4096,
+    num_ctx=NUM_CTX,
     base_url=OLLAMA_URL,
 )
+
+# Hasta este tamaño se manda el documento completo en cada campo (~3 caracteres por
+# token, dejando lugar a las instrucciones y a la respuesta dentro de NUM_CTX).
+MAX_CARACTERES_DOCUMENTO_COMPLETO = 18000
+
+
+def cabe_documento_completo(chunks: list[dict[str, Any]]) -> bool:
+    """Con documentos chicos conviene mandar todos los chunks en cada campo.
+
+    El prompt queda igual hasta el nombre del campo, así Ollama reutiliza lo ya
+    procesado (caché del prefijo) y cada campo tarda segundos en vez de minutos en CPU.
+    """
+    return 0 < sum(len(c.get("texto", "")) for c in chunks) <= MAX_CARACTERES_DOCUMENTO_COMPLETO
 
 
 # ============================================================
@@ -39,16 +55,15 @@ def construir_contexto(
     ):
 
         texto = chunk.get("texto", "")
-        similitud = chunk.get("similitud", 0)
         documento = chunk.get("documento", "")
         pagina = chunk.get("pagina")
 
+        # La similitud cambia en cada campo: incluirla rompería la caché del prefijo
         context_parts.append(
             f"""
 FUENTE - Chunk {indice}
 Documento: {documento}
 Página: {pagina}
-Similitud: {similitud:.4f}
 
 {texto}
 """
@@ -90,20 +105,12 @@ def generar_respuesta(
     # Prompt
     # --------------------------------------------------------
 
+    # Orden pensado para la caché de Ollama: todo lo que se repite entre campos va
+    # primero y el campo va al final.
     prompt = f"""
 Eres un asistente que completa formularios de postulación
 utilizando exclusivamente la información proporcionada en
 los documentos de un proyecto.
-
-Campo del formulario:
-{campo}
-
-Tipo de campo:
-{tipo}
-
-Información recuperada de los documentos:
-
-{contexto}
 
 Reglas:
 
@@ -148,6 +155,16 @@ Si no existe información suficiente:
     "respuesta": null,
     "fuentes": []
 }}
+
+Información de los documentos:
+
+{contexto}
+
+Campo del formulario:
+{campo}
+
+Tipo de campo:
+{tipo}
 """
 
     # --------------------------------------------------------

@@ -1,12 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
 
 const API_URL = (process.env.API_URL ?? "http://localhost:8000").replace(/\/$/, "");
 
 // El navegador llama a este mismo sitio (/backend/...).
 // Next reenvía al contenedor de la API, que no es visible desde Internet.
-function destinoDesde(request: NextRequest) {
-  const ruta = request.nextUrl.pathname.replace(/^\/backend\/?/, "");
-  const destino = new URL(`${API_URL}/${ruta}`);
+async function proxy(
+  request: NextRequest,
+  context: { params: Promise<{ path: string[] }> },
+) {
+  const { path } = await context.params;
+
+  // /internal/... solo lo usa Keycloak por la red de Docker; no se expone a Internet
+  if (path.find(Boolean)?.toLowerCase() === "internal") {
+    return NextResponse.json({ detail: "No encontrado." }, { status: 404 });
+  }
+
+  const slash = request.nextUrl.pathname.endsWith("/") ? "/" : "";
+  const destino = new URL(`${API_URL}/${path.join("/")}${slash}`);
   destino.search = request.nextUrl.search;
   return destino;
 }
@@ -19,26 +30,15 @@ async function fetchApi(request: NextRequest, destino: URL) {
   const conCuerpo = request.method !== "GET" && request.method !== "HEAD";
   if (tipo && conCuerpo) headers.set("content-type", tipo);
 
-  let actual = destino;
-  let response = await fetch(actual, {
-    method: request.method,
-    headers,
-    body: conCuerpo ? request.body : undefined,
-    // @ts-expect-error Node fetch exige duplex al reenviar un body en stream.
-    duplex: "half",
-    cache: "no-store",
-    redirect: "manual",
-  });
+  // El token de Keycloak vive en la sesión del servidor, no en el navegador:
+  // se agrega acá para que la API sepa quién hace el pedido.
+  const session = await auth();
+  if (session?.accessToken && !session.error) {
+    headers.set("Authorization", `Bearer ${session.accessToken}`);
+  }
 
-  for (let salto = 0; salto < 3 && [301, 302, 307, 308].includes(response.status); salto += 1) {
-    const location = response.headers.get("location");
-    if (!location) break;
-    const siguiente = new URL(location, actual);
-    const api = new URL(API_URL);
-    siguiente.protocol = api.protocol;
-    siguiente.host = api.host;
-    actual = siguiente;
-    response = await fetch(actual, {
+  try {
+    const response = await fetch(destino, {
       method: request.method,
       headers,
       cache: "no-store",

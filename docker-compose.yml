@@ -87,6 +87,9 @@ services:
 
     command: ["python", "-m", "arq", "worker.worker.WorkerSettings"]
 
+    # Docling usa todos los núcleos y deja sin CPU al túnel de Cloudflare (se corta y da 502)
+    cpus: 3
+
     env_file:
       - .env
 
@@ -99,6 +102,8 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       REDIS_DB: "0"
+      # Sin esto los print del worker salen todos juntos al final y no se ve el avance
+      PYTHONUNBUFFERED: "1"
 
     depends_on:
       redis:
@@ -135,7 +140,12 @@ services:
       KC_PROXY_HEADERS: xforwarded
 
       KEYCLOAK_FRONTEND_CLIENT_SECRET: ${KEYCLOAK_FRONTEND_CLIENT_SECRET}
+      # Cuenta de servicio con la que la API lee usuarios y aprueba registros
+      KEYCLOAK_BACKEND_CLIENT_SECRET: ${KEYCLOAK_BACKEND_CLIENT_SECRET}
       INTERFASCIA_APP_URL: https://interfasciauy.com
+      # El listener registration-approval avisa cada registro a la API (POST /internal/usuarios)
+      INTERFASCIA_API_URL: http://backend:80
+      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
 
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://db:5432/${KEYCLOAK_DB_NAME:-keycloak}

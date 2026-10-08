@@ -9,7 +9,7 @@
 
 <#assign departamentos = ["Artigas", "Canelones", "Cerro Largo", "Colonia", "Durazno", "Flores", "Florida", "Lavalleja", "Maldonado", "Montevideo", "Paysandú", "Río Negro", "Rivera", "Rocha", "Salto", "San José", "Soriano", "Tacuarembó", "Treinta y Tres"]>
 <#assign institucionesOpciones = ["UTEC", "UDELAR", "CURE", "UTU", "ANII", "Otra"]>
-<#assign rolesOpciones = ["Investigador", "Inversor", "Emprendedor", "Estudiante", "Docente", "Otro"]>
+<#assign rolesOpciones = ["Gestor/a de innovación", "Investigador/a", "Emprendedor/a / Empresario/a", "Otros"]>
 
 <#function opciones attribute>
     <#if attribute?? && attribute.validators?? && attribute.validators.options?? && attribute.validators.options.options??>
@@ -74,7 +74,19 @@
     <div class="ifx-field ifx-field--compact">
         <label for="${name}">${msg(labelKey)}*</label>
         <input id="${name}" name="${name}" type="password" autocomplete="${autocomplete}" required
+               <#if name == "password">aria-describedby="password-reglas"</#if>
                aria-invalid="<#if messagesPerField.existsError(name)>true</#if>" />
+        <#if name == "password">
+            <#-- Misma política que el realm (passwordPolicy); js/reglas-contrasena.js las tilda al escribir -->
+            <ul id="password-reglas" class="ifx-reglas" data-reglas-password>
+                <li data-regla="largo">${msg("reglaPasswordLargo")}</li>
+                <li data-regla="complejidad">${msg("reglaPasswordComplejidad")}</li>
+                <li class="ifx-reglas__sub" data-regla="mayuscula">${msg("reglaPasswordMayuscula")}</li>
+                <li class="ifx-reglas__sub" data-regla="minuscula">${msg("reglaPasswordMinuscula")}</li>
+                <li class="ifx-reglas__sub" data-regla="numero">${msg("reglaPasswordNumero")}</li>
+                <li class="ifx-reglas__sub" data-regla="especial">${msg("reglaPasswordEspecial")}</li>
+            </ul>
+        </#if>
         <@fieldError name/>
     </div>
 </#macro>
@@ -198,10 +210,21 @@
                     <@addableSelect name="departamentosActuacion" placeholderKey="seleccionaDepartamento" fallback=departamentos/>
                     <@textField name="celular" type="tel" autocomplete="tel"/>
                     <@addableSelect name="instituciones" placeholderKey="seleccionaInstitucion" fallback=institucionesOpciones/>
-                    <@addableSelect name="perfil" placeholderKey="seleccionaRol" fallback=rolesOpciones/>
+                    <@selectField name="perfil" placeholderKey="seleccionaRol" fallback=rolesOpciones/>
+
+                    <#assign valorPerfil = (attrs.perfil.value)!''>
+                    <#assign mostrarOtro = valorPerfil == "Otros">
+                    <#assign valorOtro = (attrs.perfilOtro.value)!''>
+                    <div class="ifx-field ifx-field--compact" data-perfil-otro <#if !mostrarOtro>hidden</#if>>
+                        <label for="perfilOtro">${msg("perfilOtro")}*</label>
+                        <input id="perfilOtro" name="perfilOtro" type="text" value="${valorOtro}"
+                               maxlength="255" <#if mostrarOtro>required</#if>
+                               aria-invalid="<#if messagesPerField.existsError('perfilOtro')>true</#if>" />
+                        <@fieldError name="perfilOtro"/>
+                    </div>
 
                     <#-- Cualquier atributo que se agregue después al perfil de usuario se muestra igual -->
-                    <#assign conocidos = ["locale", "username", "email", "firstName", "lastName", "departamentoResidencia", "departamentosActuacion", "celular", "instituciones", "perfil"]>
+                    <#assign conocidos = ["locale", "username", "email", "firstName", "lastName", "departamentoResidencia", "departamentosActuacion", "celular", "instituciones", "perfil", "perfilOtro", "estadoAprobacion"]>
                     <#list profile.attributes as a>
                         <#if !conocidos?seq_contains(a.name)>
                             <@textField name=a.name/>
@@ -221,6 +244,8 @@
             </section>
 
         </div>
-        <script src="${url.resourcesPath}/js/addable-select.js" defer></script>
+        <script src="${url.resourcesPath}/js/addable-select.js?v=${properties.recursosVersion!'1'}" defer></script>
+        <script src="${url.resourcesPath}/js/rol-otro.js?v=${properties.recursosVersion!'1'}" defer></script>
+        <script src="${url.resourcesPath}/js/reglas-contrasena.js?v=${properties.recursosVersion!'1'}" defer></script>
     </#if>
 </@layout.registrationLayout>

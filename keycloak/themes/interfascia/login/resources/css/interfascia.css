@@ -887,3 +887,157 @@ textarea {
     transition: none;
   }
 }
+
+/* Código de verificación: una caja por dígito (js/codigo-cajas.js) */
+.ifx-otp {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  gap: 10px;
+}
+
+/* Cajas cuadradas: le ganan al width 100% / height 44px de los inputs de la tarjeta */
+.ifx-card .ifx-otp input.ifx-otp__box {
+  flex: 0 1 56px;
+  width: 56px;
+  min-width: 0;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  padding: 0;
+  border-width: 1.5px;
+  border-radius: 0.875rem;
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  caret-color: var(--pine);
+}
+
+@media (max-width: 380px) {
+  .ifx-otp {
+    gap: 6px;
+  }
+
+  .ifx-card .ifx-otp input.ifx-otp__box {
+    font-size: 1.25rem;
+  }
+}
+
+/* Botón para ver la contraseña (js/mostrar-contrasena.js) */
+.ifx-password {
+  position: relative;
+}
+
+.ifx-card .ifx-password input {
+  padding-right: 44px;
+}
+
+.ifx-password__toggle {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  transform: translateY(-50%);
+  border-radius: 0.5rem;
+  background: transparent;
+  color: rgb(16 42 60 / 0.55);
+  cursor: pointer;
+  transition: color 0.2s, background 0.2s;
+}
+
+.ifx-password__toggle:hover {
+  color: var(--pine-text);
+  background: rgb(0 174 239 / 0.08);
+}
+
+.ifx-password__toggle:focus-visible {
+  outline: 2px solid var(--pine);
+  outline-offset: 1px;
+}
+
+/* Requisitos de la contraseña en el registro (js/reglas-contrasena.js) */
+.ifx-reglas {
+  display: grid;
+  gap: 4px;
+  list-style: none;
+  font-size: 0.8125rem;
+  color: rgb(16 42 60 / 0.6);
+}
+
+.ifx-reglas li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ifx-reglas li::before {
+  content: "";
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid rgb(16 42 60 / 0.3);
+  border-radius: 999px;
+}
+
+/* Categorías de la regla "3 de estas 4" */
+.ifx-reglas li.ifx-reglas__sub {
+  padding-left: 22px;
+}
+
+.ifx-reglas li.cumple {
+  color: var(--pine-text);
+}
+
+.ifx-reglas li.cumple::before {
+  border-color: var(--pine);
+  background: var(--pine) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 8.5 2.5 2.5L12 5.5'/%3E%3C/svg%3E") center / 10px no-repeat;
+}
+
+/* Aviso de cuenta bloqueada por intentos fallidos (login.ftl) */
+.ifx-bloqueo {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 4px;
+  border: 1px solid var(--red-600);
+  border-radius: 0.75rem;
+  background: #fef2f2;
+  padding: 12px 14px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #991b1b;
+}
+
+.ifx-bloqueo__icono {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* Contador de intentos restantes */
+.ifx-intentos {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8125rem;
+  color: #92400e;
+}
+
+.ifx-intentos__puntos {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.ifx-intentos__punto {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #e5e7eb;
+}
+
+.ifx-intentos__punto--libre {
+  background: #d97706;
+}

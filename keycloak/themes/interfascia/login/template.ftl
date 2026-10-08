@@ -7,7 +7,13 @@
 <#macro registrationLayout bodyClass="" displayInfo=false displayMessage=true displayRequiredFields=false variant="card">
 <#assign appUrl = (properties.appUrl!"http://localhost:3000")?remove_ending("/")>
 <!DOCTYPE html>
-<html lang="${lang}">
+<#assign htmlLang = "es">
+<#if locale?? && locale.currentLanguageTag?has_content>
+    <#assign htmlLang = locale.currentLanguageTag>
+<#elseif lang?? && lang?has_content>
+    <#assign htmlLang = lang>
+</#if>
+<html lang="${htmlLang}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -19,7 +25,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Geist:wght@400;500;600&display=swap" rel="stylesheet" />
     <#if properties.styles?has_content>
         <#list properties.styles?split(' ') as style>
-            <link href="${url.resourcesPath}/${style}" rel="stylesheet" />
+            <link href="${url.resourcesPath}/${style}?v=${properties.recursosVersion!'1'}" rel="stylesheet" />
         </#list>
     </#if>
     <#if scripts??>
@@ -27,19 +33,9 @@
             <script src="${script}" type="text/javascript"></script>
         </#list>
     </#if>
-    <script type="module">
-        import { startSessionPolling } from "${url.resourcesPath}/js/authChecker.js";
-        startSessionPolling("${url.ssoLoginInOtherTabsUrl?no_esc}");
-    </script>
-    <#if authenticationSession??>
-        <script type="module">
-            import { checkAuthSession } from "${url.resourcesPath}/js/authChecker.js";
-            checkAuthSession("${authenticationSession.authSessionIdHash}");
-        </script>
-    </#if>
 </head>
 
-<body class="ifx-body ${bodyClass}" data-page-id="login-${pageId}">
+<body class="ifx-body ${bodyClass}" data-page-id="login-${pageId!''}">
 
     <nav class="ifx-navbar">
         <div class="ifx-navbar__inner">
@@ -146,7 +142,8 @@
         </div>
     </footer>
 
-    <script src="${url.resourcesPath}/js/required-fields.js" defer></script>
+    <script src="${url.resourcesPath}/js/required-fields.js?v=${properties.recursosVersion!'1'}" defer></script>
+    <script src="${url.resourcesPath}/js/mostrar-contrasena.js?v=${properties.recursosVersion!'1'}" defer></script>
 </body>
 </html>
 </#macro>
