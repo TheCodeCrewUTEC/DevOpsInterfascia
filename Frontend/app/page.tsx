@@ -10,12 +10,20 @@ const caminos = [
     accion: "Abrir repositorio",
   },
   {
-    href: "/consultor-ia",
-    kicker: "Relacionar",
-    titulo: "Consultor IA",
+    href: "/consultor-ia/relacionar",
+    kicker: "Consultor IA",
+    titulo: "Relacionar",
     texto:
       "Contá de qué trata tu proyecto y encontrá fondos, antecedentes y personas afines.",
-    accion: "Usar el consultor",
+    accion: "Relacionar un proyecto",
+  },
+  {
+    href: "/consultor-ia/postular",
+    kicker: "Consultor IA",
+    titulo: "Postular",
+    texto:
+      "Subí el formulario y los documentos del proyecto para que el consultor los complete.",
+    accion: "Completar un formulario",
   },
   {
     href: "/analisis-datos",
@@ -69,7 +77,7 @@ export default function Home() {
                 Explorar el repositorio
               </Link>
               <Link
-                href="/consultor-ia"
+                href="/consultor-ia/relacionar"
                 className="rounded-full border border-ink/15 bg-paper px-5 py-3 text-sm text-ink transition duration-200 hover:-translate-y-0.5 hover:border-pine hover:text-pine"
               >
                 Contar mi proyecto
@@ -95,7 +103,7 @@ export default function Home() {
             estar repartida y pasa a poder consultarse, compararse y relacionarse.
           </p>
 
-          <div className="mt-12 grid gap-5 md:grid-cols-3">
+          <div className="mt-12 grid gap-5 md:grid-cols-2">
             {caminos.map((camino, index) => (
               <Link
                 key={camino.href}

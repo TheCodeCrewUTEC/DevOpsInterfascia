@@ -4,11 +4,14 @@ import { auth } from "@/auth";
 import { cerrarSesion } from "../actions/auth";
 import { esAdmin } from "@/lib/roles";
 import UsuarioMenu from "./UsuarioMenu";
+import ConsultorMenu from "./ConsultorMenu";
 
-const links = [
+const linksAntes = [
   { href: "/repositorio", label: "Repositorio" },
   { href: "/#que-es-interfascia", label: "¿Qué es Interfascia?" },
-  { href: "/consultor-ia", label: "Consultor IA" },
+];
+
+const linksDespues = [
   { href: "/analisis-datos", label: "Análisis de Datos" },
 ];
 
@@ -31,7 +34,17 @@ export default async function Navbar() {
         </Link>
 
         <div className="col-span-2 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-center md:col-span-1 md:col-start-2 md:row-start-1 md:flex-nowrap">
-          {links.map((link) => (
+          {linksAntes.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="nav-link text-xs text-ink/80 transition-colors hover:text-pine sm:text-sm md:whitespace-nowrap"
+            >
+              {link.label}
+            </Link>
+          ))}
+          <ConsultorMenu />
+          {linksDespues.map((link) => (
             <Link
               key={link.href}
               href={link.href}

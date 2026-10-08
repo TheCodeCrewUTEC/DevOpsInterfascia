@@ -54,7 +54,18 @@
             <div class="ifx-navbar__links">
                 <a href="${appUrl}/repositorio">Repositorio</a>
                 <a href="${appUrl}/#que-es-interfascia">¿Qué es Interfascia?</a>
-                <a href="${appUrl}/consultor-ia">Consultor IA</a>
+                <details class="ifx-navbar__menu">
+                    <summary>
+                        Consultor IA
+                        <svg class="ifx-chevron" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+                            <path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.5" />
+                        </svg>
+                    </summary>
+                    <div class="ifx-navbar__panel">
+                        <a href="${appUrl}/consultor-ia/relacionar">Relacionar</a>
+                        <a href="${appUrl}/consultor-ia/postular">Postular</a>
+                    </div>
+                </details>
                 <a href="${appUrl}/analisis-datos">Análisis de Datos</a>
             </div>
 
@@ -142,6 +153,7 @@
         </div>
     </footer>
 
+    <script src="${url.resourcesPath}/js/consultor-menu.js?v=${properties.recursosVersion!'1'}" defer></script>
     <script src="${url.resourcesPath}/js/required-fields.js?v=${properties.recursosVersion!'1'}" defer></script>
     <script src="${url.resourcesPath}/js/mostrar-contrasena.js?v=${properties.recursosVersion!'1'}" defer></script>
 </body>

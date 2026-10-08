@@ -143,6 +143,90 @@ textarea {
   transform: scaleX(1);
 }
 
+.ifx-navbar__menu {
+  position: relative;
+}
+
+.ifx-navbar__menu summary {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  list-style: none;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: rgb(16 42 60 / 0.8);
+}
+
+.ifx-navbar__menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.ifx-navbar__menu summary::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -0.3rem;
+  height: 2px;
+  width: 100%;
+  transform: scaleX(0);
+  transform-origin: left;
+  background: var(--clay);
+  transition: transform 0.25s ease;
+}
+
+.ifx-navbar__menu summary:hover,
+.ifx-navbar__menu summary:focus-visible,
+.ifx-navbar__menu[open] summary {
+  color: var(--pine);
+}
+
+.ifx-navbar__menu summary:hover::after,
+.ifx-navbar__menu summary:focus-visible::after,
+.ifx-navbar__menu[open] summary::after {
+  transform: scaleX(1);
+}
+
+.ifx-chevron {
+  transition: transform 0.2s ease;
+}
+
+.ifx-navbar__menu[open] .ifx-chevron {
+  transform: rotate(180deg);
+}
+
+.ifx-navbar__panel {
+  position: absolute;
+  left: 50%;
+  z-index: 50;
+  min-width: 10rem;
+  transform: translateX(-50%);
+  margin-top: 12px;
+  border: 1px solid rgb(0 174 239 / 0.1);
+  border-radius: 1rem;
+  background: #fff;
+  padding: 6px;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+}
+
+.ifx-navbar__panel a {
+  display: block;
+  border-radius: 0.75rem;
+  padding: 8px 12px;
+  white-space: nowrap;
+  color: var(--ink);
+}
+
+.ifx-navbar__panel a::after {
+  display: none;
+}
+
+.ifx-navbar__panel a:hover,
+.ifx-navbar__panel a:focus-visible {
+  background: var(--foam);
+  color: var(--ink);
+}
+
 .ifx-navbar__actions {
   display: flex;
   align-items: center;

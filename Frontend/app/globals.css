@@ -51,7 +51,9 @@ body {
 }
 
 .nav-link:hover::after,
-.nav-link:focus-visible::after {
+.nav-link:focus-visible::after,
+.nav-link[aria-expanded="true"]::after,
+.nav-link[data-activo="true"]::after {
   transform: scaleX(1);
 }
 
