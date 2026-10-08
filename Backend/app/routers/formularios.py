@@ -21,6 +21,7 @@ from app.schemas.formulario_job import FormularioJobResponse
 from app.services.formulario_job_service import crear_job
 
 from app.services.file_service import (
+    nombre_disponible,
     sanitizar_nombre_archivo,
     validar_extension
 )
@@ -35,6 +36,7 @@ router = APIRouter(
 )
 
 STORAGE_PATH = Path("storage/formularios")
+LIMITE_DOCUMENTOS = 3
 
 
 class CambioRespuesta(BaseModel):
@@ -97,6 +99,18 @@ async def crear_formulario_job(
             detail="Formato de formulario no permitido"
         )
 
+    if not documentos:
+        raise HTTPException(
+            status_code=400,
+            detail="Debe enviar al menos un documento"
+        )
+
+    if len(documentos) > LIMITE_DOCUMENTOS:
+        raise HTTPException(
+            status_code=400,
+            detail="Podés adjuntar hasta 3 documentos del proyecto"
+        )
+
     # CREAR JOB
     job = crear_job(None, usuario.get("sub") if usuario else None)
 
@@ -111,8 +125,9 @@ async def crear_formulario_job(
     )
 
     # GUARDAR FORMULARIO
-    nombre_formulario = sanitizar_nombre_archivo(
-        formulario.filename
+    nombre_formulario = nombre_disponible(
+        carpeta_job,
+        sanitizar_nombre_archivo(formulario.filename),
     )
 
     formulario_path = carpeta_job / nombre_formulario
@@ -149,13 +164,6 @@ async def crear_formulario_job(
         conn.close()
 
     # VALIDAR Y GUARDAR DOCUMENTOS
-    if not documentos:
-
-        raise HTTPException(
-            status_code=400,
-            detail="Debe enviar al menos un documento"
-        )
-
     archivos_guardados = []
 
     for documento in documentos:
@@ -181,9 +189,10 @@ async def crear_formulario_job(
                 )
             )
 
-        # Sanitizar nombre
-        nombre_documento = sanitizar_nombre_archivo(
-            documento.filename
+        # Sanitizar nombre y evitar pisar el formulario u otro documento
+        nombre_documento = nombre_disponible(
+            carpeta_job,
+            sanitizar_nombre_archivo(documento.filename),
         )
 
         # Crear ruta

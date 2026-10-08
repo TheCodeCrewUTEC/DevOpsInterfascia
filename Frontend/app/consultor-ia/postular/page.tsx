@@ -7,6 +7,7 @@ import type { CampoFormulario, Fuente } from "../formulario";
 import Pestanas from "../Pestanas";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "/backend";
+const LIMITE_DOCUMENTOS = 3;
 
 type RespuestaCampo = CampoFormulario;
 
@@ -157,7 +158,32 @@ export default function PostularPage() {
   }
 
   function handleDocumentosChange(event: ChangeEvent<HTMLInputElement>) {
-    setDocumentos(Array.from(event.target.files ?? []));
+    const elegidos = Array.from(event.target.files ?? []);
+    event.target.value = "";
+
+    const siguientes = [...documentos];
+    let superaElLimite = false;
+
+    for (const archivo of elegidos) {
+      const repetido = siguientes.some(
+        (item) => item.name === archivo.name && item.size === archivo.size,
+      );
+      if (repetido) continue;
+      if (siguientes.length >= LIMITE_DOCUMENTOS) {
+        superaElLimite = true;
+        break;
+      }
+      siguientes.push(archivo);
+    }
+
+    setDocumentos(siguientes);
+    setErrorSubida(
+      superaElLimite ? "Podés adjuntar hasta 3 documentos del proyecto." : null,
+    );
+  }
+
+  function quitarDocumento(indice: number) {
+    setDocumentos((actuales) => actuales.filter((_, posicion) => posicion !== indice));
     setErrorSubida(null);
   }
 
@@ -169,6 +195,11 @@ export default function PostularPage() {
 
     if (documentos.length === 0) {
       setErrorSubida("Adjuntá al menos un documento del proyecto.");
+      return;
+    }
+
+    if (documentos.length > LIMITE_DOCUMENTOS) {
+      setErrorSubida("Podés adjuntar hasta 3 documentos del proyecto.");
       return;
     }
 
@@ -310,20 +341,24 @@ export default function PostularPage() {
             </div>
 
             <div>
-              <p className="mb-2 text-sm text-ink">Documentación del proyecto</p>
+              <p className="mb-2 text-sm text-ink">
+                Documentación del proyecto
+                <span className="text-ink/55"> · hasta {LIMITE_DOCUMENTOS}</span>
+              </p>
               <label
                 htmlFor="archivos-proyecto"
                 className="flex min-h-56 cursor-pointer flex-col items-center justify-center rounded-3xl border border-dashed border-pine/30 bg-paper/70 px-6 py-10 text-center transition hover:border-pine hover:bg-paper"
               >
                 <CloudUploadIcon />
                 <span className="mt-4 text-sm text-ink/70">
-                  Arrastrá y soltá archivos aquí, o hacé clic para añadirlos
+                  Elegí hasta 3 documentos. Podés seleccionar varios a la vez o añadirlos de a uno.
                 </span>
                 <input
                   id="archivos-proyecto"
                   name="documentos"
                   type="file"
                   multiple
+                  accept=".pdf,.docx,.xlsx,.xls,.txt"
                   className="sr-only"
                   onChange={handleDocumentosChange}
                 />
@@ -332,11 +367,24 @@ export default function PostularPage() {
 
             {documentos.length > 0 ? (
               <div className="rounded-3xl border border-pine/10 bg-paper p-5 shadow-sm">
-                <p className="text-sm text-pine-text">Documentos seleccionados</p>
-                <ul className="mt-3 flex flex-col gap-1">
+                <p className="text-sm text-pine-text">
+                  Documentos seleccionados ({documentos.length} de {LIMITE_DOCUMENTOS})
+                </p>
+                <ul className="mt-3 flex flex-col gap-2">
                   {documentos.map((documento, index) => (
-                    <li key={`${documento.name}-${index}`} className="text-sm text-ink/80">
-                      {documento.name}
+                    <li
+                      key={`${documento.name}-${documento.size}-${index}`}
+                      className="flex items-center justify-between gap-3 rounded-2xl bg-sand px-4 py-2"
+                    >
+                      <span className="min-w-0 truncate text-sm text-ink/80">{documento.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => quitarDocumento(index)}
+                        className="shrink-0 text-sm text-ink/50 transition hover:text-clay"
+                        aria-label={`Quitar ${documento.name}`}
+                      >
+                        Quitar
+                      </button>
                     </li>
                   ))}
                 </ul>

@@ -63,3 +63,17 @@ def sanitizar_nombre_archivo(nombre: str) -> str:
         nombre_base = "archivo"
 
     return f"{nombre_base}{extension}"
+
+
+def nombre_disponible(carpeta: Path, nombre: str) -> str:
+    """Evita que dos archivos del mismo job se pisen al guardar."""
+    base = Path(nombre).stem
+    extension = Path(nombre).suffix
+    candidato = nombre
+    indice = 2
+
+    while (carpeta / candidato).exists():
+        candidato = f"{base}_{indice}{extension}"
+        indice += 1
+
+    return candidato

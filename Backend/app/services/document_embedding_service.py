@@ -1,6 +1,8 @@
 from pathlib import Path
 from typing import Any
 
+from app.services.file_service import validar_extension
+
 from docling.document_converter import DocumentConverter
 from docling.chunking import HybridChunker
 from docling_core.transforms.chunker.tokenizer.huggingface import (
@@ -140,10 +142,9 @@ def generar_chunks_documentos(
             )
             continue
 
-        # Por ahora procesamos PDFs
-        if archivo.suffix.lower() != ".pdf":
+        if not validar_extension(archivo.name):
             print(
-                f"[DOCLING] Omitiendo archivo no PDF: {archivo.name}"
+                f"[DOCLING] Omitiendo archivo no permitido: {archivo.name}"
             )
             continue
 
