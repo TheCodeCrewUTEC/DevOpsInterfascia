@@ -70,10 +70,7 @@ def verificar_acceso_job(cur, job_id: int, usuario: dict | None):
         detail=f"No existe el Job {job_id}"
     )
 
-<<<<<<< HEAD
 
-=======
->>>>>>> 8b4d60cb8952b5fd9dcf27e87c04c9e54c12fee8
 @router.post(
     "/jobs",
     response_model=FormularioJobResponse
