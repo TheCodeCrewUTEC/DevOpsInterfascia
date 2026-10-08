@@ -71,6 +71,7 @@ function mensajeEstado(estado: string | null) {
 
 async function consultarResultado(
   jobId: number,
+  consultaToken: string | null,
   signal: AbortSignal,
   alConsultar: (estado: string) => void,
 ): Promise<ResultadoJob> {
@@ -82,7 +83,13 @@ async function consultarResultado(
     let response: Response;
 
     try {
-      response = await fetch(`${API_URL}/formularios/jobs/${jobId}/resultado`, { signal });
+      const consulta = consultaToken
+        ? `?consulta=${encodeURIComponent(consultaToken)}`
+        : "";
+      response = await fetch(`${API_URL}/formularios/jobs/${jobId}/resultado${consulta}`, {
+        signal,
+        credentials: "include",
+      });
     } catch (error) {
       if (signal.aborted) throw error;
       fallosSeguidos += 1;
@@ -94,7 +101,9 @@ async function consultarResultado(
     }
 
     if (!response.ok) {
-      if (response.status < 500) {
+      // 404 y 401 también se reintentan: el worker sigue y un rechazo aislado
+      // no debe tirar abajo una carga que puede durar más que la sesión.
+      if (response.status < 500 && response.status !== 404 && response.status !== 401) {
         throw new Error(`No se pudo consultar el resultado (${response.status}).`);
       }
       fallosSeguidos += 1;
@@ -230,7 +239,11 @@ export default function PostularPage() {
         throw new Error(`No se pudo crear el job (${response.status}).`);
       }
 
-      const job = (await response.json()) as { id?: number; estado?: string };
+      const job = (await response.json()) as {
+        id?: number;
+        estado?: string;
+        consulta_token?: string;
+      };
       const idJob = job.id;
       if (typeof idJob !== "number" || !Number.isInteger(idJob)) {
         throw new Error("La API no devolvió el identificador del formulario.");
@@ -238,7 +251,12 @@ export default function PostularPage() {
       setEstadoJob(job.estado ?? "PENDING");
       setSubiendo(false);
 
-      const resultado = await consultarResultado(idJob, controlador.signal, setEstadoJob);
+      const resultado = await consultarResultado(
+        idJob,
+        job.consulta_token ?? null,
+        controlador.signal,
+        setEstadoJob,
+      );
 
       if (resultado.estado === "FAILED") {
         throw new Error("El worker no pudo completar el formulario.");

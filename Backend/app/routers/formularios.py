@@ -1,3 +1,4 @@
+import hmac
 from pathlib import Path
 
 from fastapi import (
@@ -44,16 +45,31 @@ class CambioRespuesta(BaseModel):
     respuesta: str | None = None
 
 
-def verificar_acceso_job(cur, job_id: int, usuario: dict | None):
+def token_de_consulta_valido(recibido: str | None, guardado: str | None) -> bool:
+    if not recibido or not guardado:
+        return False
+    try:
+        return hmac.compare_digest(recibido, guardado)
+    except (TypeError, ValueError):
+        return False
+
+
+def verificar_acceso_job(
+    cur,
+    job_id: int,
+    usuario: dict | None,
+    consulta_token: str | None = None,
+):
     """Devuelve (id, estado) del job si el usuario puede verlo.
 
-    Un job con dueño solo lo ven su dueño y los admin. Los jobs viejos (sin dueño)
-    siguen visibles como antes. Se responde 404 para no revelar jobs ajenos.
+    Un job con dueño solo lo ven su dueño, los admin y quien tenga el token
+    que devolvió el alta. Los jobs viejos (sin dueño) siguen visibles como antes.
+    Se responde 404 para no revelar jobs ajenos.
     """
 
     cur.execute(
         """
-        SELECT id, estado, usuario_sub
+        SELECT id, estado, usuario_sub, consulta_token
         FROM formulario_job
         WHERE id = %s
         """,
@@ -64,7 +80,12 @@ def verificar_acceso_job(cur, job_id: int, usuario: dict | None):
 
     if job:
         dueno = job[2]
-        if dueno is None or es_admin(usuario) or (usuario and usuario.get("sub") == dueno):
+        if (
+            token_de_consulta_valido(consulta_token, job[3])
+            or dueno is None
+            or es_admin(usuario)
+            or (usuario and usuario.get("sub") == dueno)
+        ):
             return job[0], job[1]
 
     raise HTTPException(
@@ -220,13 +241,15 @@ async def crear_formulario_job(
     return {
         "id": job["id"],
         "estado": job["estado"],
-        "creado": job["creado"]
+        "creado": job["creado"],
+        "consulta_token": job["consulta_token"],
     }
         
 
 @router.get("/jobs/{job_id}/resultado")
 def obtener_resultado_job(
     job_id: int,
+    consulta: str | None = None,
     usuario: dict | None = Depends(obtener_usuario_opcional),
 ):
 
@@ -236,7 +259,7 @@ def obtener_resultado_job(
 
         with conn.cursor() as cur:
 
-            job_id_db, estado = verificar_acceso_job(cur, job_id, usuario)
+            job_id_db, estado = verificar_acceso_job(cur, job_id, usuario, consulta)
 
             cur.execute(
                 """

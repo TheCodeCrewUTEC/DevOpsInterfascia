@@ -5,3 +5,4 @@ class FormularioJobResponse(BaseModel):
     id: int
     estado: str
     creado: datetime
+    consulta_token: str

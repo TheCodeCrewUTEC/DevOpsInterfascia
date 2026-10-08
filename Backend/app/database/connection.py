@@ -84,7 +84,8 @@ def ensure_schema():
             cur.execute(
                 """
                 ALTER TABLE formulario_job
-                    ADD COLUMN IF NOT EXISTS usuario_sub TEXT
+                    ADD COLUMN IF NOT EXISTS usuario_sub TEXT,
+                    ADD COLUMN IF NOT EXISTS consulta_token TEXT
                 """
             )
             # Las consulta el Consultor IA; sin ellas /api/proyectos y /api/investigadores dan 500
