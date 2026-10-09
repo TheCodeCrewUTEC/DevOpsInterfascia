@@ -159,7 +159,7 @@ services:
       SMTP_FROM: ${SMTP_FROM:-${SMTP_USER}}
 
     ports:
-      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:${KEYCLOAK_HOST_PORT:-8080}:8080"
 
     volumes:
       - ./keycloak/realm-interfascia.json:/opt/keycloak/data/import/realm-interfascia.json:ro
