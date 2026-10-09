@@ -12,7 +12,7 @@ services:
     restart: unless-stopped
 
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
 
     environment:
       AUTH_SECRET: ${AUTH_SECRET}
@@ -46,7 +46,7 @@ services:
     restart: unless-stopped
 
     ports:
-      - "8000:80"
+      - "127.0.0.1:8000:80"
 
     env_file:
       - .env
@@ -58,7 +58,7 @@ services:
       DB_PORT: "5432"
       DB_NAME: interfascia
       DB_USER: interfascia
-      DB_PASSWORD: interfascia
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?Falta POSTGRES_PASSWORD en .env}
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       REDIS_DB: "0"
@@ -98,7 +98,7 @@ services:
       DB_PORT: "5432"
       DB_NAME: interfascia
       DB_USER: interfascia
-      DB_PASSWORD: interfascia
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?Falta POSTGRES_PASSWORD en .env}
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       REDIS_DB: "0"
@@ -131,7 +131,7 @@ services:
 
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
-      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Falta KEYCLOAK_ADMIN_PASSWORD en .env}
 
       KC_HTTP_PORT: 8080
       KC_HTTP_ENABLED: "true"
@@ -159,7 +159,7 @@ services:
       SMTP_FROM: ${SMTP_FROM:-${SMTP_USER}}
 
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
 
     volumes:
       - ./keycloak/realm-interfascia.json:/opt/keycloak/data/import/realm-interfascia.json:ro
@@ -181,7 +181,7 @@ services:
     restart: unless-stopped
 
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
 
     networks:
       - interfascia-net
@@ -196,7 +196,7 @@ services:
     environment:
       POSTGRES_DB: interfascia
       POSTGRES_USER: interfascia
-      POSTGRES_PASSWORD: interfascia
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Falta POSTGRES_PASSWORD en .env}
       # Los usa db/init/01-keycloak.sh para crear la base de Keycloak
       KEYCLOAK_DB_NAME: ${KEYCLOAK_DB_NAME:-keycloak}
       KEYCLOAK_DB_USER: ${KEYCLOAK_DB_USER:-keycloak}
