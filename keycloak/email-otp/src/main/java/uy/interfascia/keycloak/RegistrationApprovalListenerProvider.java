@@ -44,7 +44,9 @@ public class RegistrationApprovalListenerProvider implements EventListenerProvid
     private static final String API_URL = System.getenv("INTERFASCIA_API_URL");
     private static final String INTERNAL_SECRET = System.getenv("INTERNAL_API_SECRET");
 
+    // HTTP/1.1: con el upgrade a h2c que intenta Java por defecto, uvicorn descarta el body (422)
     private static final HttpClient HTTP = HttpClient.newBuilder()
+            .version(HttpClient.Version.HTTP_1_1)
             .connectTimeout(Duration.ofSeconds(3))
             .build();
 
