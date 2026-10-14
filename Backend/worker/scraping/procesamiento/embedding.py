@@ -26,7 +26,7 @@ JSON_FILE = Path("Fondos.json")
 
 DB_CONFIG = {
     "host": "127.0.0.1",
-    "port": 15432,
+    "port": 5432,
     "dbname": "interfascia",
     "user": "interfascia",
     "password": "interfascia_dev_change_me"

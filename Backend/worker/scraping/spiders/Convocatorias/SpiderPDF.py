@@ -5,6 +5,16 @@ import scrapy
 class SpiderPDF(scrapy.Spider):
     name = "SpiderPDF"
 
+    custom_settings = {
+        "USER_AGENT": (
+            "InterfasciaBot/1.0 "
+            "(plataforma de innovación y vigilancia tecnológica)"
+        ),
+        "ROBOTSTXT_OBEY": True,
+        "CONCURRENT_REQUESTS_PER_DOMAIN": 1,
+        "DOWNLOAD_DELAY": 2,
+    }
+
     async def start(self):
 
         with open(
