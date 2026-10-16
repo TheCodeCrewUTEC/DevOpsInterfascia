@@ -1,0 +1,12 @@
+
+BOT_NAME = "interfascia"
+
+SPIDER_MODULES = ["spiders.Convocatorias"]
+NEWSPIDER_MODULE = "spiders.Convocatorias"
+
+ROBOTSTXT_OBEY = True
+
+CONCURRENT_REQUESTS_PER_DOMAIN = 1
+DOWNLOAD_DELAY = 1
+
+FEED_EXPORT_ENCODING = "utf-8"

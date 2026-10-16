@@ -1,8 +1,12 @@
 import json
+import os
 import time
 from pathlib import Path
 
 import psycopg2
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().parents[4] / ".env")
 from sentence_transformers import SentenceTransformer
 from transformers import AutoTokenizer
 from ftfy import fix_text
@@ -24,12 +28,13 @@ JSON_FILE = Path("Fondos.json")
 # PostgreSQL
 # -----------------------------
 
+# Desde la PC el contenedor publica 5433. 5432 es otro Postgres de Windows.
 DB_CONFIG = {
     "host": "127.0.0.1",
-    "port": 15432,
-    "dbname": "interfascia",
-    "user": "interfascia",
-    "password": "interfascia_dev_change_me"
+    "port": int(os.getenv("DB_PORT_PUBLICADO", "5433")),
+    "dbname": os.getenv("POSTGRES_DB", "interfascia"),
+    "user": os.getenv("POSTGRES_USER", "interfascia"),
+    "password": os.getenv("POSTGRES_PASSWORD", ""),
 }
 
 # -----------------------------
@@ -118,9 +123,17 @@ print(
 
 def obtener_conexion():
 
-    return psycopg2.connect(
-        **DB_CONFIG
-    )
+    try:
+        return psycopg2.connect(
+            **DB_CONFIG
+        )
+    except UnicodeDecodeError:
+        raise ConnectionError(
+            "Postgres rechazó la conexión y el mensaje vino en español "
+            f"(puerto {DB_CONFIG['port']}). "
+            "Revisá que Docker publique la base en ese puerto y que "
+            "POSTGRES_PASSWORD en .env sea la del usuario interfascia."
+        )
 
 
 # ============================================================

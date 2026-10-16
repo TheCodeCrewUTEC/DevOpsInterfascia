@@ -1,11 +1,16 @@
 import json
+import os
 import re
 import time
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
+from pathlib import Path
 
 import requests
 import psycopg2
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().parents[4] / ".env")
 from psycopg2.extras import RealDictCursor
 from sentence_transformers import SentenceTransformer
 import traceback
@@ -18,12 +23,13 @@ import traceback
 # PostgreSQL
 # ------------------------------------------------------------
 
+# Desde la PC el contenedor publica 5433. 5432 es otro Postgres de Windows.
 DB_CONFIG = {
     "host": "127.0.0.1",
-    "port": 15432,
-    "dbname": "interfascia",
-    "user": "interfascia",
-    "password": "interfascia_dev_change_me"
+    "port": int(os.getenv("DB_PORT_PUBLICADO", "5433")),
+    "dbname": os.getenv("POSTGRES_DB", "interfascia"),
+    "user": os.getenv("POSTGRES_USER", "interfascia"),
+    "password": os.getenv("POSTGRES_PASSWORD", ""),
 }
 
 
@@ -74,9 +80,16 @@ LIMIT_CONVOCATORIAS = None
 # True = no reemplazar campos que ya tengan información.
 SOLO_CAMPOS_VACIOS = True
 
-# Procesar solamente este campo.
-# Usar None para procesar todos los campos vacíos.
-SOLO_CAMPOS = ["requisitos"]
+# None procesa todos los campos vacíos.
+# Los registros ya tienen título, estado y requisitos.
+SOLO_CAMPOS = [
+    "institucion",
+    "fecha_apertura",
+    "fecha_cierre",
+    "descripcion",
+    "beneficiarios",
+    "requisitos",
+]
 
 # ============================================================
 # CAMPOS QUE QUEREMOS EXTRAER
@@ -91,8 +104,12 @@ CAMPOS = {
         ),
         "tipo": "texto",
         "keywords": [
+            "Agencia Nacional de Desarrollo",
             "ANDE",
-            "Agencia Nacional de Desarrollo"
+            "ANII",
+            "Ministerio",
+            "organismo",
+            "convocante"
         ]
     },
 
@@ -104,10 +121,11 @@ CAMPOS = {
         ),
         "tipo": "fecha",
         "keywords": [
+            "desde el",
             "apertura",
-            "inicio",
-            "desde",
-            "postular"
+            "permanecerá abierta",
+            "se podrá postular",
+            "período de postulaciones"
         ]
     },
 
@@ -119,10 +137,11 @@ CAMPOS = {
         ),
         "tipo": "fecha",
         "keywords": [
+            "hasta el",
             "cierre",
             "vencimiento",
-            "hasta",
-            "postular"
+            "fecha límite",
+            "14:00"
         ]
     },
 
@@ -133,10 +152,11 @@ CAMPOS = {
         ),
         "tipo": "texto",
         "keywords": [
-            "objetivo",
+            "objetivo del",
+            "objetivo es",
+            "busca apoyar",
             "programa",
-            "proyectos",
-            "buscamos apoyar"
+            "proyectos"
         ]
     },
 
@@ -149,8 +169,9 @@ CAMPOS = {
         "tipo": "texto",
         "keywords": [
             "beneficiarios",
-            "pueden ser",
-            "postulantes",
+            "quiénes pueden",
+            "pueden postular",
+            "pueden ser beneficiarios",
             "elegibilidad"
         ]
     },
@@ -250,9 +271,17 @@ if embedding_dim != EXPECTED_EMBEDDING_DIM:
 
 def obtener_conexion():
 
-    return psycopg2.connect(
-        **DB_CONFIG
-    )
+    try:
+        return psycopg2.connect(
+            **DB_CONFIG
+        )
+    except UnicodeDecodeError:
+        raise ConnectionError(
+            "Postgres rechazó la conexión y el mensaje vino en español "
+            f"(puerto {DB_CONFIG['port']}). "
+            "Revisá que Docker publique la base en ese puerto y que "
+            "POSTGRES_PASSWORD en .env sea la del usuario interfascia."
+        )
 
 
 # ============================================================
@@ -912,7 +941,7 @@ Para requisitos:
 
         formato = """
 {
-    "respuesta": "Descripción de los beneficiarios"
+    "respuesta": "Quiénes pueden postular y en qué condiciones."
 }
 """
 
@@ -923,17 +952,76 @@ Para beneficiarios:
 - Describe quiénes pueden postular.
 - Incluye las condiciones de elegibilidad relevantes.
 - No repitas información.
+- Si no aparece quién puede postular, devuelve null.
+"""
+
+    elif campo == "institucion":
+
+        formato = """
+{
+    "respuesta": "Nombre de la institución"
+}
+"""
+
+        instrucciones_extra = """
+Para institucion:
+
+- Devuelve solamente el nombre de la institución que publica,
+  administra o financia la convocatoria.
+- No agregues una explicación.
+- Si el documento es de la Agencia Nacional de Desarrollo,
+  responde "Agencia Nacional de Desarrollo (ANDE)".
+- Si no se identifica la institución, devuelve null.
+"""
+
+    elif campo in ("fecha_apertura", "fecha_cierre"):
+
+        formato = """
+{
+    "respuesta": "YYYY-MM-DD"
+}
+"""
+
+        instrucciones_extra = """
+Para fechas:
+
+- Devuelve solamente la fecha en formato YYYY-MM-DD.
+- fecha_apertura es el primer día en que se puede postular.
+- fecha_cierre es el último día o la fecha límite de postulación.
+- No uses la fecha de ejecución, de firma del contrato ni de un informe.
+- Si el mes está escrito en español, conviértelo a número.
+- "setiembre" y "septiembre" son el mes 09.
+- Si la fecha no aparece, devuelve null.
+"""
+
+    elif campo == "descripcion":
+
+        formato = """
+{
+    "respuesta": "Objetivo de la convocatoria y tipo de proyectos que apoya."
+}
+"""
+
+        instrucciones_extra = """
+Para descripcion:
+
+- Devuelve un único párrafo breve.
+- Incluye el objetivo de la convocatoria y qué proyectos busca apoyar.
+- No incluyas requisitos, montos ni el calendario de postulación.
+- Si el objetivo no aparece, devuelve null.
 """
 
     else:
 
         formato = """
 {
-    "respuesta": null
+    "respuesta": "Valor encontrado en los fragmentos"
 }
 """
 
-        instrucciones_extra = ""
+        instrucciones_extra = """
+- Si la información no aparece en los fragmentos, devuelve null.
+"""
 
 
     return f"""
@@ -1136,6 +1224,147 @@ def normalizar_fecha(valor):
     except ValueError:
         pass
 
+
+    meses = {
+        "enero": 1,
+        "febrero": 2,
+        "marzo": 3,
+        "abril": 4,
+        "mayo": 5,
+        "junio": 6,
+        "julio": 7,
+        "agosto": 8,
+        "setiembre": 9,
+        "septiembre": 9,
+        "octubre": 10,
+        "noviembre": 11,
+        "diciembre": 12,
+    }
+
+    match = re.search(
+        r"(\d{1,2})\s+de\s+"
+        r"(enero|febrero|marzo|abril|mayo|junio|julio|agosto|"
+        r"setiembre|septiembre|octubre|noviembre|diciembre)"
+        r"\s+de\s+(\d{4})",
+        valor,
+        re.IGNORECASE,
+    )
+
+    if match:
+
+        try:
+
+            return datetime(
+                int(match.group(3)),
+                meses[match.group(2).lower()],
+                int(match.group(1)),
+            ).date()
+
+        except ValueError:
+            return None
+
+
+    return None
+
+
+# ============================================================
+# DATOS ESCRITOS EN EL DOCUMENTO
+# ============================================================
+
+_FECHA_ES = (
+    r"(\d{1,2})\s+de\s+"
+    r"(enero|febrero|marzo|abril|mayo|junio|julio|agosto|"
+    r"setiembre|septiembre|octubre|noviembre|diciembre)"
+    r"\s+de\s+(\d{4})"
+)
+
+_PERIODO = re.compile(
+    rf"desde el\s+{_FECHA_ES}"
+    rf"(?:[\s\S]{{0,120}}?(?:hasta el|al)\s+{_FECHA_ES})?",
+    re.IGNORECASE,
+)
+
+
+def _fecha_escrita(dia, mes, anio):
+
+    try:
+
+        return normalizar_fecha(
+            f"{int(dia)} de {mes} de {int(anio)}"
+        )
+
+    except (TypeError, ValueError):
+
+        return None
+
+
+def periodo_en_bd(cur, convocatoria_id):
+
+    cur.execute(
+        """
+        SELECT ch.contenido
+        FROM chunk ch
+        INNER JOIN documento d
+            ON d.id = ch.documento_id
+        WHERE d.convocatoria_id = %s
+          AND ch.contenido ~* 'desde el[[:space:]]+[0-9]{1,2}[[:space:]]+de[[:space:]]+[a-z]+[[:space:]]+de[[:space:]]+[0-9]{4}'
+        ORDER BY ch.id
+        LIMIT 12
+        """,
+        (convocatoria_id,),
+    )
+
+    parcial = None
+
+    for (contenido,) in cur.fetchall():
+
+        for match in _PERIODO.finditer(contenido or ""):
+
+            apertura = _fecha_escrita(
+                match.group(1),
+                match.group(2),
+                match.group(3),
+            )
+
+            cierre = None
+
+            if match.group(4):
+
+                cierre = _fecha_escrita(
+                    match.group(4),
+                    match.group(5),
+                    match.group(6),
+                )
+
+            if apertura and cierre:
+                return apertura, cierre
+
+            if apertura and parcial is None:
+                parcial = (apertura, cierre)
+
+    return parcial or (None, None)
+
+
+def institucion_en_bd(cur, convocatoria_id):
+
+    cur.execute(
+        """
+        SELECT 1
+        FROM chunk ch
+        INNER JOIN documento d
+            ON d.id = ch.documento_id
+        WHERE d.convocatoria_id = %s
+          AND ch.contenido ILIKE %s
+        LIMIT 1
+        """,
+        (
+            convocatoria_id,
+            "%Agencia Nacional de Desarrollo%",
+        ),
+    )
+
+    if cur.fetchone():
+        return "Agencia Nacional de Desarrollo (ANDE)"
 
     return None
 
@@ -1387,7 +1616,12 @@ def obtener_convocatorias(
             requisitos,
             financiamiento
         FROM convocatoria
-        WHERE requisitos IS NULL
+        WHERE institucion IS NULL
+           OR fecha_apertura IS NULL
+           OR fecha_cierre IS NULL
+           OR descripcion IS NULL
+           OR beneficiarios IS NULL
+           OR requisitos IS NULL
         ORDER BY id
     """
 
@@ -1462,6 +1696,44 @@ def procesar_convocatoria(
     }
 
 
+    apertura_doc = None
+    cierre_doc = None
+    institucion_doc = None
+
+    if (
+        valores_actuales["fecha_apertura"] is None
+        or valores_actuales["fecha_cierre"] is None
+    ):
+
+        apertura_doc, cierre_doc = periodo_en_bd(
+            cur,
+            convocatoria_id,
+        )
+
+    institucion_actual = str(
+        valores_actuales["institucion"] or ""
+    ).strip()
+
+    if (
+        not institucion_actual
+        or institucion_actual.upper() == "ANDE"
+    ):
+
+        institucion_doc = institucion_en_bd(
+            cur,
+            convocatoria_id,
+        )
+
+        if (
+            institucion_doc is None
+            and institucion_actual.upper() == "ANDE"
+        ):
+
+            institucion_doc = (
+                "Agencia Nacional de Desarrollo (ANDE)"
+            )
+
+
     # ========================================================
     # CAMPOS
     # ========================================================
@@ -1493,9 +1765,15 @@ def procesar_convocatoria(
         ]
 
 
+        institucion_corta = (
+            campo == "institucion"
+            and str(valor_actual or "").strip().upper() == "ANDE"
+        )
+
         if (
             SOLO_CAMPOS_VACIOS
             and valor_actual is not None
+            and not institucion_corta
         ):
 
             print(
@@ -1506,6 +1784,39 @@ def procesar_convocatoria(
             print(
                 "      → Se omite."
             )
+
+            continue
+
+
+        valor_directo = None
+
+        if campo == "institucion":
+            valor_directo = institucion_doc
+        elif campo == "fecha_apertura":
+            valor_directo = apertura_doc
+        elif campo == "fecha_cierre":
+            valor_directo = cierre_doc
+
+        if valor_directo is not None:
+
+            print(
+                "      → Encontrado en el documento: "
+                f"{valor_directo}"
+            )
+
+            if actualizar_convocatoria(
+                cur,
+                convocatoria_id,
+                campo,
+                valor_directo,
+            ):
+
+                print(
+                    f"      ✓ Guardado: "
+                    f"{campo} = {valor_directo}"
+                )
+
+                total_actualizados += 1
 
             continue
 

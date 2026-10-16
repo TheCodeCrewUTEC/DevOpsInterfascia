@@ -9,6 +9,7 @@ type Convocatoria = {
   id: number;
   titulo: string | null;
   estado: string | null;
+  fecha_apertura: string | null;
   fecha_cierre: string | null;
   descripcion: string | null;
 };
@@ -50,6 +51,12 @@ function texto(valor: string | null | undefined, vacio = "—") {
   return limpio ? limpio : vacio;
 }
 
+function detalleFecha(item: { fecha_apertura: string | null; fecha_cierre: string | null }) {
+  if (item.fecha_cierre) return `Cierre: ${formatFecha(item.fecha_cierre)}`;
+  if (item.fecha_apertura) return `Apertura: ${formatFecha(item.fecha_apertura)}`;
+  return "Sin fecha";
+}
+
 function formatFecha(valor: string | null) {
   if (!valor) return "Sin fecha";
   const [anio, mes, dia] = valor.slice(0, 10).split("-");
@@ -57,15 +64,31 @@ function formatFecha(valor: string | null) {
   return `${dia}/${mes}/${anio}`;
 }
 
-function nombreCompleto(persona: Investigador) {
-  return texto([persona.nombre, persona.apellido].filter(Boolean).join(" "), "Sin nombre");
+function campo(valor: string | null | undefined, vacio: string) {
+  const limpio = valor?.trim();
+  if (!limpio) return vacio;
+  return limpio.length <= 50 ? limpio : `${limpio.slice(0, 49)}…`;
 }
 
-function sni(persona: Investigador) {
-  const partes = [persona.nivel_sni, persona.categoria_sni]
-    .map((parte) => parte?.trim())
-    .filter(Boolean);
-  return partes.length > 0 ? partes.join(" · ") : "—";
+function primerTermino(valor: string | null | undefined) {
+  return valor?.trim().split(/\s+/)[0] ?? "";
+}
+
+function nombreCorto(persona: Investigador) {
+  return campo(
+    [primerTermino(persona.nombre), primerTermino(persona.apellido)].filter(Boolean).join(" "),
+    "Sin nombre",
+  );
+}
+
+function enunciado(valor: string | null | undefined) {
+  const primera = valor
+    ?.split(/\r?\n/)
+    .map((linea) => linea.trim())
+    .find(Boolean);
+  if (!primera) return null;
+  const fin = primera.search(/[.!?](?:\s|$)/);
+  return fin >= 0 ? primera.slice(0, fin + 1) : primera;
 }
 
 async function leerJson<T>(response: Response, recurso: string): Promise<T> {
@@ -115,7 +138,7 @@ export default function RelacionarPage() {
             titulo: texto(item.titulo, "Sin título"),
             descripcion: texto(item.descripcion, "Sin descripción"),
             estado: texto(item.estado, "Sin estado"),
-            detalle: `Cierre: ${formatFecha(item.fecha_cierre)}`,
+            detalle: detalleFecha(item),
           })),
           ...proyectos.map((item) => ({
             key: `proyecto-${item.id}`,
@@ -255,13 +278,18 @@ export default function RelacionarPage() {
                   key={persona.id}
                   className="rounded-2xl bg-white/10 p-4 ring-1 ring-white/15 transition duration-300 hover:bg-white/20"
                 >
-                  <p className="font-display text-xl">{nombreCompleto(persona)}</p>
-                  <p className="mt-2 text-sm text-paper/80">{texto(persona.institucion, "Sin institución")}</p>
-                  <p className="mt-1 text-sm text-paper/70">{texto(persona.titulo, "Sin título")}</p>
-                  <p className="mt-3 text-sm leading-relaxed text-paper/75">
-                    {texto(persona.investigaciones, "Sin investigaciones cargadas")}
+                  <p className="font-display text-xl">{nombreCorto(persona)}</p>
+                  <p className="mt-2 text-sm text-paper/80">{campo(persona.institucion, "Sin institución")}</p>
+                  <p className="mt-1 text-sm text-paper/70">{campo(persona.titulo, "Sin título")}</p>
+                  <p className="mt-3 text-xs tracking-wide text-gold uppercase">
+                    Nivel · {campo(persona.nivel_sni, "—")}
                   </p>
-                  <p className="mt-3 text-xs tracking-wide text-gold uppercase">SNI · {sni(persona)}</p>
+                  <p className="mt-1 text-xs tracking-wide text-gold uppercase">
+                    Categoría · {campo(persona.categoria_sni, "—")}
+                  </p>
+                  <p className="mt-3 text-sm leading-relaxed text-paper/75">
+                    {campo(enunciado(persona.investigaciones), "Sin investigaciones cargadas")}
+                  </p>
                 </li>
               ))}
             </ul>

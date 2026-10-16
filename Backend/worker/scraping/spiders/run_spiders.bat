@@ -1,61 +1,60 @@
 @echo off
-
-REM Ir a la carpeta donde está este archivo .bat
-cd /d "%~dp0"
+setlocal
 
 echo ==========================================
-echo INICIO SCRAPING - %date% %time%
+echo INICIO SCRAPING - INTERFASCIA
 echo ==========================================
+
+REM Ruta al Python del entorno virtual del repositorio
+set "PYTHON=C:\Users\fbale\AppData\Local\Programs\Python\Python314\python.exe"
+
+REM Verificar que exista el entorno virtual
+if not exist "%PYTHON%" (
+    echo ERROR: No se encuentra Python en:
+    echo %PYTHON%
+    goto error
+)
+
+REM Los spiders leen y escriben archivos JSON relativos a esta carpeta
+cd /d "%~dp0Convocatorias" || goto error
 
 echo.
 echo [1/5] Ejecutando FondoInversor...
-scrapy crawl FondoInversor -o FondosInversores.json
-
-IF ERRORLEVEL 1 (
-    echo ERROR en FondoInversor
-    exit /b 1
-)
+"%PYTHON%" -m scrapy runspider fondosspyder.py -O FondosInversores.json
+if errorlevel 1 goto error
 
 echo.
 echo [2/5] Ejecutando SpiderPDF...
-scrapy crawl SpiderPDF -o FondosConDocumentos.json
-
-IF ERRORLEVEL 1 (
-    echo ERROR en SpiderPDF
-    exit /b 1
-)
+"%PYTHON%" -m scrapy runspider SpiderPDF.py -O FondosConDocumentos.json
+if errorlevel 1 goto error
 
 echo.
 echo [3/5] Ejecutando SpiderDocumentos...
-scrapy crawl SpiderDocumentos -o Fondos.json
-
-IF ERRORLEVEL 1 (
-    echo ERROR en SpiderDocumentos
-    exit /b 1
-)
+"%PYTHON%" -m scrapy runspider SpiderDocumentos.py -O Fondos.json
+if errorlevel 1 goto error
 
 echo.
 echo [4/5] Ejecutando embedding.py...
-python spiders/embedding.py
-
-IF ERRORLEVEL 1 (
-    echo ERROR en embedding.py
-    exit /b 1
-)
+"%PYTHON%" -u "%~dp0..\procesamiento\embedding.py"
+if errorlevel 1 goto error
 
 echo.
 echo [5/5] Ejecutando extraer_convocatorias.py...
-python spiders/extraer_convocatorias.py
-
-IF ERRORLEVEL 1 (
-    echo ERROR en extraer_convocatorias.py
-    exit /b 1
-)
+"%PYTHON%" -u "%~dp0..\procesamiento\extraer_convocatorias.py"
+if errorlevel 1 goto error
 
 echo.
 echo ==========================================
 echo SCRAPING FINALIZADO CORRECTAMENTE
-echo %date% %time%
 echo ==========================================
-
+pause
 exit /b 0
+
+:error
+echo.
+echo ==========================================
+echo ERROR: EL PROCESO SE DETUVO
+echo Revisa los mensajes anteriores.
+echo ==========================================
+pause
+exit /b 1

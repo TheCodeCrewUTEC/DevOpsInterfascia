@@ -7,6 +7,16 @@ from docling.document_converter import DocumentConverter
 class SpiderDocumentos(scrapy.Spider):
     name = "SpiderDocumentos"
 
+    custom_settings = {
+        "USER_AGENT": (
+            "InterfasciaBot/1.0 "
+            "(plataforma de innovación y vigilancia tecnológica)"
+        ),
+        "ROBOTSTXT_OBEY": True,
+        "CONCURRENT_REQUESTS_PER_DOMAIN": 1,
+        "DOWNLOAD_DELAY": 2,
+    }
+
     def __init__(self):
         self.converter = DocumentConverter()
 
@@ -26,6 +36,7 @@ class SpiderDocumentos(scrapy.Spider):
                 yield scrapy.Request(
                     documento,
                     callback=self.parse_documento,
+                    headers={"Referer": fondo["link"]},
                     meta={
                         "nombre": fondo["nombre"],
                         "estado": fondo["estado"],

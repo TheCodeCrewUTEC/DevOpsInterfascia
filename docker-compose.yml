@@ -1,64 +1,55 @@
 name: interfascia
 
 services:
-
   frontend:
     build:
       context: ./Frontend
       dockerfile: Dockerfile
-
     container_name: interfascia-frontend
-
     restart: unless-stopped
-
     ports:
       - "3000:3000"
-
     environment:
       AUTH_SECRET: ${AUTH_SECRET}
-      AUTH_URL: https://interfasciauy.com
+      AUTH_URL: "http://localhost:3000"
       AUTH_TRUST_HOST: "true"
 
       AUTH_KEYCLOAK_ID: interfascia-frontend
       AUTH_KEYCLOAK_SECRET: ${KEYCLOAK_FRONTEND_CLIENT_SECRET}
-      AUTH_KEYCLOAK_ISSUER: https://auth.interfasciauy.com/realms/interfascia
-      KEYCLOAK_INTERNAL_ISSUER: http://keycloak:8080/realms/interfascia
+      AUTH_KEYCLOAK_ISSUER: "http://localhost:8080/realms/interfascia"
+      KEYCLOAK_INTERNAL_ISSUER: "http://keycloak:8080/realms/interfascia"
 
-      API_URL: http://backend:80
-
+      API_URL: "http://backend:80"
     depends_on:
       - backend
       - keycloak
-
     networks:
       - interfascia-net
-
 
   backend:
     build:
       context: ./Backend
       dockerfile: Dockerfile
-
     image: interfascia-backend
-
     container_name: interfascia-backend
-
     restart: unless-stopped
-
     ports:
       - "8000:80"
-
     env_file:
       - .env
-
     environment:
-      KEYCLOAK_ISSUER: https://auth.interfasciauy.com/realms/interfascia
-      KEYCLOAK_INTERNAL_ISSUER: http://keycloak:8080/realms/interfascia
+      API_URL: "http://backend:80"
+
+      KEYCLOAK_ISSUER: "http://localhost:8080/realms/interfascia"
+      KEYCLOAK_INTERNAL_ISSUER: "http://keycloak:8080/realms/interfascia"
+
+      DATABASE_URL: "postgresql://interfascia:${POSTGRES_PASSWORD}@db:5432/interfascia"
       DB_HOST: db
       DB_PORT: "5432"
       DB_NAME: interfascia
       DB_USER: interfascia
-      DB_PASSWORD: interfascia
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       REDIS_DB: "0"
@@ -70,88 +61,72 @@ services:
         condition: service_started
       redis:
         condition: service_started
-
     volumes:
       - formularios_storage:/app/storage
-
     networks:
       - interfascia-net
 
-
   worker:
     image: interfascia-backend
-
     container_name: interfascia-worker
-
     restart: unless-stopped
-
     command: ["python", "-m", "arq", "worker.worker.WorkerSettings"]
-
-    # Docling usa todos los núcleos y deja sin CPU al túnel de Cloudflare (se corta y da 502)
     cpus: 3
-
     env_file:
       - .env
-
     environment:
+      DATABASE_URL: "postgresql://interfascia:${POSTGRES_PASSWORD}@db:5432/interfascia"
       DB_HOST: db
       DB_PORT: "5432"
       DB_NAME: interfascia
       DB_USER: interfascia
-      DB_PASSWORD: interfascia
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       REDIS_DB: "0"
-      # Sin esto los print del worker salen todos juntos al final y no se ve el avance
       PYTHONUNBUFFERED: "1"
-
+      HF_HUB_DISABLE_XET: "1"
+      HF_HUB_DOWNLOAD_TIMEOUT: "300"
+      HF_HUB_ETAG_TIMEOUT: "60"
+      HF_HOME: /hf-cache
     depends_on:
       redis:
         condition: service_started
       db:
         condition: service_healthy
-
     volumes:
       - formularios_storage:/app/storage
-
+      - huggingface_cache:/hf-cache
     networks:
       - interfascia-net
 
-
   keycloak:
-    # Imagen propia: Keycloak + autenticador email-otp (ver keycloak/Dockerfile)
     build: ./keycloak
     image: interfascia-keycloak:26.4.7
-
     container_name: interfascia-keycloak
-
     restart: unless-stopped
-
     command: start-dev --import-realm
-
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
 
-      KC_HTTP_PORT: 8080
       KC_HTTP_ENABLED: "true"
-      KC_HOSTNAME: https://auth.interfasciauy.com
-      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
-      KC_PROXY_HEADERS: xforwarded
+      KC_HTTP_PORT: "8080"
+      KC_HOSTNAME: "http://localhost:8080"
 
       KEYCLOAK_FRONTEND_CLIENT_SECRET: ${KEYCLOAK_FRONTEND_CLIENT_SECRET}
-      # Cuenta de servicio con la que la API lee usuarios y aprueba registros
       KEYCLOAK_BACKEND_CLIENT_SECRET: ${KEYCLOAK_BACKEND_CLIENT_SECRET}
-      INTERFASCIA_APP_URL: https://interfasciauy.com
-      # El listener registration-approval avisa cada registro a la API (POST /internal/usuarios)
-      INTERFASCIA_API_URL: http://backend:80
+
+      INTERFASCIA_APP_URL: "http://localhost:3000"
+      INTERFASCIA_API_URL: "http://backend:80"
       INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
 
       KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://db:5432/${KEYCLOAK_DB_NAME:-keycloak}
+      KC_DB_URL: "jdbc:postgresql://db:5432/${KEYCLOAK_DB_NAME:-keycloak}"
       KC_DB_USERNAME: ${KEYCLOAK_DB_USER:-keycloak}
       KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
-      # SMTP para el código del segundo factor (Gmail: contraseña de aplicación, no la de la cuenta)
+
       SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USER: ${SMTP_USER}
@@ -160,18 +135,13 @@ services:
 
     ports:
       - "8080:8080"
-
     volumes:
       - ./keycloak/realm-interfascia.json:/opt/keycloak/data/import/realm-interfascia.json:ro
       - ./keycloak/themes/interfascia:/opt/keycloak/themes/interfascia:ro
-      # Certificados extra en los que confía Keycloak (.pem). Ej.: la raíz de un antivirus que
-      # intercepta TLS (Avast Mail Shield) y rompe el envío de correos. No se versiona: es de cada PC.
       - ./keycloak/truststore:/opt/keycloak/conf/truststores:ro
-
     depends_on:
       db:
         condition: service_healthy
-
     networks:
       - interfascia-net
 
@@ -179,48 +149,42 @@ services:
     image: redis:7.2-alpine
     container_name: interfascia-redis
     restart: unless-stopped
-
     ports:
       - "6379:6379"
-
     networks:
       - interfascia-net
 
   db:
     image: pgvector/pgvector:pg16
-
+    ports:
+      - "5433:5432"
     container_name: interfascia-db
-
     restart: unless-stopped
-
     environment:
       POSTGRES_DB: interfascia
       POSTGRES_USER: interfascia
-      POSTGRES_PASSWORD: interfascia
-      # Los usa db/init/01-keycloak.sh para crear la base de Keycloak
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
       KEYCLOAK_DB_NAME: ${KEYCLOAK_DB_NAME:-keycloak}
       KEYCLOAK_DB_USER: ${KEYCLOAK_DB_USER:-keycloak}
       KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
-
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./db/init:/docker-entrypoint-initdb.d:ro
-
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U interfascia -d interfascia"]
       interval: 5s
       timeout: 5s
       retries: 10
       start_period: 10s
-
     networks:
       - interfascia-net
 
 volumes:
   postgres_data:
   formularios_storage:
+  huggingface_cache:
 
-# Misma red (nombre y clave) que el compose de infraestructura, para que ambos compartan la base
 networks:
   interfascia-net:
     name: interfascia-net

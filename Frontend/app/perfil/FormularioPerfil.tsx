@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import AddableSelect from "@/app/components/AddableSelect";
 import { DEPARTAMENTOS, INSTITUCIONES } from "@/lib/opciones-perfil";
 import { guardarPerfil } from "./actions";
@@ -19,10 +20,18 @@ export type Perfil = {
 };
 
 export default function FormularioPerfil({ perfil }: { perfil: Perfil }) {
+  const router = useRouter();
   const [estado, accion, guardando] = useActionState(guardarPerfil, null);
+
+  useEffect(() => {
+    if (estado?.ok) {
+      router.refresh();
+    }
+  }, [estado, router]);
 
   return (
     <form
+      key={JSON.stringify(perfil)}
       action={accion}
       className="flex flex-col gap-5 rounded-3xl border border-pine/10 bg-paper p-6 shadow-sm"
     >

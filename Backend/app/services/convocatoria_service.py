@@ -20,6 +20,17 @@ def obtener_convocatorias(
     where = ""
     parametros = []
 
+    # Temporal: el repositorio y Relacionar muestran solo convocatorias
+    # que ya tienen descripción y al menos una fecha. Quitar este bloque
+    # para volver a listar todas.
+    where += """
+        AND btrim(COALESCE(descripcion, '')) <> ''
+        AND (
+            fecha_apertura IS NOT NULL
+            OR fecha_cierre IS NOT NULL
+        )
+    """
+
     if estado is not None:
         where += " AND LOWER(estado) LIKE LOWER(%s)"
         parametros.append(f"%{estado}%")
