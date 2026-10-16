@@ -67,6 +67,9 @@ function sincronizar(campo) {
   if (etiqueta && selects[0]) {
     etiqueta.htmlFor = selects[0].id;
   }
+
+  // Los combos con autocompletado (combobox.js) muestran el valor nuevo de cada select
+  window.ifxComboRefrescar?.(campo);
 }
 
 function prepararSelectNuevo(select, indice) {

@@ -21,7 +21,7 @@ const REGLAS = [
   },
 ];
 
-export default function FormularioContrasena() {
+export default function FormularioContrasena({ usuario }: { usuario: string }) {
   const [estado, accion, guardando] = useActionState(cambiarContrasena, null);
   const [nueva, setNueva] = useState("");
   const [confirmacion, setConfirmacion] = useState("");
@@ -33,8 +33,13 @@ export default function FormularioContrasena() {
   return (
     <form
       action={accion}
-      className="flex flex-col gap-5 rounded-3xl border border-pine/10 bg-paper p-6 shadow-sm"
+      // Al enviar los campos vuelven a ser password, así el navegador ofrece actualizar la guardada
+      onSubmit={() => setVisible(false)}
+      className="flex flex-col gap-5 rounded-3xl border-2 border-ink/25 bg-paper p-6 shadow-sm"
     >
+      {/* Le dice al navegador de qué cuenta es la contraseña nueva */}
+      <input type="text" name="username" autoComplete="username" value={usuario} readOnly hidden />
+
       <Campo id="actual" label="Contraseña actual" requerido>
         <input id="actual" name="actual" type={tipo} required autoComplete="current-password" className={ESTILO_INPUT} />
       </Campo>

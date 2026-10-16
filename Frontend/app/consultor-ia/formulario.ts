@@ -11,6 +11,8 @@ export type CampoFormulario = {
   respuesta: string | null;
   respuesta_ia: string | null;
   editada: boolean;
+  // Valor que la persona confirmó en un formulario anterior (human in the loop)
+  dato_guardado: string | null;
   tipo: string | null;
   pagina: number | null;
   fuentes: Fuente[];

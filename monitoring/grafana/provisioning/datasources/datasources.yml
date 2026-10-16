@@ -1,0 +1,25 @@
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+
+  # Datos de negocio (formularios procesados, datos confirmados) directo de la base
+  - name: Interfascia DB
+    uid: interfascia-db
+    type: grafana-postgresql-datasource
+    access: proxy
+    url: db:5432
+    user: interfascia
+    editable: false
+    jsonData:
+      database: interfascia
+      sslmode: disable
+      postgresVersion: 1600
+    secureJsonData:
+      password: ${POSTGRES_PASSWORD}

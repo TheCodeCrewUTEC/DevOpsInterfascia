@@ -16,6 +16,11 @@ from app.auth import (
     obtener_usuario_opcional,
 )
 from app.services.respuesta_service_db import actualizar_respuestas
+from app.services.dato_validado_service import (
+    clave_campo,
+    confirmar_job,
+    datos_del_usuario,
+)
 
 from app.schemas.formulario_job import FormularioJobResponse
 
@@ -281,12 +286,30 @@ def obtener_resultado_job(
 
             filas = cur.fetchall()
 
+            cur.execute(
+                "SELECT validado_en FROM formulario_job WHERE id = %s",
+                (job_id,)
+            )
+            validado_en = cur.fetchone()[0]
+
+            # Lo que el usuario confirmó en formularios anteriores se ofrece
+            # como sugerencia; nunca reemplaza solo la respuesta de la IA.
+            guardados = (
+                datos_del_usuario(cur, usuario["sub"])
+                if usuario and usuario.get("sub")
+                else {}
+            )
+
             respuestas = []
 
             for (
                 respuesta_id, campo, respuesta, fuentes,
                 tipo, pagina, respuesta_ia, editada,
             ) in filas:
+
+                dato_guardado = guardados.get(clave_campo(campo))
+                if dato_guardado == (respuesta or "").strip():
+                    dato_guardado = None
 
                 respuestas.append({
                     "id": respuesta_id,
@@ -297,12 +320,14 @@ def obtener_resultado_job(
                     "pagina": pagina,
                     "respuesta_ia": respuesta_ia,
                     "editada": editada,
+                    "dato_guardado": dato_guardado,
                 })
 
             return {
                 "job_id": job_id_db,
                 "estado": estado,
                 "total_respuestas": len(respuestas),
+                "validado": validado_en is not None,
                 "respuestas": respuestas
             }
 
@@ -332,3 +357,33 @@ def guardar_correcciones(
     )
 
     return {"actualizados": actualizados}
+
+
+@router.post("/jobs/{job_id}/confirmar")
+def confirmar_formulario(
+    job_id: int,
+    usuario: dict = Depends(obtener_usuario_actual),
+):
+    """La persona revisó el formulario y confirma sus datos (human in the loop).
+
+    Las respuestas no vacías quedan guardadas como datos validados del proyecto
+    y se sugieren al completar el próximo formulario.
+    """
+
+    conn = get_connection()
+
+    try:
+        with conn.cursor() as cur:
+            _, estado = verificar_acceso_job(cur, job_id, usuario)
+    finally:
+        conn.close()
+
+    if estado != "COMPLETED":
+        raise HTTPException(
+            status_code=409,
+            detail="El formulario todavía no está completo"
+        )
+
+    guardados = confirmar_job(job_id, usuario["sub"])
+
+    return {"guardados": guardados}

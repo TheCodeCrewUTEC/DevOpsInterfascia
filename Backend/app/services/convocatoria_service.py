@@ -1,4 +1,5 @@
 from app.database.connection import get_connection
+from app.services import cache_service
 from app.services.documento_service import obtener_documento_por_convocatoria
 from datetime import date
 
@@ -10,8 +11,35 @@ def obtener_convocatorias(
     fecha_apertura_hasta: date | None = None,
     fecha_cierre_desde: date | None = None,
     fecha_cierre_hasta: date | None = None,
+    fecha_desde: date | None = None,
+    fecha_hasta: date | None = None,
     page: int = 1,
     limit: int = 20
+):
+
+    # El listado se repite mucho (repositorio, Relacionar): se guarda unos minutos en Redis
+    clave_cache = cache_service.clave("convocatorias", locals())
+    guardado = cache_service.leer(clave_cache)
+    if guardado is not None:
+        return guardado
+
+    resultado = _consultar_convocatorias(
+        estado, institucion, buscar,
+        fecha_apertura_desde, fecha_apertura_hasta,
+        fecha_cierre_desde, fecha_cierre_hasta,
+        fecha_desde, fecha_hasta,
+        page, limit,
+    )
+    cache_service.guardar(clave_cache, resultado)
+    return resultado
+
+
+def _consultar_convocatorias(
+    estado, institucion, buscar,
+    fecha_apertura_desde, fecha_apertura_hasta,
+    fecha_cierre_desde, fecha_cierre_hasta,
+    fecha_desde, fecha_hasta,
+    page, limit,
 ):
 
     conn = get_connection()
@@ -66,6 +94,16 @@ def obtener_convocatorias(
     if fecha_cierre_hasta is not None:
         where += " AND fecha_cierre <= %s"
         parametros.append(fecha_cierre_hasta)
+
+    # Rango del repositorio: la convocatoria está abierta algún día entre desde y hasta.
+    # Si le falta una de las fechas se usa la otra.
+    if fecha_desde is not None:
+        where += " AND COALESCE(fecha_cierre, fecha_apertura) >= %s"
+        parametros.append(fecha_desde)
+
+    if fecha_hasta is not None:
+        where += " AND COALESCE(fecha_apertura, fecha_cierre) <= %s"
+        parametros.append(fecha_hasta)
 
     cursor.execute(
         f"""

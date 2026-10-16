@@ -62,8 +62,10 @@ async function proxy(
 ) {
   const { path } = await context.params;
 
-  // /internal/... solo lo usa Keycloak por la red de Docker; no se expone a Internet
-  if (path.find(Boolean)?.toLowerCase() === "internal") {
+  // /internal/... solo lo usa Keycloak y /metrics solo Prometheus, por la red de Docker;
+  // no se exponen a Internet
+  const primero = path.find(Boolean)?.toLowerCase();
+  if (primero === "internal" || primero === "metrics") {
     return NextResponse.json({ detail: "No encontrado." }, { status: 404 });
   }
 

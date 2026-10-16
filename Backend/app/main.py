@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.database.connection import ensure_schema
 
@@ -50,6 +51,10 @@ app.include_router(investigadores.router)
 app.include_router(proyectos.router)
 app.include_router(usuarios.router)
 app.include_router(perfil.router)
+
+# Métricas para Prometheus/Grafana (requests, latencia, errores por ruta).
+# /metrics no se publica: el proxy de Next lo bloquea y Prometheus entra por la red de Docker.
+Instrumentator(excluded_handlers=["/metrics"]).instrument(app).expose(app, include_in_schema=False)
 
 def custom_openapi():
     if app.openapi_schema:

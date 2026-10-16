@@ -1,6 +1,8 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import Combobox from "../components/Combobox";
+import DateRangePicker, { type RangoFechas } from "../components/DateRangePicker";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "/backend";
 
@@ -81,13 +83,8 @@ type Tarjeta = {
   estado: string;
   detalle: string;
   texto: string;
+  anio: string | null;
 };
-
-const chevron =
-  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%23102a3c' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 7.5 10 12.5 15 7.5'/%3E%3C/svg%3E\")";
-
-const campoSelect =
-  "h-11 w-full appearance-none rounded-xl border border-pine/20 bg-foam/70 bg-[length:16px] bg-[position:right_1rem_center] bg-no-repeat px-4 pr-12 text-sm text-ink outline-none transition focus:border-pine focus:bg-paper";
 
 function texto(valor: string | null | undefined, vacio = "—") {
   const limpio = valor?.trim();
@@ -110,6 +107,14 @@ function formatFecha(valor: string | null) {
 function incluye(contenido: string, filtro: string) {
   if (!filtro) return true;
   return contenido.toLowerCase().includes(filtro.toLowerCase());
+}
+
+// Los proyectos solo tienen año: con un rango elegido se muestran los de esos años
+function anioEnRango(anio: string | null, fechas: RangoFechas) {
+  if (!fechas.desde || !fechas.hasta) return true;
+  const numero = Number.parseInt(anio ?? "", 10);
+  if (Number.isNaN(numero)) return false;
+  return numero >= Number(fechas.desde.slice(0, 4)) && numero <= Number(fechas.hasta.slice(0, 4));
 }
 
 function campo(valor: string | null | undefined, vacio: string) {
@@ -151,6 +156,7 @@ export default function RepositorioPage() {
   const [busqueda, setBusqueda] = useState("");
   const [territorio, setTerritorio] = useState("");
   const [tematica, setTematica] = useState("");
+  const [fechas, setFechas] = useState<RangoFechas>({ desde: "", hasta: "" });
   const [activos, setActivos] = useState<Filtro[]>([...filtros]);
   const [tarjetas, setTarjetas] = useState<Tarjeta[]>([]);
   const [personas, setPersonas] = useState<Investigador[]>([]);
@@ -168,9 +174,14 @@ export default function RepositorioPage() {
       if (busqueda.trim()) params.set("buscar", busqueda.trim());
       const query = params.toString();
 
+      // El rango solo aplica a convocatorias: las que están abiertas en algún día del período
+      const paramsConvocatorias = new URLSearchParams(params);
+      if (fechas.desde) paramsConvocatorias.set("fecha_desde", fechas.desde);
+      if (fechas.hasta) paramsConvocatorias.set("fecha_hasta", fechas.hasta);
+
       try {
         const [convocatoriasRes, proyectosRes, investigadoresRes] = await Promise.all([
-          fetch(`${API_URL}/api/convocatorias/?${query}`, { signal: controlador.signal }),
+          fetch(`${API_URL}/api/convocatorias/?${paramsConvocatorias}`, { signal: controlador.signal }),
           fetch(`${API_URL}/api/proyectos/?${query}`, { signal: controlador.signal }),
           fetch(`${API_URL}/api/investigadores/?${query}`, { signal: controlador.signal }),
         ]);
@@ -190,6 +201,7 @@ export default function RepositorioPage() {
             estado: texto(item.estado, "Sin estado"),
             detalle: detalleFecha(item),
             texto: [item.titulo, item.descripcion, item.estado, item.institucion].filter(Boolean).join(" "),
+            anio: null,
           })),
           ...proyectos.map((item) => ({
             key: `proyecto-${item.id}`,
@@ -199,6 +211,7 @@ export default function RepositorioPage() {
             estado: texto(item.estado, "Sin estado"),
             detalle: `Año: ${texto(item.anio)}`,
             texto: [item.nombre, item.descripcion, item.estado, item.anio].filter(Boolean).join(" "),
+            anio: item.anio,
           })),
         ]);
         setPersonas(investigadores);
@@ -219,16 +232,17 @@ export default function RepositorioPage() {
 
     void cargar();
     return () => controlador.abort();
-  }, [busqueda]);
+  }, [busqueda, fechas]);
 
   const visibles = useMemo(
     () =>
       tarjetas.filter((item) => {
         if (item.tipo === "Proyecto" && !activos.includes("Proyectos")) return false;
         if (item.tipo === "Convocatoria" && !activos.includes("Convocatorias")) return false;
+        if (item.tipo === "Proyecto" && !anioEnRango(item.anio, fechas)) return false;
         return incluye(item.texto, territorio) && incluye(item.texto, tematica);
       }),
-    [tarjetas, activos, territorio, tematica],
+    [tarjetas, activos, territorio, tematica, fechas],
   );
 
   const investigadores = useMemo(
@@ -271,7 +285,7 @@ export default function RepositorioPage() {
         <div className="blob pointer-events-none absolute -left-16 top-8 h-56 w-56 rounded-full bg-gold/50 blur-3xl" />
         <div className="blob-late pointer-events-none absolute right-0 top-16 h-64 w-64 rounded-full bg-pine/20 blur-3xl" />
 
-        <div className="relative mx-auto max-w-6xl">
+        <div className="relative mx-auto max-w-7xl">
           <p className="rise text-sm font-medium tracking-[0.18em] text-clay uppercase">
             Consultar · Uruguay
           </p>
@@ -292,7 +306,7 @@ export default function RepositorioPage() {
               value={consulta}
               onChange={(event) => setConsulta(event.target.value)}
               placeholder="Buscar convocatorias, proyectos o personas..."
-              className="h-12 w-full rounded-full border border-pine/20 bg-paper px-5 pr-14 text-sm text-ink shadow-sm outline-none transition focus:border-pine"
+              className="h-12 w-full rounded-full border-2 border-ink/30 bg-paper px-5 pr-14 text-sm text-ink shadow-sm outline-none transition focus:border-pine"
             />
             <button
               type="submit"
@@ -328,53 +342,48 @@ export default function RepositorioPage() {
             ))}
           </div>
 
-          <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-3">
             <div className="flex flex-col gap-1.5">
               <label htmlFor="territorio" className="text-sm text-ink">
                 Territorio
               </label>
-              <select
+              <Combobox
                 id="territorio"
                 value={territorio}
-                onChange={(event) => setTerritorio(event.target.value)}
-                className={campoSelect}
-                style={{ backgroundImage: chevron }}
-              >
-                <option value="">Todos los departamentos</option>
-                {departamentos.map((departamento) => (
-                  <option key={departamento} value={departamento}>
-                    {departamento}
-                  </option>
-                ))}
-              </select>
+                onChange={setTerritorio}
+                options={departamentos}
+                opcionVacia="Todos los departamentos"
+                placeholder="Todos los departamentos"
+              />
             </div>
 
             <div className="flex flex-col gap-1.5">
               <label htmlFor="tematica" className="text-sm text-ink">
                 Temática
               </label>
-              <select
+              <Combobox
                 id="tematica"
                 value={tematica}
-                onChange={(event) => setTematica(event.target.value)}
-                className={campoSelect}
-                style={{ backgroundImage: chevron }}
-              >
-                <option value="">Todos los temas</option>
-                {tematicas.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
-                ))}
-              </select>
+                onChange={setTematica}
+                options={tematicas}
+                opcionVacia="Todos los temas"
+                placeholder="Todos los temas"
+              />
             </div>
+
+            <DateRangePicker
+              id="fechas"
+              label="Fecha desde / hasta"
+              value={fechas}
+              onChange={setFechas}
+            />
           </div>
         </div>
       </section>
 
       <section className="px-6 pb-20">
         <div
-          className={`mx-auto grid max-w-6xl gap-6 ${mostrarResultados && mostrarPersonas ? "lg:grid-cols-[1.6fr_0.9fr]" : ""}`}
+          className={`mx-auto grid max-w-7xl gap-6 ${mostrarResultados && mostrarPersonas ? "lg:grid-cols-[1.6fr_0.9fr]" : ""}`}
         >
           {error ? (
             <p className="rounded-2xl border border-clay/30 bg-paper px-5 py-4 text-sm text-ink lg:col-span-full" role="alert">

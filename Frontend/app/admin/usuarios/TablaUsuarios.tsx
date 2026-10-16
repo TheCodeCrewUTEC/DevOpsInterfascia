@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Combobox from "@/app/components/Combobox";
 import { cambiarHabilitado, cambiarRol, type Resultado } from "./actions";
 
 export type Usuario = {
@@ -142,19 +143,15 @@ function Fila({
       </td>
 
       <td className="px-5 py-4 align-middle">
-        <select
+        <Combobox
+          id={`rol-${usuario.keycloak_id}`}
           value={rol}
           disabled={esYo || guardando}
-          aria-label={`Rol de ${nombre}`}
-          onChange={(evento) => elegirRol(evento.target.value)}
-          className="w-full max-w-60 rounded-xl border border-pine/30 bg-paper px-3 py-2 text-sm text-ink transition hover:border-pine focus:border-pine focus:outline-none focus:ring-2 focus:ring-pine/30 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {ROLES.map((opcion) => (
-            <option key={opcion.valor} value={opcion.valor}>
-              {opcion.label}
-            </option>
-          ))}
-        </select>
+          ariaLabel={`Rol de ${nombre}`}
+          onChange={elegirRol}
+          options={ROLES}
+          className="w-full max-w-60"
+        />
       </td>
     </tr>
   );

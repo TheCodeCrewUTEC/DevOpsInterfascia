@@ -20,6 +20,8 @@ def obtener_convocatorias(
     fecha_apertura_hasta: date | None = None,
     fecha_cierre_desde: date | None = None,
     fecha_cierre_hasta: date | None = None,
+    fecha_desde: date | None = None,
+    fecha_hasta: date | None = None,
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100)
 ):
@@ -31,6 +33,8 @@ def obtener_convocatorias(
         fecha_apertura_hasta=fecha_apertura_hasta,
         fecha_cierre_desde=fecha_cierre_desde,
         fecha_cierre_hasta=fecha_cierre_hasta,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
         page=page,
         limit=limit
     )

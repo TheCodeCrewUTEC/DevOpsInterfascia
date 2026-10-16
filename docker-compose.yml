@@ -154,6 +154,58 @@ services:
     networks:
       - interfascia-net
 
+  # ---------- Monitoreo: Prometheus junta métricas, Grafana las muestra ----------
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.62.0
+    container_name: interfascia-redis-exporter
+    restart: unless-stopped
+    environment:
+      REDIS_ADDR: "redis://redis:6379"
+    depends_on:
+      - redis
+    networks:
+      - interfascia-net
+
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: interfascia-prometheus
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=15d"
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    depends_on:
+      - backend
+      - redis-exporter
+    networks:
+      - interfascia-net
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    container_name: interfascia-grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      # Lo usa el datasource de Postgres (monitoring/grafana/provisioning)
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+      - db
+    networks:
+      - interfascia-net
+
   db:
     image: pgvector/pgvector:pg16
     ports:
@@ -184,6 +236,8 @@ volumes:
   postgres_data:
   formularios_storage:
   huggingface_cache:
+  prometheus_data:
+  grafana_data:
 
 networks:
   interfascia-net:
