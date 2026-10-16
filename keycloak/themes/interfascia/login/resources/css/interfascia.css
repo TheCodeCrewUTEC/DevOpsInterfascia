@@ -72,7 +72,7 @@ textarea {
 
 .ifx-navbar__inner {
   display: grid;
-  max-width: 80rem;
+  max-width: 100rem;
   margin: 0 auto;
   grid-template-columns: 1fr auto;
   align-items: center;
@@ -310,13 +310,13 @@ textarea {
 .ifx-card {
   position: relative;
   width: 100%;
-  max-width: 28rem;
+  max-width: 36rem;
   border-radius: 2rem;
   background: var(--paper);
   padding: 40px 32px;
   color: var(--ink);
   box-shadow: 0 1px 2px rgb(16 42 60 / 0.05);
-  outline: 2px solid rgb(16 42 60 / 0.25);
+  outline: 2px solid var(--ink);
 }
 
 .ifx-card__close {
@@ -416,7 +416,7 @@ textarea {
 .ifx-card select {
   height: 44px;
   width: 100%;
-  border: 1px solid rgb(16 42 60 / 0.3);
+  border: 2px solid var(--ink);
   border-radius: 0.75rem;
   background: rgb(230 246 252 / 0.7);
   padding: 0 12px;
@@ -681,7 +681,7 @@ textarea {
   display: flex;
   flex: 1 0 auto;
   width: 100%;
-  max-width: 80rem;
+  max-width: 100rem;
   margin: 0 auto;
   padding: 40px 24px;
 }
@@ -767,7 +767,7 @@ textarea {
   background: var(--paper);
   padding: 32px 24px;
   box-shadow: 0 1px 2px rgb(16 42 60 / 0.05);
-  outline: 2px solid rgb(16 42 60 / 0.25);
+  outline: 2px solid var(--ink);
 }
 
 .ifx-form--compact,
@@ -855,7 +855,7 @@ textarea {
 }
 
 .ifx-footer__inner {
-  max-width: 80rem;
+  max-width: 100rem;
   margin: 0 auto;
 }
 
@@ -1167,7 +1167,7 @@ textarea {
   padding: 4px;
   overflow: auto;
   list-style: none;
-  border: 1px solid rgb(16 42 60 / 0.25);
+  border: 2px solid rgb(16 42 60 / 0.6);
   border-radius: 0.75rem;
   background: var(--paper);
   box-shadow: 0 10px 25px rgb(16 42 60 / 0.12);

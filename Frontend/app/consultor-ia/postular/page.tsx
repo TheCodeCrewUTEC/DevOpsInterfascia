@@ -325,7 +325,7 @@ export default function PostularPage() {
           <div className="blob pointer-events-none absolute -left-16 top-8 h-56 w-56 rounded-full bg-gold/50 blur-3xl" />
           <div className="blob-late pointer-events-none absolute right-0 top-16 h-64 w-64 rounded-full bg-pine/20 blur-3xl" />
 
-          <div className="relative mx-auto max-w-7xl">
+          <div className="relative mx-auto max-w-[100rem]">
             <p className="rise text-sm font-medium tracking-[0.18em] text-clay uppercase">
               Consultor IA · Postular
             </p>
@@ -340,7 +340,7 @@ export default function PostularPage() {
         </section>
 
         <section className="px-6 pb-20">
-          <div className="mx-auto max-w-5xl">
+          <div className="mx-auto max-w-[100rem]">
             <FormularioCompletado
               jobId={jobId}
               campos={respuestas}
@@ -359,7 +359,7 @@ export default function PostularPage() {
         <div className="blob pointer-events-none absolute -left-16 top-8 h-56 w-56 rounded-full bg-gold/50 blur-3xl" />
         <div className="blob-late pointer-events-none absolute right-0 top-16 h-64 w-64 rounded-full bg-pine/20 blur-3xl" />
 
-        <div className="relative mx-auto max-w-7xl">
+        <div className="relative mx-auto max-w-[100rem]">
           <p className="rise text-sm font-medium tracking-[0.18em] text-clay uppercase">
             Consultor IA
           </p>
@@ -371,7 +371,7 @@ export default function PostularPage() {
           </p>
           <Pestanas actual="postular" />
 
-          <div className="mt-8 rounded-3xl border-2 border-ink/25 bg-paper p-5 shadow-sm sm:p-8">
+          <div className="mt-8 rounded-3xl border-2 border-ink bg-paper p-5 shadow-sm sm:p-8">
             <Stepper pasos={PASOS} actual={paso} onIrA={setPaso} />
 
             <div className="mt-8 grid gap-4">
@@ -380,7 +380,7 @@ export default function PostularPage() {
                   <p className="mb-2 text-sm text-ink">Formulario de postulación</p>
                   <label
                     htmlFor="formulario-postulacion"
-                    className="flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed border-ink/30 bg-sand/60 px-6 py-8 text-center transition hover:border-pine hover:bg-paper"
+                    className="flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed border-ink/70 bg-sand/60 px-6 py-8 text-center transition hover:border-pine hover:bg-paper"
                   >
                     <CloudUploadIcon />
                     <span className="mt-4 text-sm text-ink/70">
@@ -406,7 +406,7 @@ export default function PostularPage() {
                     </p>
                     <label
                       htmlFor="archivos-proyecto"
-                      className="flex min-h-56 cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed border-ink/30 bg-sand/60 px-6 py-10 text-center transition hover:border-pine hover:bg-paper"
+                      className="flex min-h-56 cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed border-ink/70 bg-sand/60 px-6 py-10 text-center transition hover:border-pine hover:bg-paper"
                     >
                       <CloudUploadIcon />
                       <span className="mt-4 text-sm text-ink/70">

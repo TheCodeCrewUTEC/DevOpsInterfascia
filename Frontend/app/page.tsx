@@ -57,7 +57,7 @@ export default function Home() {
         <div className="blob pointer-events-none absolute -left-16 top-8 h-56 w-56 rounded-full bg-gold/50 blur-3xl" />
         <div className="blob-late pointer-events-none absolute right-0 top-24 h-64 w-64 rounded-full bg-pine/20 blur-3xl" />
 
-        <div className="relative mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="relative mx-auto grid max-w-[100rem] items-center gap-12 lg:grid-cols-[1.1fr_0.9fr]">
           <div>
             <p className="rise text-sm font-medium tracking-[0.18em] text-clay uppercase">
               Plataforma piloto · Uruguay
@@ -90,7 +90,7 @@ export default function Home() {
       </section>
 
       <section id="que-es-interfascia" className="scroll-mt-24 px-6 py-16">
-        <div className="mx-auto max-w-7xl">
+        <div className="mx-auto max-w-[100rem]">
           <div className="rise flex items-center gap-4">
             <div className="h-px flex-1 bg-pine/20" />
             <h2 className="font-display text-3xl text-ink">¿Qué es Interfascia?</h2>
@@ -127,7 +127,7 @@ export default function Home() {
       </section>
 
       <section className="px-6 pb-20">
-        <div className="mx-auto max-w-7xl rounded-[2rem] bg-pine-deep px-6 py-10 text-paper sm:px-10">
+        <div className="mx-auto max-w-[100rem] rounded-[2rem] bg-pine-deep px-6 py-10 text-paper sm:px-10">
           <h2 className="font-display text-3xl">Cómo se vincula</h2>
           <p className="mt-3 max-w-2xl text-paper/75">
             El recorrido de la plataforma une la idea, el financiamiento y quién puede llevarla adelante.

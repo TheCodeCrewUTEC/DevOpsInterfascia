@@ -87,7 +87,7 @@ export default async function AdminUsuariosPage({
 
 function Encabezado({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-6 py-10">
+    <main className="mx-auto flex w-full max-w-[100rem] flex-1 flex-col gap-6 px-6 py-10">
       <div>
         <p className="text-sm font-medium tracking-[0.18em] text-clay uppercase">Administración</p>
         <h1 className="font-display mt-2 text-4xl text-ink">{titulo}</h1>

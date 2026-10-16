@@ -34,7 +34,7 @@ export default function FormularioPerfil({ perfil }: { perfil: Perfil }) {
     <form
       key={JSON.stringify(perfil)}
       action={accion}
-      className="flex flex-col gap-5 rounded-3xl border-2 border-ink/25 bg-paper p-6 shadow-sm"
+      className="flex flex-col gap-5 rounded-3xl border-2 border-ink bg-paper p-6 shadow-sm"
     >
       <div className="grid gap-5 sm:grid-cols-2">
         <Campo id="nombre" label="Nombre" requerido>

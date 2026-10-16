@@ -285,7 +285,7 @@ export default function RepositorioPage() {
         <div className="blob pointer-events-none absolute -left-16 top-8 h-56 w-56 rounded-full bg-gold/50 blur-3xl" />
         <div className="blob-late pointer-events-none absolute right-0 top-16 h-64 w-64 rounded-full bg-pine/20 blur-3xl" />
 
-        <div className="relative mx-auto max-w-7xl">
+        <div className="relative mx-auto max-w-[100rem]">
           <p className="rise text-sm font-medium tracking-[0.18em] text-clay uppercase">
             Consultar · Uruguay
           </p>
@@ -306,7 +306,7 @@ export default function RepositorioPage() {
               value={consulta}
               onChange={(event) => setConsulta(event.target.value)}
               placeholder="Buscar convocatorias, proyectos o personas..."
-              className="h-12 w-full rounded-full border-2 border-ink/30 bg-paper px-5 pr-14 text-sm text-ink shadow-sm outline-none transition focus:border-pine"
+              className="h-12 w-full rounded-full border-2 border-ink bg-paper px-5 pr-14 text-sm text-ink shadow-sm outline-none transition focus:border-pine"
             />
             <button
               type="submit"
@@ -383,7 +383,7 @@ export default function RepositorioPage() {
 
       <section className="px-6 pb-20">
         <div
-          className={`mx-auto grid max-w-7xl gap-6 ${mostrarResultados && mostrarPersonas ? "lg:grid-cols-[1.6fr_0.9fr]" : ""}`}
+          className={`mx-auto grid max-w-[100rem] gap-6 ${mostrarResultados && mostrarPersonas ? "lg:grid-cols-[1.6fr_0.9fr]" : ""}`}
         >
           {error ? (
             <p className="rounded-2xl border border-clay/30 bg-paper px-5 py-4 text-sm text-ink lg:col-span-full" role="alert">

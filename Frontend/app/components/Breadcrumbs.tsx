@@ -36,7 +36,7 @@ export default function Breadcrumbs() {
 
   return (
     <nav aria-label="Ruta de navegación" className="px-6 pt-4">
-      <ol className="mx-auto flex max-w-7xl flex-wrap items-center gap-1.5 text-sm text-ink/70">
+      <ol className="mx-auto flex max-w-[100rem] flex-wrap items-center gap-1.5 text-sm text-ink/70">
         <li>
           <Link href="/" className="transition hover:text-pine-text hover:underline">
             Inicio

@@ -59,7 +59,7 @@ export default function TablaUsuarios({
         </p>
       ) : null}
 
-      <div className="overflow-x-auto rounded-3xl border border-pine/10 bg-paper shadow-sm">
+      <div className="overflow-x-auto rounded-3xl border-2 border-ink bg-paper shadow-sm">
         <table className="w-full min-w-[640px] text-left text-sm">
           <thead className="border-b border-pine/10 text-xs tracking-[0.12em] text-ink/50 uppercase">
             <tr>

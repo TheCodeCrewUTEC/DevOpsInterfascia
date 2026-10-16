@@ -29,10 +29,10 @@ const chevron =
   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%23102a3c' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 7.5 10 12.5 15 7.5'/%3E%3C/svg%3E\")";
 
 export const ESTILO_COMBO =
-  "h-11 w-full rounded-xl border border-ink/30 bg-foam/70 bg-[length:16px] bg-[position:right_1rem_center] bg-no-repeat px-4 pr-11 text-sm text-ink outline-none transition placeholder:text-ink/50 focus:border-pine focus:bg-paper disabled:cursor-not-allowed disabled:opacity-60";
+  "h-11 w-full rounded-xl border-2 border-ink bg-foam/70 bg-[length:16px] bg-[position:right_1rem_center] bg-no-repeat px-4 pr-11 text-sm text-ink outline-none transition placeholder:text-ink/50 focus:border-pine focus:bg-paper disabled:cursor-not-allowed disabled:opacity-60";
 
 const ESTILO_INVALIDO =
-  "h-11 w-full rounded-xl border border-red-600 bg-red-50 bg-[length:16px] bg-[position:right_1rem_center] bg-no-repeat px-4 pr-11 text-sm text-ink outline-none transition focus:border-red-600";
+  "h-11 w-full rounded-xl border-2 border-red-600 bg-red-50 bg-[length:16px] bg-[position:right_1rem_center] bg-no-repeat px-4 pr-11 text-sm text-ink outline-none transition focus:border-red-600";
 
 function normalizar(texto: string) {
   return texto.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
@@ -189,7 +189,7 @@ export default function Combobox({
           ref={lista}
           id={listaId}
           role="listbox"
-          className="absolute z-40 mt-1 max-h-64 w-full overflow-auto rounded-xl border border-ink/25 bg-paper p-1 shadow-lg"
+          className="absolute z-40 mt-1 max-h-64 w-full overflow-auto rounded-xl border-2 border-ink/60 bg-paper p-1 shadow-lg"
         >
           {visibles.length === 0 ? (
             <li className="px-3 py-2 text-sm text-ink/60">Sin coincidencias</li>

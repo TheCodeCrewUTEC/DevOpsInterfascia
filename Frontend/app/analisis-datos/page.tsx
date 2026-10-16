@@ -1,6 +1,6 @@
 export default function AnalisisDatosPage() {
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col px-6 py-8">
+    <main className="mx-auto flex w-full max-w-[100rem] flex-1 flex-col px-6 py-8">
 
       <div className="flex items-center gap-4">
         <div className="h-px flex-1 bg-black" />

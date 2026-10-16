@@ -148,7 +148,7 @@ export default function FormularioCompletado({ jobId, campos, validado = false, 
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="rounded-3xl border-2 border-ink/25 bg-paper p-5 shadow-sm sm:p-6">
+      <div className="rounded-3xl border-2 border-ink bg-paper p-5 shadow-sm sm:p-6">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <p className="text-sm text-ink">
             <span className="font-medium">{completos}</span> de {campos.length} campos completados
@@ -169,7 +169,7 @@ export default function FormularioCompletado({ jobId, campos, validado = false, 
         <section key={seccion.titulo} className="flex flex-col gap-4">
           <h2 className="text-xs font-medium tracking-[0.18em] text-clay uppercase">{seccion.titulo}</h2>
 
-          <div className="flex flex-col gap-4 rounded-3xl border-2 border-ink/25 bg-paper p-5 shadow-sm sm:p-6">
+          <div className="flex flex-col gap-4 rounded-3xl border-2 border-ink bg-paper p-5 shadow-sm sm:p-6">
             {seccion.campos.map((campo) => (
               <Campo
                 key={campo.id}
@@ -230,8 +230,8 @@ function Campo({
   const editado = valor !== sugerenciaIa;
   const vacio = !valor.trim();
 
-  const clases = `w-full rounded-xl border px-3 py-2.5 text-sm text-ink outline-none transition focus:border-pine focus:bg-paper ${
-    vacio && esObligatorio(campo.campo) ? "border-gold bg-gold/10" : "border-ink/30 bg-foam/60"
+  const clases = `w-full rounded-xl border-2 px-3 py-2.5 text-sm text-ink outline-none transition focus:border-pine focus:bg-paper ${
+    vacio && esObligatorio(campo.campo) ? "border-gold bg-gold/10" : "border-ink bg-foam/60"
   }`;
 
   let control;

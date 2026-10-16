@@ -23,7 +23,7 @@ export default async function Navbar() {
 
   return (
     <nav className="sticky top-0 z-50 border-b border-pine/10 bg-sand/80 px-6 py-4 backdrop-blur-md">
-      <div className="mx-auto grid max-w-7xl grid-cols-[1fr_auto] items-center gap-x-4 gap-y-3 md:grid-cols-[1fr_auto_1fr]">
+      <div className="mx-auto grid max-w-[100rem] grid-cols-[1fr_auto] items-center gap-x-4 gap-y-3 md:grid-cols-[1fr_auto_1fr]">
         <Link href="/" className="flex shrink-0 items-center gap-3 justify-self-start">
           <span className="flex h-9 w-9 items-center justify-center rounded-full bg-pine text-ink">
             <Mark />

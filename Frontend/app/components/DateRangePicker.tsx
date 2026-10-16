@@ -124,7 +124,7 @@ export default function DateRangePicker({ id, label, value, onChange }: DateRang
           aria-haspopup="dialog"
           aria-expanded={abierto}
           onClick={abrir}
-          className="flex h-11 w-full items-center justify-between gap-3 rounded-xl border border-ink/30 bg-foam/70 px-4 text-left text-sm text-ink outline-none transition hover:border-pine focus:border-pine focus:bg-paper"
+          className="flex h-11 w-full items-center justify-between gap-3 rounded-xl border-2 border-ink bg-foam/70 px-4 text-left text-sm text-ink outline-none transition hover:border-pine focus:border-pine focus:bg-paper"
         >
           <span className={value.desde ? "" : "text-ink/60"}>{resumen}</span>
           <Calendario />
@@ -145,7 +145,7 @@ export default function DateRangePicker({ id, label, value, onChange }: DateRang
         <div
           role="dialog"
           aria-label={label}
-          className="absolute top-full left-0 z-40 mt-2 w-full min-w-72 max-w-sm rounded-2xl border border-ink/25 bg-paper p-4 shadow-xl"
+          className="absolute top-full left-0 z-40 mt-2 w-full min-w-72 max-w-sm rounded-2xl border-2 border-ink/60 bg-paper p-4 shadow-xl"
         >
           <div className="flex items-center justify-between">
             <button type="button" onClick={() => moverMes(-1)} className="h-8 w-8 rounded-full text-ink transition hover:bg-foam" aria-label="Mes anterior">

@@ -35,7 +35,7 @@ export default function FormularioContrasena({ usuario }: { usuario: string }) {
       action={accion}
       // Al enviar los campos vuelven a ser password, así el navegador ofrece actualizar la guardada
       onSubmit={() => setVisible(false)}
-      className="flex flex-col gap-5 rounded-3xl border-2 border-ink/25 bg-paper p-6 shadow-sm"
+      className="flex flex-col gap-5 rounded-3xl border-2 border-ink bg-paper p-6 shadow-sm"
     >
       {/* Le dice al navegador de qué cuenta es la contraseña nueva */}
       <input type="text" name="username" autoComplete="username" value={usuario} readOnly hidden />
