@@ -208,8 +208,12 @@ export default function Combobox({
                 }}
                 onMouseEnter={() => setActivo(indice)}
                 className={`cursor-pointer rounded-lg px-3 py-2 text-sm ${
-                  indice === activo ? "bg-foam text-ink" : "text-ink/85"
-                } ${opcion.valor === seleccionado ? "font-medium text-pine-text" : ""}`}
+                  indice === activo
+                    ? "bg-pine-deep text-paper"
+                    : opcion.valor === seleccionado
+                      ? "text-pine-text"
+                      : "text-ink/85"
+                } ${opcion.valor === seleccionado ? "font-medium" : ""}`}
               >
                 {opcion.label}
               </li>

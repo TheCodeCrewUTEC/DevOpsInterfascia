@@ -171,6 +171,15 @@
     elegir(opcion.closest(".ifx-combo"), opcion.dataset.valor);
   });
 
+  // El mouse mueve el resaltado igual que las flechas
+  document.addEventListener("mouseover", (evento) => {
+    const opcion = evento.target.closest?.(".ifx-combo__option");
+    if (!opcion) return;
+    opcion.parentElement
+      .querySelectorAll(".ifx-combo__option")
+      .forEach((item) => (item.dataset.activa = String(item === opcion)));
+  });
+
   document.addEventListener("focusin", (evento) => {
     const input = evento.target.closest?.(".ifx-combo__input");
     if (input) {

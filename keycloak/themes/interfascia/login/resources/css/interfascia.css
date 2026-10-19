@@ -1181,13 +1181,15 @@ textarea {
   color: var(--ink);
 }
 
-.ifx-combo__option[data-activa="true"] {
-  background: var(--foam);
-}
-
 .ifx-combo__option[aria-selected="true"] {
   font-weight: 600;
   color: var(--pine-text);
+}
+
+/* Va después: la opción resaltada se ve oscura aunque sea la elegida */
+.ifx-combo__option[data-activa="true"] {
+  background: var(--pine-deep);
+  color: var(--paper);
 }
 
 .ifx-combo__vacio {
