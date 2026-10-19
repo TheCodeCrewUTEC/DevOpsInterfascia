@@ -1,10 +1,12 @@
 import secrets
 import shutil
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from app.database.connection import get_connection
 
 STORAGE_FORMULARIOS = Path("storage/formularios")
+UMBRAL_EN_PROCESO = timedelta(minutes=5)
 
 def crear_job(formulario_path: str | None, usuario_sub: str | None = None):
     # La página que creó el job lo usa para consultarlo mientras Qwen trabaja,
@@ -48,6 +50,42 @@ def crear_job(formulario_path: str | None, usuario_sub: str | None = None):
 
     finally:
         conn.close()
+
+def listar_jobs_usuario(usuario_sub: str):
+    conn = get_connection()
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, estado, creado, formulario_path
+                FROM formulario_job
+                WHERE usuario_sub = %s
+                ORDER BY creado DESC
+                LIMIT 50
+                """,
+                (usuario_sub,),
+            )
+            filas = cur.fetchall()
+    finally:
+        conn.close()
+
+    ahora = datetime.now(timezone.utc)
+    formularios = []
+
+    for job_id, estado, creado, formulario_path in filas:
+        momento = creado if creado.tzinfo else creado.replace(tzinfo=timezone.utc)
+        activo = estado in ("PENDING", "PROCESSING")
+        formularios.append({
+            "id": job_id,
+            "estado": estado,
+            "creado": creado,
+            "nombre": Path(formulario_path).name if formulario_path else None,
+            "en_proceso": activo and ahora - momento >= UMBRAL_EN_PROCESO,
+        })
+
+    return formularios
+
 
 def obtener_job(job_id: int):
     conn = get_connection()

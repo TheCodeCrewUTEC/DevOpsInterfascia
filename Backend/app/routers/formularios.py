@@ -19,7 +19,7 @@ from app.services.respuesta_service_db import actualizar_respuestas
 
 from app.schemas.formulario_job import FormularioJobResponse
 
-from app.services.formulario_job_service import crear_job
+from app.services.formulario_job_service import crear_job, listar_jobs_usuario
 
 from app.services.file_service import (
     nombre_disponible,
@@ -245,6 +245,16 @@ async def crear_formulario_job(
         "consulta_token": job["consulta_token"],
     }
         
+
+@router.get("/jobs")
+def listar_formularios(
+    usuario: dict = Depends(obtener_usuario_actual),
+):
+    sub = usuario.get("sub")
+    if not sub:
+        raise HTTPException(status_code=401, detail="No se pudo identificar al usuario")
+    return listar_jobs_usuario(sub)
+
 
 @router.get("/jobs/{job_id}/resultado")
 def obtener_resultado_job(

@@ -89,6 +89,7 @@ SOLO_CAMPOS = [
     "descripcion",
     "beneficiarios",
     "requisitos",
+    "financiamiento",
 ]
 
 # ============================================================
@@ -217,12 +218,12 @@ CAMPOS = {
         ),
         "tipo": "numero",
         "keywords": [
+            "$U",
             "financiamiento",
             "fondos",
             "monto",
-            "apoyo",
+            "aporte máximo",
             "subsidio",
-            "$U"
         ]
     }
 }
@@ -232,37 +233,47 @@ CAMPOS = {
 # MODELO DE EMBEDDINGS
 # ============================================================
 
-print("=" * 70)
-print("PROGRAMA 2 - EXTRACCIÓN DE DATOS DE CONVOCATORIAS")
-print("=" * 70)
-
-print("\n[1/6] Cargando modelo de embeddings...")
-
-embedding_model = SentenceTransformer(
-    EMBED_MODEL
-)
-
-# Método actualizado
-embedding_dim = (
-    embedding_model.get_embedding_dimension()
-)
-
-print(
-    f"      Modelo: {EMBED_MODEL}"
-)
-
-print(
-    f"      Dimensión: {embedding_dim}"
-)
+embedding_model = None
 
 
-if embedding_dim != EXPECTED_EMBEDDING_DIM:
+def cargar_modelo():
 
-    raise ValueError(
-        f"El modelo genera {embedding_dim} dimensiones, "
-        f"pero PostgreSQL utiliza "
-        f"vector({EXPECTED_EMBEDDING_DIM})."
+    global embedding_model
+
+    if embedding_model is not None:
+        return embedding_model
+
+    print("=" * 70)
+    print("PROGRAMA 2 - EXTRACCIÓN DE DATOS DE CONVOCATORIAS")
+    print("=" * 70)
+
+    print("\n[1/6] Cargando modelo de embeddings...")
+
+    embedding_model = SentenceTransformer(
+        EMBED_MODEL
     )
+
+    embedding_dim = (
+        embedding_model.get_embedding_dimension()
+    )
+
+    print(
+        f"      Modelo: {EMBED_MODEL}"
+    )
+
+    print(
+        f"      Dimensión: {embedding_dim}"
+    )
+
+    if embedding_dim != EXPECTED_EMBEDDING_DIM:
+
+        raise ValueError(
+            f"El modelo genera {embedding_dim} dimensiones, "
+            f"pero PostgreSQL utiliza "
+            f"vector({EXPECTED_EMBEDDING_DIM})."
+        )
+
+    return embedding_model
 
 
 # ============================================================
@@ -306,7 +317,7 @@ def generar_embedding_query(pregunta):
 
     texto = "query: " + pregunta
 
-    embedding = embedding_model.encode(
+    embedding = cargar_modelo().encode(
         texto,
         normalize_embeddings=True,
         convert_to_numpy=True
@@ -994,6 +1005,23 @@ Para fechas:
 - Si la fecha no aparece, devuelve null.
 """
 
+    elif campo == "financiamiento":
+
+        formato = """
+{
+    "respuesta": 8000000
+}
+"""
+
+        instrucciones_extra = """
+Para financiamiento:
+
+- Buscá montos escritos con $U, por ejemplo "$U 8.000.000".
+- Devolvé solamente el número, sin $ , sin U y sin puntos de miles.
+- Si hay varios montos, devolvé el aporte máximo de la convocatoria.
+- Si no aparece un monto en $U, devolvé null.
+"""
+
     elif campo == "descripcion":
 
         formato = """
@@ -1369,6 +1397,43 @@ def institucion_en_bd(cur, convocatoria_id):
     return None
 
 
+_MONTO_UY = re.compile(
+    r"\$\s*U\s*([0-9]{1,3}(?:\.[0-9]{3})+|[0-9]+)",
+    re.IGNORECASE,
+)
+
+
+def financiamiento_en_bd(cur, convocatoria_id):
+
+    cur.execute(
+        """
+        SELECT ch.contenido
+        FROM chunk ch
+        INNER JOIN documento d
+            ON d.id = ch.documento_id
+        WHERE d.convocatoria_id = %s
+          AND ch.contenido ~* '\\$[[:space:]]*U'
+        """,
+        (convocatoria_id,),
+    )
+
+    montos = []
+
+    for (contenido,) in cur.fetchall():
+
+        for match in _MONTO_UY.finditer(contenido or ""):
+
+            numero = normalizar_numero(match.group(1))
+
+            if numero is not None and numero > 0:
+                montos.append(numero)
+
+    if not montos:
+        return None
+
+    return int(max(montos))
+
+
 # ============================================================
 # NORMALIZAR NÚMERO
 # ============================================================
@@ -1401,6 +1466,7 @@ def normalizar_numero(valor):
 
 
     texto = str(valor).strip()
+    texto = re.sub(r"(?i)\$\s*U\b", "", texto)
 
     if isinstance(valor, list):
 
@@ -1491,10 +1557,7 @@ def normalizar_numero(valor):
 
         partes = texto.split(".")
 
-        if (
-            len(partes) == 2 and
-            len(partes[1]) == 3
-        ):
+        if all(len(parte) == 3 for parte in partes[1:]):
 
             texto = texto.replace(
                 ".",
@@ -1622,6 +1685,7 @@ def obtener_convocatorias(
            OR descripcion IS NULL
            OR beneficiarios IS NULL
            OR requisitos IS NULL
+           OR financiamiento IS NULL
         ORDER BY id
     """
 
@@ -1699,6 +1763,7 @@ def procesar_convocatoria(
     apertura_doc = None
     cierre_doc = None
     institucion_doc = None
+    financiamiento_doc = None
 
     if (
         valores_actuales["fecha_apertura"] is None
@@ -1732,6 +1797,13 @@ def procesar_convocatoria(
             institucion_doc = (
                 "Agencia Nacional de Desarrollo (ANDE)"
             )
+
+    if valores_actuales["financiamiento"] is None:
+
+        financiamiento_doc = financiamiento_en_bd(
+            cur,
+            convocatoria_id,
+        )
 
 
     # ========================================================
@@ -1796,6 +1868,8 @@ def procesar_convocatoria(
             valor_directo = apertura_doc
         elif campo == "fecha_cierre":
             valor_directo = cierre_doc
+        elif campo == "financiamiento":
+            valor_directo = financiamiento_doc
 
         if valor_directo is not None:
 
@@ -2038,6 +2112,8 @@ def procesar_convocatoria(
 # ============================================================
 
 def main():
+
+    cargar_modelo()
 
     inicio_total = time.time()
 

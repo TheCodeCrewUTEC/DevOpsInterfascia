@@ -12,6 +12,7 @@ type Convocatoria = {
   fecha_apertura: string | null;
   fecha_cierre: string | null;
   descripcion: string | null;
+  financiamiento: number | string | null;
 };
 
 type ConvocatoriasResponse = {
@@ -44,11 +45,19 @@ type Resultado = {
   descripcion: string;
   estado: string;
   detalle: string;
+  financiamiento: string | null;
 };
 
 function texto(valor: string | null | undefined, vacio = "—") {
   const limpio = valor?.trim();
   return limpio ? limpio : vacio;
+}
+
+function pesos(valor: number | string | null | undefined) {
+  if (valor == null || valor === "") return null;
+  const numero = typeof valor === "number" ? valor : Number(valor);
+  if (!Number.isFinite(numero)) return null;
+  return `$U ${new Intl.NumberFormat("es-UY", { maximumFractionDigits: 0 }).format(numero)}`;
 }
 
 function detalleFecha(item: { fecha_apertura: string | null; fecha_cierre: string | null }) {
@@ -139,6 +148,7 @@ export default function RelacionarPage() {
             descripcion: texto(item.descripcion, "Sin descripción"),
             estado: texto(item.estado, "Sin estado"),
             detalle: detalleFecha(item),
+            financiamiento: pesos(item.financiamiento),
           })),
           ...proyectos.map((item) => ({
             key: `proyecto-${item.id}`,
@@ -147,6 +157,7 @@ export default function RelacionarPage() {
             descripcion: texto(item.descripcion, "Sin descripción"),
             estado: texto(item.estado, "Sin estado"),
             detalle: `Año: ${texto(item.anio)}`,
+            financiamiento: null,
           })),
         ];
 
@@ -255,6 +266,11 @@ export default function RelacionarPage() {
                   <p className="mt-4 text-sm text-ink/80">
                     <span className="text-pine-text">Estado</span> · {item.estado}
                   </p>
+                  {item.financiamiento ? (
+                    <p className="mt-2 text-sm text-ink/80">
+                      <span className="text-pine-text">Financiamiento</span> · {item.financiamiento}
+                    </p>
+                  ) : null}
                 </article>
               ))}
             </div>

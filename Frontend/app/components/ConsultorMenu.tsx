@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 const opciones = [
   { href: "/consultor-ia/relacionar", label: "Relacionar" },
   { href: "/consultor-ia/postular", label: "Postular" },
+  { href: "/consultor-ia/mis-formularios", label: "Mis formularios" },
 ];
 
 export default function ConsultorMenu() {

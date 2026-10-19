@@ -3,9 +3,14 @@ import Link from "next/link";
 const pestanas = [
   { href: "/consultor-ia/relacionar", id: "relacionar", label: "Relacionar" },
   { href: "/consultor-ia/postular", id: "postular", label: "Postular" },
+  { href: "/consultor-ia/mis-formularios", id: "formularios", label: "Mis formularios" },
 ] as const;
 
-export default function Pestanas({ actual }: { actual: "relacionar" | "postular" }) {
+export default function Pestanas({
+  actual,
+}: {
+  actual: "relacionar" | "postular" | "formularios";
+}) {
   return (
     <nav className="mt-6 flex flex-wrap gap-2" aria-label="Consultor IA">
       {pestanas.map((pestana) => {

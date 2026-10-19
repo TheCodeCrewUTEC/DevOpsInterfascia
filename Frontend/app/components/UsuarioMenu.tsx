@@ -12,6 +12,7 @@ type UsuarioMenuProps = {
 export default function UsuarioMenu({ nombre, admin }: UsuarioMenuProps) {
   const opciones = [
     { href: "/perfil", label: "Mi perfil" },
+    { href: "/consultor-ia/mis-formularios", label: "Mis formularios" },
     { href: "/perfil/contrasena", label: "Cambiar contraseña" },
     ...(admin ? [{ href: "/admin/usuarios", label: "Gestión de usuarios" }] : []),
   ];

@@ -64,6 +64,7 @@
                     <div class="ifx-navbar__panel">
                         <a href="${appUrl}/consultor-ia/relacionar">Relacionar</a>
                         <a href="${appUrl}/consultor-ia/postular">Postular</a>
+                        <a href="${appUrl}/consultor-ia/mis-formularios">Mis formularios</a>
                     </div>
                 </details>
                 <a href="${appUrl}/analisis-datos">Análisis de Datos</a>
