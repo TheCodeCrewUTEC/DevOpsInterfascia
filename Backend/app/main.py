@@ -22,6 +22,7 @@ from app.routers import investigadores
 from app.routers import proyectos
 from app.routers import usuarios
 from app.routers import perfil
+from app.routers import alertas
 
 
 app = FastAPI(
@@ -51,6 +52,8 @@ app.include_router(investigadores.router)
 app.include_router(proyectos.router)
 app.include_router(usuarios.router)
 app.include_router(perfil.router)
+app.include_router(alertas.router)
+app.include_router(alertas.router_admin)
 
 # Métricas para Prometheus/Grafana (requests, latencia, errores por ruta).
 # /metrics no se publica: el proxy de Next lo bloquea y Prometheus entra por la red de Docker.

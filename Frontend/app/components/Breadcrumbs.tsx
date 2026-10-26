@@ -6,6 +6,9 @@ import { usePathname } from "next/navigation";
 // Nombre y destino de cada segmento de la URL. href null = sección sin página propia.
 const SEGMENTOS: Record<string, { label: string; href?: string | null }> = {
   repositorio: { label: "Repositorio" },
+  convocatorias: { label: "Convocatorias", href: null },
+  alertas: { label: "Mis alertas" },
+  preferencias: { label: "Preferencias" },
   "consultor-ia": { label: "Consultor IA", href: "/consultor-ia/relacionar" },
   relacionar: { label: "Relacionar" },
   postular: { label: "Postular" },
@@ -29,7 +32,8 @@ export default function Breadcrumbs() {
     const conocido = SEGMENTOS[parte];
     const hrefPorDefecto = `/${partes.slice(0, indice + 1).join("/")}`;
     return {
-      label: conocido?.label ?? decodeURIComponent(parte),
+      // Los ids numéricos (detalle de un fondo, etc.) se muestran como "Detalle"
+      label: conocido?.label ?? (/^\d+$/.test(parte) ? "Detalle" : decodeURIComponent(parte)),
       href: conocido?.href === undefined ? hrefPorDefecto : conocido.href,
     };
   });

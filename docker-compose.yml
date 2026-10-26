@@ -54,6 +54,12 @@ services:
       REDIS_PORT: "6379"
       REDIS_DB: "0"
 
+      # Correos de alertas (mismas variables SMTP que Keycloak)
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_FROM: ${SMTP_FROM:-${SMTP_USER}}
+      INTERFASCIA_APP_URL: "http://localhost:3000"
+
     depends_on:
       db:
         condition: service_healthy
@@ -90,6 +96,11 @@ services:
       HF_HUB_DOWNLOAD_TIMEOUT: "300"
       HF_HUB_ETAG_TIMEOUT: "60"
       HF_HOME: /hf-cache
+      # Correos de alertas (mismas variables SMTP que Keycloak)
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_FROM: ${SMTP_FROM:-${SMTP_USER}}
+      INTERFASCIA_APP_URL: "http://localhost:3000"
     depends_on:
       redis:
         condition: service_started

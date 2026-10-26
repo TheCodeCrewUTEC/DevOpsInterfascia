@@ -12,6 +12,8 @@ type UsuarioMenuProps = {
 export default function UsuarioMenu({ nombre, admin }: UsuarioMenuProps) {
   const opciones = [
     { href: "/perfil", label: "Mi perfil" },
+    { href: "/alertas", label: "Mis alertas" },
+    { href: "/alertas/preferencias", label: "Preferencias de alertas" },
     { href: "/perfil/contrasena", label: "Cambiar contraseña" },
     ...(admin ? [{ href: "/admin/usuarios", label: "Gestión de usuarios" }] : []),
   ];

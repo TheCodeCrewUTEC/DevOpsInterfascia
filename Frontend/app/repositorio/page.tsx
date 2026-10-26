@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import Combobox from "../components/Combobox";
 import DateRangePicker, { type RangoFechas } from "../components/DateRangePicker";
+import { formatFecha } from "@/lib/suscripciones";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "/backend";
 
@@ -84,6 +86,8 @@ type Tarjeta = {
   detalle: string;
   texto: string;
   anio: string | null;
+  // Página de detalle; sin href la tarjeta no es un enlace
+  href?: string;
 };
 
 function texto(valor: string | null | undefined, vacio = "—") {
@@ -97,16 +101,14 @@ function detalleFecha(item: { fecha_apertura: string | null; fecha_cierre: strin
   return "Sin fecha";
 }
 
-function formatFecha(valor: string | null) {
-  if (!valor) return "Sin fecha";
-  const [anio, mes, dia] = valor.slice(0, 10).split("-");
-  if (!anio || !mes || !dia) return valor;
-  return `${dia}/${mes}/${anio}`;
+function normalizar(valor: string) {
+  return valor.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 }
 
+// Sin importar tildes ni mayúsculas: "Energía" encuentra "energia"
 function incluye(contenido: string, filtro: string) {
   if (!filtro) return true;
-  return contenido.toLowerCase().includes(filtro.toLowerCase());
+  return normalizar(contenido).includes(normalizar(filtro));
 }
 
 // Los proyectos solo tienen año: con un rango elegido se muestran los de esos años
@@ -202,6 +204,7 @@ export default function RepositorioPage() {
             detalle: detalleFecha(item),
             texto: [item.titulo, item.descripcion, item.estado, item.institucion].filter(Boolean).join(" "),
             anio: null,
+            href: `/repositorio/convocatorias/${item.id}`,
           })),
           ...proyectos.map((item) => ({
             key: `proyecto-${item.id}`,
@@ -281,9 +284,12 @@ export default function RepositorioPage() {
 
   return (
     <main>
-      <section className="relative overflow-hidden px-6 pb-8 pt-12 sm:pt-16">
-        <div className="blob pointer-events-none absolute -left-16 top-8 h-56 w-56 rounded-full bg-gold/50 blur-3xl" />
-        <div className="blob-late pointer-events-none absolute right-0 top-16 h-64 w-64 rounded-full bg-pine/20 blur-3xl" />
+      <section className="relative px-6 pb-8 pt-12 sm:pt-16">
+        {/* El recorte va solo en los blobs: en la sección cortaba las listas de los combos */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+          <div className="blob absolute -left-16 top-8 h-56 w-56 rounded-full bg-gold/50 blur-3xl" />
+          <div className="blob-late absolute right-0 top-16 h-64 w-64 rounded-full bg-pine/20 blur-3xl" />
+        </div>
 
         <div className="relative mx-auto max-w-[100rem]">
           <p className="rise text-sm font-medium tracking-[0.18em] text-clay uppercase">
@@ -399,13 +405,24 @@ export default function RepositorioPage() {
               {visibles.map((item, index) => (
                 <article
                   key={item.key}
-                  className={`rise rise-${(index % 4) + 1} rounded-3xl border border-pine/10 bg-paper p-5 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-pine/30 hover:shadow-lg sm:p-6`}
+                  className={`rise rise-${(index % 4) + 1} relative rounded-3xl border border-pine/10 bg-paper p-5 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-pine/30 hover:shadow-lg sm:p-6`}
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <p className="text-xs font-medium tracking-[0.16em] text-clay uppercase">{item.tipo}</p>
                     <p className="text-xs text-pine-text">{item.detalle}</p>
                   </div>
-                  <h2 className="font-display mt-2 text-2xl text-ink">{item.titulo}</h2>
+                  <h2 className="font-display mt-2 text-2xl text-ink">
+                    {item.href ? (
+                      <Link
+                        href={item.href}
+                        className="underline-offset-4 hover:underline after:absolute after:inset-0 after:rounded-3xl"
+                      >
+                        {item.titulo}
+                      </Link>
+                    ) : (
+                      item.titulo
+                    )}
+                  </h2>
                   <p className="mt-3 text-sm leading-relaxed text-ink/70">{item.descripcion}</p>
                   <p className="mt-4 text-sm text-ink/80">
                     <span className="text-pine-text">Estado</span> · {item.estado}
