@@ -11,6 +11,11 @@ router = APIRouter(
     tags=["Convocatorias"]
 )
 
+@router.get("/opciones")
+def obtener_opciones():
+    return convocatoria_service.opciones_convocatorias()
+
+
 @router.get("/", response_model=ConvocatoriaPaginadaResponse)
 def obtener_convocatorias(
     estado: str | None = None,
@@ -20,20 +25,37 @@ def obtener_convocatorias(
     fecha_apertura_hasta: date | None = None,
     fecha_cierre_desde: date | None = None,
     fecha_cierre_hasta: date | None = None,
+    beneficiario: str | None = None,
+    tematica: str | None = None,
+    alcance: str | None = None,
+    ubicacion: str | None = None,
+    financiamiento_min: int | None = Query(None, ge=0),
+    financiamiento_max: int | None = Query(None, ge=0),
+    proximas_a_abrir: bool = False,
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100)
 ):
-    return convocatoria_service.obtener_convocatorias(
-        estado=estado,
-        institucion=institucion,
-        buscar=buscar,
-        fecha_apertura_desde=fecha_apertura_desde,
-        fecha_apertura_hasta=fecha_apertura_hasta,
-        fecha_cierre_desde=fecha_cierre_desde,
-        fecha_cierre_hasta=fecha_cierre_hasta,
-        page=page,
-        limit=limit
-    )
+    try:
+        return convocatoria_service.obtener_convocatorias(
+            estado=estado,
+            institucion=institucion,
+            buscar=buscar,
+            fecha_apertura_desde=fecha_apertura_desde,
+            fecha_apertura_hasta=fecha_apertura_hasta,
+            fecha_cierre_desde=fecha_cierre_desde,
+            fecha_cierre_hasta=fecha_cierre_hasta,
+            beneficiario=beneficiario,
+            tematica=tematica,
+            alcance=alcance,
+            ubicacion=ubicacion,
+            financiamiento_min=financiamiento_min,
+            financiamiento_max=financiamiento_max,
+            proximas_a_abrir=proximas_a_abrir,
+            page=page,
+            limit=limit
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.get("/{id}", response_model=ConvocatoriaDetalleResponse)

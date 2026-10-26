@@ -12,4 +12,5 @@ class InvestigadorResponse(BaseModel):
     investigaciones: Optional[str] = None
     nivel_sni: Optional[str] = None
     categoria_sni: Optional[str] = None
+    fuente: Optional[str] = None
     creado: Optional[datetime] = None

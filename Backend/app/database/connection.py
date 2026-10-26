@@ -88,6 +88,18 @@ def ensure_schema():
                     ADD COLUMN IF NOT EXISTS consulta_token TEXT
                 """
             )
+            cur.execute(
+                """
+                ALTER TABLE convocatoria
+                    ADD COLUMN IF NOT EXISTS fuente TEXT
+                """
+            )
+            cur.execute(
+                """
+                ALTER TABLE investigadores
+                    ADD COLUMN IF NOT EXISTS fuente TEXT
+                """
+            )
             # Las consulta el Consultor IA; sin ellas /api/proyectos y /api/investigadores dan 500
             cur.execute(
                 """

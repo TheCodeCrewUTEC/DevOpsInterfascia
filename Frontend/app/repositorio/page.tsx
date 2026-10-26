@@ -1,44 +1,108 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "/backend";
 
-const departamentos = [
-  "Artigas",
-  "Canelones",
-  "Cerro Largo",
-  "Colonia",
-  "Durazno",
-  "Flores",
-  "Florida",
-  "Lavalleja",
-  "Maldonado",
-  "Montevideo",
-  "Paysandú",
-  "Río Negro",
-  "Rivera",
-  "Rocha",
-  "Salto",
-  "San José",
-  "Soriano",
-  "Tacuarembó",
-  "Treinta y Tres",
-];
+type Opcion = { id: string; label: string };
 
-const tematicas = [
-  "Innovación",
-  "Tecnología",
-  "Agricultura",
-  "Salud",
-  "Educación",
-  "Energía",
-  "Medio ambiente",
-];
+type Opciones = {
+  estados: string[];
+  instituciones: string[];
+  beneficiarios: Opcion[];
+  tematicas: Opcion[];
+  departamentos: string[];
+  regiones: Opcion[];
+};
 
-const filtros = ["Proyectos", "Convocatorias", "Investigadores"] as const;
+const opcionesIniciales: Opciones = {
+  estados: ["Abierta", "Cerrada"],
+  instituciones: [],
+  beneficiarios: [
+    { id: "mipymes", label: "Mipymes" },
+    { id: "grandes", label: "Grandes empresas" },
+    { id: "instituciones", label: "Instituciones y cámaras" },
+    { id: "personas", label: "Personas y emprendedores" },
+    { id: "cooperativas", label: "Cooperativas" },
+    { id: "turismo", label: "Sector turístico" },
+    { id: "productores", label: "Productores" },
+  ],
+  tematicas: [
+    { id: "innovacion", label: "Innovación" },
+    { id: "tecnologia", label: "Tecnología y digital" },
+    { id: "agro", label: "Agro y pesca" },
+    { id: "economia_circular", label: "Economía circular" },
+    { id: "turismo", label: "Turismo" },
+    { id: "audiovisual", label: "Audiovisual" },
+    { id: "territorial", label: "Desarrollo territorial" },
+    { id: "energia", label: "Energía" },
+    { id: "salud", label: "Salud" },
+    { id: "educacion", label: "Educación y formación" },
+    { id: "medio_ambiente", label: "Medio ambiente" },
+  ],
+  departamentos: [
+    "Artigas",
+    "Canelones",
+    "Cerro Largo",
+    "Colonia",
+    "Durazno",
+    "Flores",
+    "Florida",
+    "Lavalleja",
+    "Maldonado",
+    "Montevideo",
+    "Paysandú",
+    "Río Negro",
+    "Rivera",
+    "Rocha",
+    "Salto",
+    "San José",
+    "Soriano",
+    "Tacuarembó",
+    "Treinta y Tres",
+  ],
+  regiones: [
+    { id: "este", label: "Este" },
+    { id: "sur", label: "Sur" },
+    { id: "litoral", label: "Litoral" },
+    { id: "noreste", label: "Noreste" },
+    { id: "norte", label: "Norte" },
+    { id: "centro", label: "Centro" },
+  ],
+};
 
-type Filtro = (typeof filtros)[number];
+type FiltrosConvocatoria = {
+  estado: string;
+  institucion: string;
+  beneficiario: string;
+  tematica: string;
+  alcance: "" | "todo_uruguay" | "departamento" | "localidad" | "region";
+  ubicacion: string;
+  montoMin: string;
+  montoMax: string;
+  plazo: "" | "apertura" | "cierre" | "proximas";
+  fechaDesde: string;
+  fechaHasta: string;
+};
+
+const filtrosVacios: FiltrosConvocatoria = {
+  estado: "",
+  institucion: "",
+  beneficiario: "",
+  tematica: "",
+  alcance: "",
+  ubicacion: "",
+  montoMin: "",
+  montoMax: "",
+  plazo: "",
+  fechaDesde: "",
+  fechaHasta: "",
+};
+
+const secciones = ["Proyectos", "Convocatorias", "Investigadores"] as const;
+
+type Filtro = (typeof secciones)[number];
 
 type Convocatoria = {
   id: number;
@@ -53,6 +117,7 @@ type Convocatoria = {
 
 type ConvocatoriasResponse = {
   items: Convocatoria[];
+  total_pages: number;
 };
 
 type Proyecto = {
@@ -76,6 +141,7 @@ type Investigador = {
 
 type Tarjeta = {
   key: string;
+  href: string | null;
   tipo: "Convocatoria" | "Proyecto";
   titulo: string;
   descripcion: string;
@@ -116,11 +182,6 @@ function formatFecha(valor: string | null) {
   return `${dia}/${mes}/${anio}`;
 }
 
-function incluye(contenido: string, filtro: string) {
-  if (!filtro) return true;
-  return contenido.toLowerCase().includes(filtro.toLowerCase());
-}
-
 function campo(valor: string | null | undefined, vacio: string) {
   const limpio = valor?.trim();
   if (!limpio) return vacio;
@@ -150,17 +211,78 @@ function enunciado(valor: string | null | undefined) {
 
 async function leerJson<T>(response: Response, recurso: string): Promise<T> {
   if (!response.ok) {
-    throw new Error(`No se pudieron cargar ${recurso} (${response.status}).`);
+    let detalle = "";
+    try {
+      const cuerpo = (await response.json()) as { detail?: unknown };
+      if (typeof cuerpo.detail === "string") detalle = cuerpo.detail;
+    } catch {
+      detalle = "";
+    }
+    throw new Error(detalle || `No se pudieron cargar ${recurso} (${response.status}).`);
   }
   return response.json() as Promise<T>;
+}
+
+function consultaConvocatorias(busqueda: string, filtros: FiltrosConvocatoria) {
+  const params = new URLSearchParams({ limit: "100" });
+  const texto = busqueda.trim();
+  if (texto) params.set("buscar", texto);
+  if (filtros.estado) params.set("estado", filtros.estado);
+  if (filtros.institucion) params.set("institucion", filtros.institucion);
+  if (filtros.beneficiario) params.set("beneficiario", filtros.beneficiario);
+  if (filtros.tematica) params.set("tematica", filtros.tematica);
+
+  if (filtros.alcance === "todo_uruguay") {
+    params.set("alcance", "todo_uruguay");
+  } else if (filtros.alcance && filtros.ubicacion.trim().length >= 2) {
+    params.set("alcance", filtros.alcance);
+    params.set("ubicacion", filtros.ubicacion.trim());
+  }
+
+  const minimo = filtros.montoMin.trim();
+  const maximo = filtros.montoMax.trim();
+  const montosInvalidos = minimo !== "" && maximo !== "" && Number(minimo) > Number(maximo);
+  if (!montosInvalidos) {
+    if (minimo) params.set("financiamiento_min", minimo);
+    if (maximo) params.set("financiamiento_max", maximo);
+  }
+
+  if (filtros.plazo === "proximas") {
+    params.set("proximas_a_abrir", "true");
+  } else if (filtros.plazo === "apertura" || filtros.plazo === "cierre") {
+    const desde = filtros.plazo === "apertura" ? "fecha_apertura_desde" : "fecha_cierre_desde";
+    const hasta = filtros.plazo === "apertura" ? "fecha_apertura_hasta" : "fecha_cierre_hasta";
+    if (filtros.fechaDesde) params.set(desde, filtros.fechaDesde);
+    if (filtros.fechaHasta) params.set(hasta, filtros.fechaHasta);
+  }
+
+  return { params, montosInvalidos };
+}
+
+async function cargarConvocatorias(params: URLSearchParams, signal: AbortSignal) {
+  const items: Convocatoria[] = [];
+  let pagina = 1;
+  let totalPaginas = 1;
+
+  while (pagina <= totalPaginas && pagina <= 5) {
+    const consulta = new URLSearchParams(params);
+    consulta.set("page", String(pagina));
+    const response = await fetch(`${API_URL}/api/convocatorias/?${consulta}`, { signal });
+    const datos = await leerJson<ConvocatoriasResponse>(response, "las convocatorias");
+    items.push(...datos.items);
+    totalPaginas = datos.total_pages || 1;
+    pagina += 1;
+  }
+
+  return items;
 }
 
 export default function RepositorioPage() {
   const [consulta, setConsulta] = useState("");
   const [busqueda, setBusqueda] = useState("");
-  const [territorio, setTerritorio] = useState("");
-  const [tematica, setTematica] = useState("");
-  const [activos, setActivos] = useState<Filtro[]>([...filtros]);
+  const [filtros, setFiltros] = useState<FiltrosConvocatoria>(filtrosVacios);
+  const [opciones, setOpciones] = useState<Opciones>(opcionesIniciales);
+  const [activos, setActivos] = useState<Filtro[]>([...secciones]);
   const [tarjetas, setTarjetas] = useState<Tarjeta[]>([]);
   const [personas, setPersonas] = useState<Investigador[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -169,30 +291,51 @@ export default function RepositorioPage() {
   useEffect(() => {
     const controlador = new AbortController();
 
+    async function cargarOpciones() {
+      try {
+        const response = await fetch(`${API_URL}/api/convocatorias/opciones`, {
+          signal: controlador.signal,
+        });
+        if (!response.ok) return;
+        const datos = (await response.json()) as Opciones;
+        if (datos.estados?.length) setOpciones(datos);
+      } catch {
+        // Quedan las opciones locales si el listado de filtros no responde.
+      }
+    }
+
+    void cargarOpciones();
+    return () => controlador.abort();
+  }, []);
+
+  useEffect(() => {
+    const controlador = new AbortController();
+
     async function cargar() {
       setCargando(true);
       setError(null);
 
+      const { params: paramsConvocatoria } = consultaConvocatorias(busqueda, filtros);
       const params = new URLSearchParams({ limit: "50" });
       if (busqueda.trim()) params.set("buscar", busqueda.trim());
       const query = params.toString();
 
       try {
-        const [convocatoriasRes, proyectosRes, investigadoresRes] = await Promise.all([
-          fetch(`${API_URL}/api/convocatorias/?${query}`, { signal: controlador.signal }),
+        const convocatorias = await cargarConvocatorias(paramsConvocatoria, controlador.signal);
+        const [proyectosRes, investigadoresRes] = await Promise.all([
           fetch(`${API_URL}/api/proyectos/?${query}`, { signal: controlador.signal }),
           fetch(`${API_URL}/api/investigadores/?${query}`, { signal: controlador.signal }),
         ]);
 
-        const [convocatorias, proyectos, investigadores] = await Promise.all([
-          leerJson<ConvocatoriasResponse>(convocatoriasRes, "las convocatorias"),
+        const [proyectos, investigadores] = await Promise.all([
           leerJson<Proyecto[]>(proyectosRes, "los proyectos"),
           leerJson<Investigador[]>(investigadoresRes, "los investigadores"),
         ]);
 
         setTarjetas([
-          ...convocatorias.items.map((item) => ({
+          ...convocatorias.map((item) => ({
             key: `convocatoria-${item.id}`,
+            href: `/repositorio/convocatorias/${item.id}`,
             tipo: "Convocatoria" as const,
             titulo: texto(item.titulo, "Sin título"),
             descripcion: texto(item.descripcion, "Sin descripción"),
@@ -203,6 +346,7 @@ export default function RepositorioPage() {
           })),
           ...proyectos.map((item) => ({
             key: `proyecto-${item.id}`,
+            href: null,
             tipo: "Proyecto" as const,
             titulo: texto(item.nombre, "Sin nombre"),
             descripcion: texto(item.descripcion, "Sin descripción"),
@@ -230,34 +374,23 @@ export default function RepositorioPage() {
 
     void cargar();
     return () => controlador.abort();
-  }, [busqueda]);
+  }, [busqueda, filtros]);
 
   const visibles = useMemo(
     () =>
       tarjetas.filter((item) => {
         if (item.tipo === "Proyecto" && !activos.includes("Proyectos")) return false;
         if (item.tipo === "Convocatoria" && !activos.includes("Convocatorias")) return false;
-        return incluye(item.texto, territorio) && incluye(item.texto, tematica);
+        return true;
       }),
-    [tarjetas, activos, territorio, tematica],
+    [tarjetas, activos],
   );
 
-  const investigadores = useMemo(
-    () =>
-      personas.filter((persona) =>
-        incluye(
-          [persona.nombre, persona.apellido, persona.institucion, persona.titulo, persona.investigaciones]
-            .filter(Boolean)
-            .join(" "),
-          territorio,
-        ) &&
-        incluye(
-          [persona.titulo, persona.investigaciones, persona.institucion].filter(Boolean).join(" "),
-          tematica,
-        ),
-      ),
-    [personas, territorio, tematica],
-  );
+  const investigadores = personas;
+
+  function cambiarFiltro<K extends keyof FiltrosConvocatoria>(clave: K, valor: FiltrosConvocatoria[K]) {
+    setFiltros((actual) => ({ ...actual, [clave]: valor }));
+  }
 
   function buscar(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -274,7 +407,7 @@ export default function RepositorioPage() {
 
   const mostrarResultados = activos.includes("Proyectos") || activos.includes("Convocatorias");
   const mostrarPersonas = activos.includes("Investigadores");
-  const inactivos = filtros.filter((filtro) => !activos.includes(filtro));
+  const inactivos = secciones.filter((filtro) => !activos.includes(filtro));
 
   return (
     <main>
@@ -339,46 +472,232 @@ export default function RepositorioPage() {
             ))}
           </div>
 
-          <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="territorio" className="text-sm text-ink">
-                Territorio
-              </label>
+          <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <Campo label="Estado" id="estado">
               <select
-                id="territorio"
-                value={territorio}
-                onChange={(event) => setTerritorio(event.target.value)}
+                id="estado"
+                value={filtros.estado}
+                onChange={(event) => cambiarFiltro("estado", event.target.value)}
                 className={campoSelect}
                 style={{ backgroundImage: chevron }}
               >
-                <option value="">Todos los departamentos</option>
-                {departamentos.map((departamento) => (
-                  <option key={departamento} value={departamento}>
-                    {departamento}
+                <option value="">Todos</option>
+                {opciones.estados.map((estado) => (
+                  <option key={estado} value={estado}>
+                    {estado}
                   </option>
                 ))}
               </select>
-            </div>
+            </Campo>
 
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="tematica" className="text-sm text-ink">
-                Temática
-              </label>
+            <Campo label="Institución" id="institucion">
+              <select
+                id="institucion"
+                value={filtros.institucion}
+                onChange={(event) => cambiarFiltro("institucion", event.target.value)}
+                className={campoSelect}
+                style={{ backgroundImage: chevron }}
+              >
+                <option value="">Todas</option>
+                {opciones.instituciones.map((institucion) => (
+                  <option key={institucion} value={institucion}>
+                    {institucion}
+                  </option>
+                ))}
+              </select>
+            </Campo>
+
+            <Campo label="Tipo de beneficiario" id="beneficiario">
+              <select
+                id="beneficiario"
+                value={filtros.beneficiario}
+                onChange={(event) => cambiarFiltro("beneficiario", event.target.value)}
+                className={campoSelect}
+                style={{ backgroundImage: chevron }}
+              >
+                <option value="">Todos</option>
+                {opciones.beneficiarios.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </Campo>
+
+            <Campo label="Área temática o sector" id="tematica">
               <select
                 id="tematica"
-                value={tematica}
-                onChange={(event) => setTematica(event.target.value)}
+                value={filtros.tematica}
+                onChange={(event) => cambiarFiltro("tematica", event.target.value)}
                 className={campoSelect}
                 style={{ backgroundImage: chevron }}
               >
-                <option value="">Todos los temas</option>
-                {tematicas.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
+                <option value="">Todas</option>
+                {opciones.tematicas.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.label}
                   </option>
                 ))}
               </select>
-            </div>
+            </Campo>
+
+            <Campo label="Ubicación" id="alcance">
+              <select
+                id="alcance"
+                value={filtros.alcance}
+                onChange={(event) =>
+                  setFiltros((actual) => ({
+                    ...actual,
+                    alcance: event.target.value as FiltrosConvocatoria["alcance"],
+                    ubicacion: "",
+                  }))
+                }
+                className={campoSelect}
+                style={{ backgroundImage: chevron }}
+              >
+                <option value="">Todas</option>
+                <option value="todo_uruguay">Todo Uruguay</option>
+                <option value="departamento">Departamento</option>
+                <option value="localidad">Localidad</option>
+                <option value="region">Región</option>
+              </select>
+            </Campo>
+
+            {filtros.alcance === "departamento" ? (
+              <Campo label="Departamento" id="departamento">
+                <select
+                  id="departamento"
+                  value={filtros.ubicacion}
+                  onChange={(event) => cambiarFiltro("ubicacion", event.target.value)}
+                  className={campoSelect}
+                  style={{ backgroundImage: chevron }}
+                >
+                  <option value="">Elegí un departamento</option>
+                  {opciones.departamentos.map((departamento) => (
+                    <option key={departamento} value={departamento}>
+                      {departamento}
+                    </option>
+                  ))}
+                </select>
+              </Campo>
+            ) : null}
+
+            {filtros.alcance === "region" ? (
+              <Campo label="Región" id="region">
+                <select
+                  id="region"
+                  value={filtros.ubicacion}
+                  onChange={(event) => cambiarFiltro("ubicacion", event.target.value)}
+                  className={campoSelect}
+                  style={{ backgroundImage: chevron }}
+                >
+                  <option value="">Elegí una región</option>
+                  {opciones.regiones.map((region) => (
+                    <option key={region.id} value={region.id}>
+                      {region.label}
+                    </option>
+                  ))}
+                </select>
+              </Campo>
+            ) : null}
+
+            {filtros.alcance === "localidad" ? (
+              <Campo label="Localidad" id="localidad">
+                <input
+                  id="localidad"
+                  value={filtros.ubicacion}
+                  onChange={(event) => cambiarFiltro("ubicacion", event.target.value)}
+                  placeholder="Por ejemplo, Punta del Este"
+                  className="h-11 w-full rounded-xl border border-pine/20 bg-foam/70 px-4 text-sm text-ink outline-none transition focus:border-pine focus:bg-paper"
+                />
+              </Campo>
+            ) : null}
+
+            <Campo label="Monto mínimo" id="monto-min">
+              <input
+                id="monto-min"
+                type="number"
+                min={0}
+                inputMode="numeric"
+                value={filtros.montoMin}
+                onChange={(event) => cambiarFiltro("montoMin", event.target.value)}
+                placeholder="$U"
+                className="h-11 w-full rounded-xl border border-pine/20 bg-foam/70 px-4 text-sm text-ink outline-none transition focus:border-pine focus:bg-paper"
+              />
+            </Campo>
+
+            <Campo label="Monto máximo" id="monto-max">
+              <input
+                id="monto-max"
+                type="number"
+                min={0}
+                inputMode="numeric"
+                value={filtros.montoMax}
+                onChange={(event) => cambiarFiltro("montoMax", event.target.value)}
+                placeholder="$U"
+                className="h-11 w-full rounded-xl border border-pine/20 bg-foam/70 px-4 text-sm text-ink outline-none transition focus:border-pine focus:bg-paper"
+              />
+            </Campo>
+
+            <Campo label="Fechas y plazos" id="plazo">
+              <select
+                id="plazo"
+                value={filtros.plazo}
+                onChange={(event) =>
+                  setFiltros((actual) => ({
+                    ...actual,
+                    plazo: event.target.value as FiltrosConvocatoria["plazo"],
+                    fechaDesde: "",
+                    fechaHasta: "",
+                  }))
+                }
+                className={campoSelect}
+                style={{ backgroundImage: chevron }}
+              >
+                <option value="">Sin filtrar por fecha</option>
+                <option value="apertura">Por fecha de apertura</option>
+                <option value="cierre">Por fecha de cierre</option>
+                <option value="proximas">Próximas a abrir</option>
+              </select>
+            </Campo>
+
+            {filtros.plazo === "apertura" || filtros.plazo === "cierre" ? (
+              <>
+                <Campo label="Desde" id="fecha-desde">
+                  <input
+                    id="fecha-desde"
+                    type="date"
+                    value={filtros.fechaDesde}
+                    onChange={(event) => cambiarFiltro("fechaDesde", event.target.value)}
+                    className="h-11 w-full rounded-xl border border-pine/20 bg-foam/70 px-4 text-sm text-ink outline-none transition focus:border-pine focus:bg-paper"
+                  />
+                </Campo>
+                <Campo label="Hasta" id="fecha-hasta">
+                  <input
+                    id="fecha-hasta"
+                    type="date"
+                    value={filtros.fechaHasta}
+                    onChange={(event) => cambiarFiltro("fechaHasta", event.target.value)}
+                    className="h-11 w-full rounded-xl border border-pine/20 bg-foam/70 px-4 text-sm text-ink outline-none transition focus:border-pine focus:bg-paper"
+                  />
+                </Campo>
+              </>
+            ) : null}
+          </div>
+          {filtros.montoMin && filtros.montoMax && Number(filtros.montoMin) > Number(filtros.montoMax) ? (
+            <p className="mt-3 text-sm text-clay" role="alert">
+              El monto mínimo no puede ser mayor que el máximo.
+            </p>
+          ) : null}
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-ink/60">Estos filtros aplican a las convocatorias.</p>
+            <button
+              type="button"
+              onClick={() => setFiltros(filtrosVacios)}
+              className="text-sm text-pine-text transition hover:text-ink"
+            >
+              Limpiar filtros
+            </button>
           </div>
         </div>
       </section>
@@ -398,27 +717,38 @@ export default function RepositorioPage() {
               {!cargando && !error && visibles.length === 0 ? (
                 <Estado mensaje="No hay convocatorias ni proyectos para esta búsqueda." />
               ) : null}
-              {visibles.map((item, index) => (
-                <article
-                  key={item.key}
-                  className={`rise rise-${(index % 4) + 1} rounded-3xl border border-pine/10 bg-paper p-5 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-pine/30 hover:shadow-lg sm:p-6`}
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <p className="text-xs font-medium tracking-[0.16em] text-clay uppercase">{item.tipo}</p>
-                    <p className="text-xs text-pine-text">{item.detalle}</p>
-                  </div>
-                  <h2 className="font-display mt-2 text-2xl text-ink">{item.titulo}</h2>
-                  <p className="mt-3 text-sm leading-relaxed text-ink/70">{item.descripcion}</p>
-                  <p className="mt-4 text-sm text-ink/80">
-                    <span className="text-pine-text">Estado</span> · {item.estado}
-                  </p>
-                  {item.financiamiento ? (
-                    <p className="mt-2 text-sm text-ink/80">
-                      <span className="text-pine-text">Financiamiento</span> · {item.financiamiento}
+              {visibles.map((item, index) => {
+                const clase = `rise rise-${(index % 4) + 1} block rounded-3xl border border-pine/10 bg-paper p-5 shadow-sm transition duration-300 sm:p-6 ${
+                  item.href ? "hover:-translate-y-1 hover:border-pine/30 hover:shadow-lg" : ""
+                }`;
+                const contenido = (
+                  <>
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <p className="text-xs font-medium tracking-[0.16em] text-clay uppercase">{item.tipo}</p>
+                      <p className="text-xs text-pine-text">{item.detalle}</p>
+                    </div>
+                    <h2 className="font-display mt-2 text-2xl text-ink">{item.titulo}</h2>
+                    <p className="mt-3 text-sm leading-relaxed text-ink/70">{item.descripcion}</p>
+                    <p className="mt-4 text-sm text-ink/80">
+                      <span className="text-pine-text">Estado</span> · {item.estado}
                     </p>
-                  ) : null}
-                </article>
-              ))}
+                    {item.financiamiento ? (
+                      <p className="mt-2 text-sm text-ink/80">
+                        <span className="text-pine-text">Financiamiento</span> · {item.financiamiento}
+                      </p>
+                    ) : null}
+                  </>
+                );
+                return item.href ? (
+                  <Link key={item.key} href={item.href} className={clase}>
+                    {contenido}
+                  </Link>
+                ) : (
+                  <article key={item.key} className={clase}>
+                    {contenido}
+                  </article>
+                );
+              })}
             </div>
           ) : null}
 
@@ -439,22 +769,24 @@ export default function RepositorioPage() {
 
               <ul className="mt-6 flex flex-col gap-4">
                 {investigadores.map((persona) => (
-                  <li
-                    key={persona.id}
-                    className="rounded-2xl bg-white/10 p-4 ring-1 ring-white/15 transition duration-300 hover:bg-white/20"
-                  >
-                    <p className="font-display text-xl">{nombreCorto(persona)}</p>
-                    <p className="mt-2 text-sm text-paper/80">{campo(persona.institucion, "Sin institución")}</p>
-                    <p className="mt-1 text-sm text-paper/70">{campo(persona.titulo, "Sin título")}</p>
-                    <p className="mt-3 text-xs tracking-wide text-gold uppercase">
-                      Nivel · {campo(persona.nivel_sni, "—")}
-                    </p>
-                    <p className="mt-1 text-xs tracking-wide text-gold uppercase">
-                      Categoría · {campo(persona.categoria_sni, "—")}
-                    </p>
-                    <p className="mt-3 text-sm leading-relaxed text-paper/75">
-                      {campo(enunciado(persona.investigaciones), "Sin investigaciones cargadas")}
-                    </p>
+                  <li key={persona.id}>
+                    <Link
+                      href={`/repositorio/investigadores/${persona.id}`}
+                      className="block rounded-2xl bg-white/10 p-4 ring-1 ring-white/15 transition duration-300 hover:bg-white/20"
+                    >
+                      <p className="font-display text-xl">{nombreCorto(persona)}</p>
+                      <p className="mt-2 text-sm text-paper/80">{campo(persona.institucion, "Sin institución")}</p>
+                      <p className="mt-1 text-sm text-paper/70">{campo(persona.titulo, "Sin título")}</p>
+                      <p className="mt-3 text-xs tracking-wide text-gold uppercase">
+                        Nivel · {campo(persona.nivel_sni, "—")}
+                      </p>
+                      <p className="mt-1 text-xs tracking-wide text-gold uppercase">
+                        Categoría · {campo(persona.categoria_sni, "—")}
+                      </p>
+                      <p className="mt-3 text-sm leading-relaxed text-paper/75">
+                        {campo(enunciado(persona.investigaciones), "Sin investigaciones cargadas")}
+                      </p>
+                    </Link>
                   </li>
                 ))}
               </ul>
@@ -467,6 +799,25 @@ export default function RepositorioPage() {
         </div>
       </section>
     </main>
+  );
+}
+
+function Campo({
+  label,
+  id,
+  children,
+}: {
+  label: string;
+  id: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label htmlFor={id} className="text-sm text-ink">
+        {label}
+      </label>
+      {children}
+    </div>
   );
 }
 

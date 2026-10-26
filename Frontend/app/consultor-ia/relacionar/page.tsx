@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import Pestanas from "../Pestanas";
 
@@ -40,6 +41,7 @@ type Investigador = {
 
 type Resultado = {
   key: string;
+  href: string | null;
   tipo: "Convocatoria" | "Proyecto";
   titulo: string;
   descripcion: string;
@@ -143,6 +145,7 @@ export default function RelacionarPage() {
         const tarjetas: Resultado[] = [
           ...convocatorias.items.map((item) => ({
             key: `convocatoria-${item.id}`,
+            href: `/repositorio/convocatorias/${item.id}`,
             tipo: "Convocatoria" as const,
             titulo: texto(item.titulo, "Sin título"),
             descripcion: texto(item.descripcion, "Sin descripción"),
@@ -152,6 +155,7 @@ export default function RelacionarPage() {
           })),
           ...proyectos.map((item) => ({
             key: `proyecto-${item.id}`,
+            href: null,
             tipo: "Proyecto" as const,
             titulo: texto(item.nombre, "Sin nombre"),
             descripcion: texto(item.descripcion, "Sin descripción"),
@@ -252,27 +256,38 @@ export default function RelacionarPage() {
               {!cargando && resultados.length === 0 ? (
                 <Estado mensaje="No hay convocatorias ni proyectos para esta búsqueda." />
               ) : null}
-              {resultados.map((item, index) => (
-                <article
-                  key={item.key}
-                  className={`rise rise-${(index % 4) + 1} rounded-3xl border border-pine/10 bg-paper p-5 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-pine/30 hover:shadow-lg sm:p-6`}
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <p className="text-xs font-medium tracking-[0.16em] text-clay uppercase">{item.tipo}</p>
-                    <p className="text-xs text-pine-text">{item.detalle}</p>
-                  </div>
-                  <h2 className="font-display mt-2 text-2xl text-ink">{item.titulo}</h2>
-                  <p className="mt-3 text-sm leading-relaxed text-ink/70">{item.descripcion}</p>
-                  <p className="mt-4 text-sm text-ink/80">
-                    <span className="text-pine-text">Estado</span> · {item.estado}
-                  </p>
-                  {item.financiamiento ? (
-                    <p className="mt-2 text-sm text-ink/80">
-                      <span className="text-pine-text">Financiamiento</span> · {item.financiamiento}
+              {resultados.map((item, index) => {
+                const clase = `rise rise-${(index % 4) + 1} block rounded-3xl border border-pine/10 bg-paper p-5 shadow-sm transition duration-300 sm:p-6 ${
+                  item.href ? "hover:-translate-y-1 hover:border-pine/30 hover:shadow-lg" : ""
+                }`;
+                const contenido = (
+                  <>
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <p className="text-xs font-medium tracking-[0.16em] text-clay uppercase">{item.tipo}</p>
+                      <p className="text-xs text-pine-text">{item.detalle}</p>
+                    </div>
+                    <h2 className="font-display mt-2 text-2xl text-ink">{item.titulo}</h2>
+                    <p className="mt-3 text-sm leading-relaxed text-ink/70">{item.descripcion}</p>
+                    <p className="mt-4 text-sm text-ink/80">
+                      <span className="text-pine-text">Estado</span> · {item.estado}
                     </p>
-                  ) : null}
-                </article>
-              ))}
+                    {item.financiamiento ? (
+                      <p className="mt-2 text-sm text-ink/80">
+                        <span className="text-pine-text">Financiamiento</span> · {item.financiamiento}
+                      </p>
+                    ) : null}
+                  </>
+                );
+                return item.href ? (
+                  <Link key={item.key} href={item.href} className={clase}>
+                    {contenido}
+                  </Link>
+                ) : (
+                  <article key={item.key} className={clase}>
+                    {contenido}
+                  </article>
+                );
+              })}
             </div>
           ) : null}
 
@@ -290,22 +305,24 @@ export default function RelacionarPage() {
             ) : null}
             <ul className="mt-6 flex flex-col gap-4">
               {investigadores.map((persona) => (
-                <li
-                  key={persona.id}
-                  className="rounded-2xl bg-white/10 p-4 ring-1 ring-white/15 transition duration-300 hover:bg-white/20"
-                >
-                  <p className="font-display text-xl">{nombreCorto(persona)}</p>
-                  <p className="mt-2 text-sm text-paper/80">{campo(persona.institucion, "Sin institución")}</p>
-                  <p className="mt-1 text-sm text-paper/70">{campo(persona.titulo, "Sin título")}</p>
-                  <p className="mt-3 text-xs tracking-wide text-gold uppercase">
-                    Nivel · {campo(persona.nivel_sni, "—")}
-                  </p>
-                  <p className="mt-1 text-xs tracking-wide text-gold uppercase">
-                    Categoría · {campo(persona.categoria_sni, "—")}
-                  </p>
-                  <p className="mt-3 text-sm leading-relaxed text-paper/75">
-                    {campo(enunciado(persona.investigaciones), "Sin investigaciones cargadas")}
-                  </p>
+                <li key={persona.id}>
+                  <Link
+                    href={`/repositorio/investigadores/${persona.id}`}
+                    className="block rounded-2xl bg-white/10 p-4 ring-1 ring-white/15 transition duration-300 hover:bg-white/20"
+                  >
+                    <p className="font-display text-xl">{nombreCorto(persona)}</p>
+                    <p className="mt-2 text-sm text-paper/80">{campo(persona.institucion, "Sin institución")}</p>
+                    <p className="mt-1 text-sm text-paper/70">{campo(persona.titulo, "Sin título")}</p>
+                    <p className="mt-3 text-xs tracking-wide text-gold uppercase">
+                      Nivel · {campo(persona.nivel_sni, "—")}
+                    </p>
+                    <p className="mt-1 text-xs tracking-wide text-gold uppercase">
+                      Categoría · {campo(persona.categoria_sni, "—")}
+                    </p>
+                    <p className="mt-3 text-sm leading-relaxed text-paper/75">
+                      {campo(enunciado(persona.investigaciones), "Sin investigaciones cargadas")}
+                    </p>
+                  </Link>
                 </li>
               ))}
             </ul>
