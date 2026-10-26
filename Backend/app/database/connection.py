@@ -9,14 +9,33 @@ load_dotenv()
 # Clave de pg_advisory_xact_lock para ensure_schema (5005 y 5006 son de las alertas)
 BLOQUEO_ESQUEMA = 5004
 
+SEGUNDOS_CONEXION_POR_DEFECTO = 5
+
+
+def segundos_conexion() -> int:
+    """Lee DB_CONNECT_TIMEOUT sin lanzar nunca.
+
+    Vacío o no numérico ("5s") → 5. Menor que 1 → 1, porque con 0 libpq espera sin límite.
+    """
+
+    try:
+        segundos = int((os.getenv("DB_CONNECT_TIMEOUT") or "").strip())
+    except ValueError:
+        return SEGUNDOS_CONEXION_POR_DEFECTO
+    return max(segundos, 1)
+
+
 def get_connection():
     port = os.getenv("DB_PORT")
+    # Sin límite, con la base caída cada conexión espera lo que decida el sistema operativo.
+    # Solo afecta al conectar, no a la duración de las consultas.
     return psycopg2.connect(
         host=os.getenv("DB_HOST"),
         port=int(port) if port else None,
         database=os.getenv("DB_NAME"),
         user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASSWORD")
+        password=os.getenv("DB_PASSWORD"),
+        connect_timeout=segundos_conexion()
     )
 
 
@@ -253,6 +272,24 @@ def ensure_schema():
                     actualizado TIMESTAMPTZ NOT NULL DEFAULT NOW()
                 )
                 """
+            )
+            # Métricas de uso (RF006-08): la llena el middleware de app/main.py.
+            # Solo funcionalidad, usuario y fecha; nunca términos de búsqueda.
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS evento_uso (
+                    id BIGSERIAL PRIMARY KEY,
+                    tipo TEXT NOT NULL,
+                    usuario_sub TEXT,
+                    creado TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+                """
+            )
+            cur.execute(
+                "CREATE INDEX IF NOT EXISTS evento_uso_creado ON evento_uso (creado)"
+            )
+            cur.execute(
+                "CREATE INDEX IF NOT EXISTS evento_uso_tipo_creado ON evento_uso (tipo, creado)"
             )
         conn.commit()
     finally:

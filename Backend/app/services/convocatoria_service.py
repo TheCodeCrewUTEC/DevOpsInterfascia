@@ -3,6 +3,17 @@ from app.services import cache_service
 from app.services.documento_service import obtener_documento_por_convocatoria
 from datetime import date
 
+# Temporal: el repositorio y Relacionar muestran solo convocatorias
+# que ya tienen descripción y al menos una fecha. La analítica (RF006)
+# usa la misma condición para contar lo mismo que se ve en el repositorio.
+CONDICION_VISIBLE = """
+    btrim(COALESCE(descripcion, '')) <> ''
+    AND (
+        fecha_apertura IS NOT NULL
+        OR fecha_cierre IS NOT NULL
+    )
+"""
+
 def obtener_convocatorias(
     estado: str | None = None,
     institucion: str | None = None,
@@ -48,16 +59,8 @@ def _consultar_convocatorias(
     where = ""
     parametros = []
 
-    # Temporal: el repositorio y Relacionar muestran solo convocatorias
-    # que ya tienen descripción y al menos una fecha. Quitar este bloque
-    # para volver a listar todas.
-    where += """
-        AND btrim(COALESCE(descripcion, '')) <> ''
-        AND (
-            fecha_apertura IS NOT NULL
-            OR fecha_cierre IS NOT NULL
-        )
-    """
+    # Temporal (ver CONDICION_VISIBLE). Quitar esta línea para volver a listar todas.
+    where += f" AND {CONDICION_VISIBLE}"
 
     if estado is not None:
         where += " AND LOWER(estado) LIKE LOWER(%s)"

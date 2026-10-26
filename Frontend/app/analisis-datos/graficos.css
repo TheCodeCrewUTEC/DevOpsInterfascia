@@ -1,0 +1,7 @@
+/* Colores de las series de los gráficos de análisis (RF006).
+   Una sola serie usa --serie-1; con dos, el orden es fijo: --serie-1 y después --serie-2.
+   No se usan rojo/verde/amarillo: quedan reservados para estados. */
+.grafico-analisis {
+  --serie-1: #2a78d6;
+  --serie-2: #eb6834;
+}

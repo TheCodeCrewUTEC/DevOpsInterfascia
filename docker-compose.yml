@@ -60,6 +60,10 @@ services:
       SMTP_FROM: ${SMTP_FROM:-${SMTP_USER}}
       INTERFASCIA_APP_URL: "http://localhost:3000"
 
+      # Métricas de uso (RF006-08): "0" deja de registrarlas
+      REGISTRAR_USO: ${REGISTRAR_USO:-1}
+      DB_CONNECT_TIMEOUT: ${DB_CONNECT_TIMEOUT:-5}
+
     depends_on:
       db:
         condition: service_healthy

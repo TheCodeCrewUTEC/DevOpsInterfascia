@@ -15,7 +15,12 @@ export default function UsuarioMenu({ nombre, admin }: UsuarioMenuProps) {
     { href: "/alertas", label: "Mis alertas" },
     { href: "/alertas/preferencias", label: "Preferencias de alertas" },
     { href: "/perfil/contrasena", label: "Cambiar contraseña" },
-    ...(admin ? [{ href: "/admin/usuarios", label: "Gestión de usuarios" }] : []),
+    ...(admin
+      ? [
+          { href: "/admin/usuarios", label: "Gestión de usuarios" },
+          { href: "/admin/metricas-uso", label: "Métricas de uso" },
+        ]
+      : []),
   ];
   const [abierto, setAbierto] = useState(false);
   const contenedor = useRef<HTMLDivElement>(null);
