@@ -30,8 +30,16 @@ const caminos = [
     kicker: "Leer el territorio",
     titulo: "Análisis de datos",
     texto:
-      "Un espacio para mirar patrones de financiamiento y capacidades de investigación.",
-    accion: "Ver el módulo",
+      "Indicadores, gráficos y tendencias de fondos, proyectos e investigadores, con filtros y reportes para descargar.",
+    accion: "Ver los indicadores",
+  },
+  {
+    href: "/alertas",
+    kicker: "Seguimiento",
+    titulo: "Alertas",
+    texto:
+      "Seguí fondos, instituciones o temas y recibí avisos de aperturas, cierres próximos y cambios, también por correo.",
+    accion: "Ver mis alertas",
   },
 ];
 
@@ -103,12 +111,12 @@ export default function Home() {
             estar repartida y pasa a poder consultarse, compararse y relacionarse.
           </p>
 
-          <div className="mt-12 grid gap-5 md:grid-cols-2">
+          <div className="mt-12 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
             {caminos.map((camino, index) => (
               <Link
                 key={camino.href}
                 href={camino.href}
-                className={`rise rise-${index + 1} group flex flex-col rounded-3xl border border-pine/10 bg-paper p-6 shadow-sm transition duration-300 hover:-translate-y-1.5 hover:border-pine/30 hover:shadow-lg`}
+                className={`rise rise-${Math.min(index + 1, 4)} group flex flex-col rounded-3xl border border-pine/10 bg-paper p-6 shadow-sm transition duration-300 hover:-translate-y-1.5 hover:border-pine/30 hover:shadow-lg`}
               >
                 <span className="text-xs font-medium tracking-[0.16em] text-clay uppercase">
                   {camino.kicker}
