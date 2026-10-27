@@ -30,14 +30,14 @@ export default async function AlertasPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-sm font-medium tracking-[0.18em] text-clay uppercase">Mi cuenta</p>
-          <h1 className="font-display mt-2 text-4xl text-ink">Mis alertas</h1>
+          <h1 className="font-display mt-2 text-4xl text-balance text-ink">Mis alertas</h1>
           <p className="mt-2 text-sm text-ink/70">
             Avisos de apertura, cierre y cambios de los fondos que seguís.
           </p>
         </div>
         <Link
           href="/alertas/preferencias"
-          className="rounded-full border-2 border-ink px-4 py-2 text-sm text-ink transition hover:bg-foam"
+          className="presionable inline-flex min-h-11 items-center rounded-full border-2 border-ink px-4 text-sm text-ink hover:bg-foam"
         >
           Preferencias de alertas
         </Link>

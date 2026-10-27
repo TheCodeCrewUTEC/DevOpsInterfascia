@@ -2,16 +2,24 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { toast } from "sonner";
 import Combobox from "@/app/components/Combobox";
-import { agruparSuscripciones, detalleRespuesta, type Opciones, type Suscripcion } from "@/lib/alertas";
+import {
+  agruparSuscripciones,
+  cuerpoSuscripcion,
+  detalleRespuesta,
+  nombreSuscripcion,
+  type Opciones,
+  type Suscripcion,
+} from "@/lib/alertas";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "/backend";
 
 const BOTON_QUITAR =
-  "rounded-full border-2 border-ink px-3 py-1 text-xs text-ink transition hover:bg-foam disabled:cursor-wait disabled:opacity-60";
+  "presionable inline-flex min-h-8 shrink-0 items-center rounded-full border-2 border-ink px-3 text-xs text-ink hover:bg-paper disabled:cursor-wait disabled:opacity-60 pointer-coarse:min-h-11 pointer-coarse:px-4 pointer-coarse:text-sm";
 
 const BOTON_AGREGAR =
-  "h-11 shrink-0 rounded-full bg-pine px-5 text-sm font-medium text-ink shadow-sm transition hover:bg-pine-hover disabled:cursor-not-allowed disabled:opacity-60";
+  "presionable h-11 shrink-0 rounded-full bg-pine px-5 text-sm font-medium text-ink shadow-sm hover:bg-pine-hover disabled:cursor-not-allowed disabled:opacity-60";
 
 export default function Suscripciones({
   iniciales,
@@ -25,49 +33,67 @@ export default function Suscripciones({
   const [error, setError] = useState<string | null>(null);
   const grupos = agruparSuscripciones(suscripciones);
 
-  async function quitar(id: number) {
-    setOcupado(true);
-    setError(null);
-    try {
-      const response = await fetch(`${API_URL}/api/alertas/suscripciones/${id}`, { method: "DELETE" });
-      // 404: ya no existía, igual se saca de la lista
-      if (!response.ok && response.status !== 404) {
-        setError(await detalleRespuesta(response));
-        return;
-      }
-      setSuscripciones((lista) => lista.filter((suscripcion) => suscripcion.id !== id));
-    } catch {
-      setError("No se pudo conectar con la API.");
-    } finally {
-      setOcupado(false);
-    }
+  // Muestra el error en pantalla y también como aviso
+  function fallo(mensaje: string) {
+    setError(mensaje);
+    toast.error(mensaje);
   }
 
-  async function agregar(tipo: "institucion" | "tematica", valor: string) {
+  async function crear(cuerpo: object): Promise<Suscripcion | null> {
     setOcupado(true);
     setError(null);
     try {
       const response = await fetch(`${API_URL}/api/alertas/suscripciones`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tipo, valor }),
+        body: JSON.stringify(cuerpo),
       });
       if (!response.ok) {
-        setError(await detalleRespuesta(response));
-        return false;
+        fallo(await detalleRespuesta(response));
+        return null;
       }
       const nueva = (await response.json()) as Suscripcion;
       // 200: ya la seguía; no se duplica
       setSuscripciones((lista) =>
         lista.some((suscripcion) => suscripcion.id === nueva.id) ? lista : [...lista, nueva],
       );
-      return true;
+      return nueva;
     } catch {
-      setError("No se pudo conectar con la API.");
-      return false;
+      fallo("No se pudo conectar con la API.");
+      return null;
     } finally {
       setOcupado(false);
     }
+  }
+
+  async function quitar(suscripcion: Suscripcion) {
+    setOcupado(true);
+    setError(null);
+    try {
+      const response = await fetch(`${API_URL}/api/alertas/suscripciones/${suscripcion.id}`, { method: "DELETE" });
+      // 404: ya no existía, igual se saca de la lista
+      if (!response.ok && response.status !== 404) {
+        fallo(await detalleRespuesta(response));
+        return;
+      }
+      setSuscripciones((lista) => lista.filter((item) => item.id !== suscripcion.id));
+
+      // Deshacer = volver a crearla con los mismos datos (es idempotente en la API)
+      const cuerpo = cuerpoSuscripcion(suscripcion);
+      toast.success(`Dejaste de seguir ${nombreSuscripcion(suscripcion)}.`, {
+        action: cuerpo ? { label: "Deshacer", onClick: () => void crear(cuerpo) } : undefined,
+      });
+    } catch {
+      fallo("No se pudo conectar con la API.");
+    } finally {
+      setOcupado(false);
+    }
+  }
+
+  async function agregar(tipo: "institucion" | "tematica", valor: string) {
+    const nueva = await crear({ tipo, valor });
+    if (nueva) toast.success(`Ahora seguís ${nombreSuscripcion(nueva)}.`);
+    return nueva !== null;
   }
 
   return (
@@ -85,7 +111,7 @@ export default function Suscripciones({
 
       <Grupo titulo="Fondos">
         {grupos.fondos.length === 0 ? (
-          <p className="text-sm text-ink/60">
+          <p className="text-sm text-ink/70">
             Todavía no seguís ningún fondo. Los fondos se siguen desde el{" "}
             <Link href="/repositorio" className="text-pine-text underline underline-offset-2">
               Repositorio
@@ -95,7 +121,7 @@ export default function Suscripciones({
         ) : (
           <Lista>
             {grupos.fondos.map((suscripcion) => (
-              <Item key={suscripcion.id} ocupado={ocupado} onQuitar={() => quitar(suscripcion.id)}>
+              <Item key={suscripcion.id} ocupado={ocupado} onQuitar={() => quitar(suscripcion)}>
                 {suscripcion.convocatoria_id !== null ? (
                   <Link
                     href={`/repositorio/convocatorias/${suscripcion.convocatoria_id}`}
@@ -142,7 +168,7 @@ export default function Suscripciones({
 function Grupo({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-3 border-t border-pine/10 pt-4">
-      <h3 className="text-sm font-medium tracking-[0.12em] text-ink/60 uppercase">{titulo}</h3>
+      <h3 className="text-sm font-medium tracking-[0.12em] text-ink/70 uppercase">{titulo}</h3>
       {children}
     </div>
   );
@@ -163,7 +189,7 @@ function Item({
 }) {
   return (
     <li className="flex items-center justify-between gap-3 rounded-2xl bg-foam/60 px-4 py-2 text-sm text-ink">
-      {children}
+      <span className="min-w-0 break-words">{children}</span>
       <button type="button" disabled={ocupado} onClick={onQuitar} className={BOTON_QUITAR}>
         Quitar
       </button>
@@ -180,15 +206,15 @@ function ListaValores({
   lista: Suscripcion[];
   vacio: string;
   ocupado: boolean;
-  onQuitar: (id: number) => void;
+  onQuitar: (suscripcion: Suscripcion) => void;
 }) {
   if (lista.length === 0) {
-    return <p className="text-sm text-ink/60">{vacio}</p>;
+    return <p className="text-sm text-ink/70">{vacio}</p>;
   }
   return (
     <Lista>
       {lista.map((suscripcion) => (
-        <Item key={suscripcion.id} ocupado={ocupado} onQuitar={() => onQuitar(suscripcion.id)}>
+        <Item key={suscripcion.id} ocupado={ocupado} onQuitar={() => onQuitar(suscripcion)}>
           <span>{suscripcion.valor}</span>
         </Item>
       ))}

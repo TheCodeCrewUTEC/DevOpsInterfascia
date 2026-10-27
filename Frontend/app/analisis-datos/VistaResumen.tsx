@@ -1,6 +1,15 @@
 import type { ReactNode } from "react";
-import { porcentaje, type Filtros, type ResumenAnalisis } from "@/lib/analisis";
+import {
+  ESTADOS,
+  ESTADOS_PROYECTO,
+  ETIQUETA_OTROS,
+  porcentaje,
+  type Filtros,
+  type ResumenAnalisis,
+  type Serie,
+} from "@/lib/analisis";
 import AvisoFiltros from "./AvisoFiltros";
+import GraficoTorta from "./GraficoTorta";
 import Indicador from "./Indicador";
 import NoDisponible from "./NoDisponible";
 
@@ -18,6 +27,7 @@ function Grupo({
   total,
   aplicados,
   filtros,
+  grafico,
   children,
 }: {
   titulo: string;
@@ -26,6 +36,8 @@ function Grupo({
   total: number;
   aplicados: readonly string[];
   filtros: Filtros;
+  // Gráfico opcional debajo de las tarjetas
+  grafico?: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -43,12 +55,21 @@ function Grupo({
               No hay datos para estos filtros.
             </p>
           ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{children}</div>
+            <>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{children}</div>
+              {grafico ? <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">{grafico}</div> : null}
+            </>
           )}
         </>
       )}
     </section>
   );
+}
+
+// Parte-de-un-todo con lo que trae el resumen; lo que no entra en las categorías va a "Otros"
+function conOtros(serie: Serie, total: number): Serie {
+  const resto = total - serie.reduce((suma, item) => suma + item.cantidad, 0);
+  return resto > 0 ? [...serie, { etiqueta: ETIQUETA_OTROS, cantidad: resto }] : serie;
 }
 
 export default function VistaResumen({ datos, filtros }: VistaResumenProps) {
@@ -64,6 +85,25 @@ export default function VistaResumen({ datos, filtros }: VistaResumenProps) {
         total={fondos.total}
         aplicados={fondos.filtros_aplicados}
         filtros={filtros}
+        grafico={
+          <GraficoTorta
+            titulo="Fondos por estado"
+            serie={conOtros(
+              [
+                { etiqueta: "Abierta", cantidad: fondos.abiertos },
+                { etiqueta: "Próxima", cantidad: fondos.proximos },
+                { etiqueta: "Cerrada", cantidad: fondos.cerrados },
+              ],
+              fondos.total,
+            )}
+            conocidas={ESTADOS}
+            nota={
+              fondos.total > fondos.abiertos + fondos.proximos + fondos.cerrados
+                ? "Otros: fondos con otro estado o sin estado informado."
+                : undefined
+            }
+          />
+        }
       >
         <Indicador etiqueta="Fondos" valor={fondos.total} />
         <Indicador etiqueta="Abiertos" valor={fondos.abiertos} nota={`${porcentaje(fondos.abiertos, fondos.total)} del total`} />
@@ -102,6 +142,19 @@ export default function VistaResumen({ datos, filtros }: VistaResumenProps) {
         total={proyectos.total}
         aplicados={proyectos.filtros_aplicados}
         filtros={filtros}
+        grafico={
+          <GraficoTorta
+            titulo="Proyectos por estado"
+            serie={conOtros(
+              [
+                { etiqueta: "En curso", cantidad: proyectos.en_curso },
+                { etiqueta: "Finalizado", cantidad: proyectos.finalizados },
+              ],
+              proyectos.total,
+            )}
+            conocidas={ESTADOS_PROYECTO}
+          />
+        }
       >
         <Indicador etiqueta="Proyectos" valor={proyectos.total} />
         <Indicador etiqueta="En curso" valor={proyectos.en_curso} />
@@ -109,7 +162,7 @@ export default function VistaResumen({ datos, filtros }: VistaResumenProps) {
       </Grupo>
 
       {Number.isNaN(generado.getTime()) ? null : (
-        <p className="text-xs text-ink/60">
+        <p className="text-xs text-ink/70">
           Datos calculados el{" "}
           {generado.toLocaleString("es-UY", {
             dateStyle: "medium",

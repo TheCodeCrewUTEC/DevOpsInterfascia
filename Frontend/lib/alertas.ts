@@ -150,3 +150,22 @@ export async function detalleRespuesta(response: Response) {
     return `Error ${response.status}`;
   }
 }
+
+// Nombre legible de una suscripción para los avisos ("Dejaste de seguir …")
+export function nombreSuscripcion(suscripcion: Suscripcion) {
+  if (suscripcion.tipo === "convocatoria") {
+    return suscripcion.titulo_convocatoria?.trim() || `la convocatoria #${suscripcion.convocatoria_id ?? suscripcion.id}`;
+  }
+  return suscripcion.valor?.trim() || `la suscripción #${suscripcion.id}`;
+}
+
+// Cuerpo del POST que vuelve a crear una suscripción borrada (para "Deshacer").
+// null si le falta el dato que la identifica: en ese caso no se ofrece deshacer.
+export function cuerpoSuscripcion(suscripcion: Suscripcion) {
+  if (suscripcion.tipo === "convocatoria") {
+    return suscripcion.convocatoria_id !== null
+      ? { tipo: suscripcion.tipo, convocatoria_id: suscripcion.convocatoria_id }
+      : null;
+  }
+  return suscripcion.valor?.trim() ? { tipo: suscripcion.tipo, valor: suscripcion.valor } : null;
+}

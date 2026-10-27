@@ -305,3 +305,129 @@ export function etiquetaPeriodo(periodo: string) {
   const indice = Number(mes[2]) - 1;
   return MESES_CORTOS[indice] ? `${MESES_CORTOS[indice]} ${mes[1]}` : periodo;
 }
+
+// ============================================================
+// TORTA Y COLUMNAS
+// ============================================================
+
+// Categorías conocidas: fijan el color de cada una aunque cambien los filtros
+export const ESTADOS_PROYECTO = ["En curso", "Finalizado"];
+export const FORMACIONES = ["Doctorado", "Maestría", "Especialización", "Grado", "Técnico", "Otro"];
+export const ESTADOS_USUARIO = ["Pendiente", "Aprobado", "Rechazado"];
+
+export const ETIQUETA_OTROS = "Otros";
+const COLORES_CATEGORIA = 6;
+export const MAXIMO_PORCIONES = 6;
+
+// "Sin dato", "Sin clasificar", "Sin estado", "Sin año", "Otros"…: van al final y en gris
+export function esResto(etiqueta: string) {
+  const texto = etiqueta.trim().toLowerCase();
+  return texto === "otros" || texto.startsWith("sin ");
+}
+
+// Misma serie con los "Sin …"/"Otros" al final, sin cambiar el orden del resto
+export function restoAlFinal(serie: Serie): Serie {
+  return [...serie.filter((item) => !esResto(item.etiqueta)), ...serie.filter((item) => esResto(item.etiqueta))];
+}
+
+// Deja a lo sumo `maximo` porciones: las primeras (maximo - 1) y todo lo demás sumado en "Otros"
+export function agruparOtros(serie: Serie, maximo = MAXIMO_PORCIONES): Serie {
+  const ordenada = restoAlFinal(serie);
+  if (ordenada.length <= maximo) return ordenada;
+
+  const principales = ordenada.filter((item) => !esResto(item.etiqueta));
+  const quedan = principales.slice(0, maximo - 1);
+  const resto = ordenada.filter((item) => !quedan.includes(item)).reduce((suma, item) => suma + item.cantidad, 0);
+  return [...quedan, { etiqueta: ETIQUETA_OTROS, cantidad: resto }];
+}
+
+// Torta solo para parte-de-un-todo de 3 a 6 porciones (con 2 se lee mejor en barras)
+export function debeSerTorta(serie: Serie) {
+  const porciones = agruparOtros(serie.filter((item) => item.cantidad > 0)).length;
+  return porciones >= 3 && porciones <= MAXIMO_PORCIONES;
+}
+
+// Variable CSS del color de una porción. Orden fijo por posición (nunca por valor):
+// la posición en la lista de conocidas si la etiqueta está, si no la de la serie.
+// "Otros" y "Sin …" van en gris neutro.
+export function colorCategoria(etiqueta: string, indice: number, conocidas?: readonly string[]) {
+  if (esResto(etiqueta)) return "var(--cat-resto)";
+  const lista = (conocidas ?? []).filter((item) => !esResto(item));
+  const posicion = lista.indexOf(etiqueta);
+  // Una conocida fuera de la paleta usa la posición en la serie en lugar de repetir colores en ciclo
+  const final = posicion >= 0 && posicion < COLORES_CATEGORIA ? posicion : indice;
+  return `var(--cat-${Math.min(final, COLORES_CATEGORIA - 1) + 1})`;
+}
+
+export type Arco = { etiqueta: string; cantidad: number; porcentaje: number; inicio: number; fin: number };
+
+// Ángulos de cada porción en radianes, desde las 12 (-π/2) en sentido horario; suman 2π
+export function arcosTorta(serie: Serie): Arco[] {
+  const positivas = serie.filter((item) => item.cantidad > 0);
+  const total = positivas.reduce((suma, item) => suma + item.cantidad, 0);
+  if (!(total > 0)) return [];
+
+  let angulo = -Math.PI / 2;
+  return positivas.map((item) => {
+    const barrido = (item.cantidad / total) * Math.PI * 2;
+    const arco = { ...item, porcentaje: (item.cantidad / total) * 100, inicio: angulo, fin: angulo + barrido };
+    angulo += barrido;
+    return arco;
+  });
+}
+
+function punto(cx: number, cy: number, radio: number, angulo: number) {
+  return `${redondear(cx + radio * Math.cos(angulo))} ${redondear(cy + radio * Math.sin(angulo))}`;
+}
+
+// Atributo d de una porción de dona (rInt 0 → torta llena). Una porción del 100%
+// se dibuja como dos medias vueltas: un solo arco de 360° no se ve en SVG.
+export function caminoArco(cx: number, cy: number, rExt: number, rInt: number, inicio: number, fin: number) {
+  const barrido = fin - inicio;
+  if (barrido >= Math.PI * 2 - 1e-9) {
+    const medio = inicio + Math.PI;
+    const exterior =
+      `M ${punto(cx, cy, rExt, inicio)} A ${rExt} ${rExt} 0 1 1 ${punto(cx, cy, rExt, medio)} ` +
+      `A ${rExt} ${rExt} 0 1 1 ${punto(cx, cy, rExt, inicio)} Z`;
+    if (rInt <= 0) return exterior;
+    return (
+      `${exterior} M ${punto(cx, cy, rInt, inicio)} A ${rInt} ${rInt} 0 1 0 ${punto(cx, cy, rInt, medio)} ` +
+      `A ${rInt} ${rInt} 0 1 0 ${punto(cx, cy, rInt, inicio)} Z`
+    );
+  }
+
+  const grande = barrido > Math.PI ? 1 : 0;
+  const exterior = `M ${punto(cx, cy, rExt, inicio)} A ${rExt} ${rExt} 0 ${grande} 1 ${punto(cx, cy, rExt, fin)}`;
+  if (rInt <= 0) return `${exterior} L ${redondear(cx)} ${redondear(cy)} Z`;
+  return `${exterior} L ${punto(cx, cy, rInt, fin)} A ${rInt} ${rInt} 0 ${grande} 0 ${punto(cx, cy, rInt, inicio)} Z`;
+}
+
+// Columnas por año: años de menor a mayor y "Sin año"/"Sin fecha" al final
+export function ordenarAnios(serie: Serie): Serie {
+  const anios = serie
+    .filter((item) => !esResto(item.etiqueta))
+    .sort((a, b) => {
+      const diferencia = Number(a.etiqueta) - Number(b.etiqueta);
+      return Number.isNaN(diferencia) ? a.etiqueta.localeCompare(b.etiqueta) : diferencia;
+    });
+  return [...anios, ...serie.filter((item) => esResto(item.etiqueta))];
+}
+
+// ============================================================
+// DESCARGAS
+// ============================================================
+
+// Nombre de archivo de un Content-Disposition (filename="…" o filename*=UTF-8''…)
+export function nombreDeDescarga(cabecera: string | null, porDefecto: string) {
+  if (!cabecera) return porDefecto;
+  const codificado = /filename\*\s*=\s*(?:UTF-8'')?([^;]+)/i.exec(cabecera);
+  if (codificado) {
+    try {
+      return decodeURIComponent(codificado[1].trim().replace(/^"|"$/g, "")) || porDefecto;
+    } catch {
+      // Mal codificado: se prueba con filename=
+    }
+  }
+  const simple = /filename\s*=\s*"?([^";]+)"?/i.exec(cabecera);
+  return simple?.[1].trim() || porDefecto;
+}

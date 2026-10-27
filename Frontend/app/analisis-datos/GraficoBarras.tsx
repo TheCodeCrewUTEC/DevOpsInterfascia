@@ -43,7 +43,7 @@ export default function GraficoBarras({ titulo, serie, total, nota }: GraficoBar
           aria-label={`${titulo}: ${serie.length} categorías. La mayor es ${mayor.etiqueta} con ${formatoNumero(mayor.cantidad)}.`}
           className="flex flex-col gap-0.5"
         >
-          {visibles.map((item) => {
+          {visibles.map((item, indice) => {
             const ancho = anchoBarra(item.cantidad, maximo);
             return (
               <div
@@ -56,8 +56,9 @@ export default function GraficoBarras({ titulo, serie, total, nota }: GraficoBar
                 {/* La barra se mide sobre el ancho menos el lugar del valor, que va al final */}
                 <div className="relative h-5 w-[calc(100%-4.5rem)]">
                   <div
-                    className="absolute top-1/2 left-0 h-3 -translate-y-1/2 rounded-r-[4px] bg-(--serie-1)"
-                    style={{ width: `${ancho}%` }}
+                    className="entrada-barra absolute top-1/2 left-0 h-3 -translate-y-1/2 rounded-r-[4px] bg-(--serie-1)"
+                    // Entrada escalonada corta (tope 240ms) para que se lea como lista
+                    style={{ width: `${ancho}%`, animationDelay: `${Math.min(indice * 30, 240)}ms` }}
                   />
                   <span
                     className="absolute top-1/2 ml-1.5 -translate-y-1/2 text-sm whitespace-nowrap text-ink"
@@ -68,7 +69,7 @@ export default function GraficoBarras({ titulo, serie, total, nota }: GraficoBar
                 </div>
                 <span
                   aria-hidden="true"
-                  className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 hidden max-w-[16rem] -translate-x-1/2 rounded-lg border-2 border-ink bg-paper px-2.5 py-1.5 text-xs text-ink shadow-md group-hover:block"
+                  className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 max-w-[16rem] -translate-x-1/2 rounded-lg border-2 border-ink bg-paper px-2.5 py-1.5 text-xs text-ink shadow-md tooltip-grafico"
                 >
                   <span className="block font-medium break-words">{item.etiqueta}</span>
                   {detalle(item.cantidad)}
@@ -78,7 +79,7 @@ export default function GraficoBarras({ titulo, serie, total, nota }: GraficoBar
           })}
         </div>
         {ocultas > 0 ? (
-          <p className="mt-2 text-xs text-ink/60">
+          <p className="mt-2 text-xs text-ink/70">
             Se muestran las {MAXIMO_VISIBLES} primeras; las otras {ocultas} están en la tabla.
           </p>
         ) : null}
@@ -90,10 +91,10 @@ export default function GraficoBarras({ titulo, serie, total, nota }: GraficoBar
     <figure className="grafico-analisis flex min-w-0 flex-col gap-3 rounded-3xl border-2 border-ink bg-paper p-5">
       <figcaption className="text-base font-medium text-ink">{titulo}</figcaption>
       {contenido}
-      {nota ? <p className="text-xs text-ink/60">{nota}</p> : null}
+      {nota ? <p className="text-xs text-ink/70">{nota}</p> : null}
       {conDatos.length > 0 ? (
         <details className="text-sm text-ink">
-          <summary className="cursor-pointer text-ink/70 hover:text-ink">Ver tabla</summary>
+          <summary className="inline-flex min-h-9 cursor-pointer items-center rounded-lg text-ink/70 hover:text-ink pointer-coarse:min-h-11">Ver tabla</summary>
           <div className="mt-2 max-w-full overflow-x-auto">
             <table className="w-full text-left text-sm">
               <caption className="sr-only">{titulo}</caption>

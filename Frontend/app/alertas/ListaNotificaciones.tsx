@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { toast } from "sonner";
 import {
   LIMITE_NOTIFICACIONES,
   detalleRespuesta,
@@ -28,13 +29,16 @@ const TIPOS = [
   { valor: "actualizacion", label: "Actualización" },
 ];
 
-const PILDORA_ACTIVA = "rounded-full bg-pine px-4 py-2 text-sm font-medium text-ink disabled:opacity-60";
+// Mismo peso de letra activa e inactiva: elegir un filtro no mueve el resto de la fila.
+// En pantallas táctiles todos los botones llegan a 44px de alto.
+const PILDORA_ACTIVA =
+  "presionable inline-flex min-h-10 items-center rounded-full border border-pine bg-pine px-4 text-sm text-ink disabled:opacity-60 pointer-coarse:min-h-11";
 const PILDORA =
-  "rounded-full border border-pine/30 bg-paper px-4 py-2 text-sm text-ink transition hover:border-pine hover:bg-foam disabled:cursor-wait disabled:opacity-60";
+  "presionable inline-flex min-h-10 items-center rounded-full border border-pine/30 bg-paper px-4 text-sm text-ink hover:border-pine hover:bg-foam disabled:cursor-wait disabled:opacity-60 pointer-coarse:min-h-11";
 const BOTON =
-  "rounded-full border-2 border-ink px-4 py-2 text-sm text-ink transition hover:bg-foam disabled:cursor-wait disabled:opacity-60";
+  "presionable inline-flex min-h-10 items-center rounded-full border-2 border-ink px-4 text-sm text-ink hover:bg-foam disabled:cursor-wait disabled:opacity-60 pointer-coarse:min-h-11";
 const BOTON_CHICO =
-  "rounded-full border-2 border-ink px-3 py-1 text-xs text-ink transition hover:bg-foam disabled:cursor-wait disabled:opacity-60";
+  "presionable inline-flex min-h-8 items-center rounded-full border-2 border-ink px-3 text-xs text-ink hover:bg-foam disabled:cursor-wait disabled:opacity-60 pointer-coarse:min-h-11 pointer-coarse:px-4 pointer-coarse:text-sm";
 
 type Filtros = { soloNoLeidas: boolean; tipo: string; page: number };
 
@@ -45,14 +49,18 @@ export default function ListaNotificaciones({ inicial }: { inicial: PaginaNotifi
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Ejecuta una llamada a la API con los botones deshabilitados y el error visible
-  async function llamar(accion: () => Promise<void>) {
+  // Ejecuta una llamada a la API con los botones deshabilitados y el error visible.
+  // Si sale bien muestra el aviso de éxito (si hay); el error queda en pantalla y también como aviso.
+  async function llamar(accion: () => Promise<void>, exito?: () => void) {
     setOcupado(true);
     setError(null);
     try {
       await accion();
+      exito?.();
     } catch (excepcion) {
-      setError(excepcion instanceof Error ? excepcion.message : "No se pudo conectar con la API.");
+      const mensaje = excepcion instanceof Error ? excepcion.message : "No se pudo conectar con la API.";
+      setError(mensaje);
+      toast.error(mensaje);
     } finally {
       setOcupado(false);
     }
@@ -105,7 +113,30 @@ export default function ListaNotificaciones({ inicial }: { inicial: PaginaNotifi
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ leida }),
     });
-    reemplazar((await response.json()) as Notificacion, notificacion);
+    const actualizada = (await response.json()) as Notificacion;
+    reemplazar(actualizada, notificacion);
+    return actualizada;
+  }
+
+  // Botón "Marcar como (no) leída": avisa y ofrece deshacer (vuelve al estado anterior con otro PATCH)
+  function marcarConAviso(notificacion: Notificacion) {
+    const leida = !notificacion.leida;
+    let actualizada: Notificacion | null = null;
+    llamar(
+      async () => {
+        actualizada = await marcar(notificacion, leida);
+      },
+      () =>
+        toast.success(leida ? "Marcada como leída." : "Marcada como no leída.", {
+          action: {
+            label: "Deshacer",
+            onClick: () => {
+              const ultima = actualizada;
+              if (ultima) llamar(async () => void (await marcar(ultima, !leida)));
+            },
+          },
+        }),
+    );
   }
 
   function alternar(notificacion: Notificacion) {
@@ -118,31 +149,42 @@ export default function ListaNotificaciones({ inicial }: { inicial: PaginaNotifi
     });
     // Abrir una no leída la marca como leída
     if (!abierta && !notificacion.leida) {
-      llamar(() => marcar(notificacion, true));
+      llamar(async () => void (await marcar(notificacion, true)));
     }
   }
 
   function eliminar(notificacion: Notificacion) {
     if (!window.confirm(`¿Eliminar la alerta "${notificacion.titulo}"?`)) return;
-    llamar(async () => {
-      await pedir(`${BASE}/${notificacion.id}`, { method: "DELETE" });
-      await traer(filtros);
-    });
+    // Sin "Deshacer": la API borra la alerta y no hay forma segura de recrearla igual
+    llamar(
+      async () => {
+        await pedir(`${BASE}/${notificacion.id}`, { method: "DELETE" });
+        await traer(filtros);
+      },
+      () => toast.success("Alerta eliminada."),
+    );
   }
 
   function marcarTodas() {
-    llamar(async () => {
-      await pedir(`${BASE}/marcar-leidas`, { method: "POST" });
-      await traer(filtros);
-    });
+    const cantidad = pagina.no_leidas;
+    llamar(
+      async () => {
+        await pedir(`${BASE}/marcar-leidas`, { method: "POST" });
+        await traer(filtros);
+      },
+      () => toast.success(cantidad === 1 ? "Marcaste 1 alerta como leída." : `Marcaste ${cantidad} alertas como leídas.`),
+    );
   }
 
   function eliminarLeidas() {
     if (!window.confirm("¿Eliminar todas las alertas leídas? No se pueden recuperar.")) return;
-    llamar(async () => {
-      await pedir(`${BASE}?solo_leidas=true`, { method: "DELETE" });
-      await traer({ ...filtros, page: 1 });
-    });
+    llamar(
+      async () => {
+        await pedir(`${BASE}?solo_leidas=true`, { method: "DELETE" });
+        await traer({ ...filtros, page: 1 });
+      },
+      () => toast.success("Se eliminaron las alertas leídas."),
+    );
   }
 
   const sinFiltros = !filtros.soloNoLeidas && !filtros.tipo;
@@ -222,7 +264,7 @@ export default function ListaNotificaciones({ inicial }: { inicial: PaginaNotifi
               abierta={abiertas.has(notificacion.id)}
               ocupado={ocupado}
               onAlternar={() => alternar(notificacion)}
-              onMarcar={() => llamar(() => marcar(notificacion, !notificacion.leida))}
+              onMarcar={() => marcarConAviso(notificacion)}
               onEliminar={() => eliminar(notificacion)}
             />
           ))}
@@ -286,7 +328,7 @@ function Item({
           aria-expanded={abierta}
           aria-controls={abierta ? panelId : undefined}
           onClick={onAlternar}
-          className="flex min-w-0 flex-1 flex-col items-start gap-1 text-left"
+          className="flex min-w-0 flex-1 flex-col items-start gap-1 rounded-xl text-left"
         >
           <span className="flex flex-wrap items-center gap-2 text-xs">
             {!notificacion.leida ? (
@@ -298,11 +340,11 @@ function Item({
             <span className="rounded-full border border-ink/40 bg-paper px-2.5 py-0.5 font-medium text-ink">
               {etiquetaTipo(notificacion.tipo)}
             </span>
-            <time dateTime={notificacion.creado} className="text-ink/60">
+            <time dateTime={notificacion.creado} className="text-ink/70">
               {fechaLegible(notificacion.creado)}
             </time>
             {notificacion.email_enviado_en ? (
-              <span className="text-ink/60" title={fechaLegible(notificacion.email_enviado_en)}>
+              <span className="text-ink/70" title={fechaLegible(notificacion.email_enviado_en)}>
                 · Enviada por correo
               </span>
             ) : null}
@@ -323,7 +365,7 @@ function Item({
       </div>
 
       {abierta ? (
-        <div id={panelId} className="mt-4 flex flex-col gap-3 border-t border-ink/10 pt-4 text-sm text-ink">
+        <div id={panelId} className="entrada-panel mt-4 flex flex-col gap-3 border-t border-ink/10 pt-4 text-sm text-ink">
           {notificacion.mensaje ? <p className="whitespace-pre-line">{notificacion.mensaje}</p> : null}
 
           {dias !== null ? (
@@ -335,7 +377,7 @@ function Item({
           {filas.length > 0 ? (
             <div className="overflow-x-auto rounded-2xl border-2 border-ink">
               <table className="w-full min-w-[480px] text-left text-sm">
-                <thead className="border-b border-pine/10 text-xs tracking-[0.12em] text-ink/50 uppercase">
+                <thead className="border-b border-pine/10 text-xs tracking-[0.12em] text-ink/70 uppercase">
                   <tr>
                     <th scope="col" className="px-4 py-2 font-medium">Campo</th>
                     <th scope="col" className="px-4 py-2 font-medium">Antes</th>
@@ -358,7 +400,7 @@ function Item({
           {notificacion.convocatoria_id !== null ? (
             <Link
               href={`/repositorio/convocatorias/${notificacion.convocatoria_id}`}
-              className="self-start rounded-full bg-pine px-4 py-2 text-sm font-medium text-ink shadow-sm transition hover:bg-pine-hover"
+              className="presionable inline-flex min-h-10 items-center self-start rounded-full bg-pine px-4 text-sm font-medium text-ink shadow-sm hover:bg-pine-hover pointer-coarse:min-h-11"
             >
               Ver convocatoria
             </Link>

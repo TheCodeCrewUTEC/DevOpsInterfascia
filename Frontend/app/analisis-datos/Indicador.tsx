@@ -13,7 +13,7 @@ export default function Indicador({ etiqueta, valor, nota }: IndicadorProps) {
       <p className="mt-2 font-sans text-4xl font-medium text-ink">
         {typeof valor === "number" ? valor.toLocaleString("es-UY") : valor}
       </p>
-      {nota ? <p className="mt-1 text-xs text-ink/60">{nota}</p> : null}
+      {nota ? <p className="mt-1 text-xs text-ink/70">{nota}</p> : null}
     </div>
   );
 }

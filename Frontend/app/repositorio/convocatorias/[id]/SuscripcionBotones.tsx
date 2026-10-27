@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import Button from "../../../components/Button";
 import { buscarSuscripcion, type Suscripcion, type TipoSuscripcion } from "@/lib/suscripciones";
 
@@ -24,6 +26,7 @@ async function mensajeError(response: Response, porDefecto: string) {
 }
 
 export default function SuscripcionBotones({ convocatoriaId, institucion, logueado }: Props) {
+  const router = useRouter();
   const [suscripciones, setSuscripciones] = useState<Suscripcion[]>([]);
   const [cargando, setCargando] = useState(logueado);
   // Qué botón está esperando respuesta
@@ -87,6 +90,11 @@ export default function SuscripcionBotones({ convocatoriaId, institucion, loguea
           throw new Error(await mensajeError(response, "No se pudo quitar la alerta"));
         }
         setSuscripciones((lista) => lista.filter((item) => item.id !== actual.id));
+        toast.success(
+          tipo === "convocatoria"
+            ? "Dejaste de seguir este fondo."
+            : `Dejaste de seguir las convocatorias de ${institucion}.`,
+        );
       } else {
         const response = await fetch(`${API_URL}/api/alertas/suscripciones`, {
           method: "POST",
@@ -100,10 +108,19 @@ export default function SuscripcionBotones({ convocatoriaId, institucion, loguea
         }
         const creada = (await response.json()) as Suscripcion;
         setSuscripciones((lista) => [...lista.filter((item) => item.id !== creada.id), creada]);
+        toast.success(
+          tipo === "convocatoria"
+            ? "Ahora seguís este fondo. Te vamos a avisar de sus cambios."
+            : `Ahora seguís las convocatorias de ${institucion}.`,
+          { action: { label: "Configurar", onClick: () => router.push("/alertas/preferencias") } },
+        );
       }
     } catch (err) {
       const mensaje = err instanceof Error ? err.message : "";
-      setError(mensaje && mensaje !== "Failed to fetch" ? mensaje : "No se pudo conectar con el backend.");
+      const texto = mensaje && mensaje !== "Failed to fetch" ? mensaje : "No se pudo conectar con el backend.";
+      // El error queda en pantalla (role="alert") y además como aviso
+      setError(texto);
+      toast.error(texto);
     } finally {
       setEnCurso(null);
     }
@@ -118,12 +135,12 @@ export default function SuscripcionBotones({ convocatoriaId, institucion, loguea
           type="button"
           onClick={() => void alternar("convocatoria", deFondo)}
           disabled={ocupado}
-          className="rounded-full bg-pine px-4 py-2 text-sm font-medium text-ink shadow-sm transition duration-200 hover:-translate-y-0.5 hover:bg-pine-hover disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+          className="presionable inline-flex min-h-11 items-center rounded-full bg-pine px-4 text-sm font-medium text-ink shadow-sm hover:bg-pine-hover disabled:cursor-not-allowed disabled:opacity-60"
         >
           {cargando
-            ? "Cargando alertas..."
+            ? "Cargando alertas…"
             : enCurso === "convocatoria"
-              ? "Guardando..."
+              ? "Guardando…"
               : deFondo
                 ? "Dejar de seguir"
                 : "Seguir este fondo"}
@@ -134,17 +151,20 @@ export default function SuscripcionBotones({ convocatoriaId, institucion, loguea
             type="button"
             onClick={() => void alternar("institucion", deInstitucion)}
             disabled={ocupado}
-            className="rounded-full border-2 border-ink bg-paper px-4 py-2 text-sm text-ink transition duration-200 hover:-translate-y-0.5 hover:bg-foam disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+            className="presionable inline-flex min-h-11 max-w-full items-center rounded-full border-2 border-ink bg-paper px-4 text-left text-sm text-ink hover:bg-foam disabled:cursor-not-allowed disabled:opacity-60"
           >
             {enCurso === "institucion"
-              ? "Guardando..."
+              ? "Guardando…"
               : deInstitucion
                 ? `Dejar de seguir ${institucion}`
                 : `Seguir convocatorias de ${institucion}`}
           </button>
         ) : null}
 
-        <Link href="/alertas/preferencias" className="text-sm text-pine-text transition hover:underline">
+        <Link
+          href="/alertas/preferencias"
+          className="inline-flex min-h-11 items-center text-sm text-pine-text underline-offset-4 hover:underline"
+        >
           Configurar alertas
         </Link>
       </div>

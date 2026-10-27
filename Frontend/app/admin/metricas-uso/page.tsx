@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { auth } from "@/auth";
 import { apiFetch } from "@/lib/api";
-import { esFechaValida, queryDeFiltros } from "@/lib/analisis";
+import { ESTADOS_USUARIO, esFechaValida, queryDeFiltros } from "@/lib/analisis";
 import { fechaCorta, type MetricasUso } from "@/lib/reportes";
 import { esAdmin } from "@/lib/roles";
+import BotonesExportar from "@/app/analisis-datos/BotonesExportar";
 import GraficoBarras from "@/app/analisis-datos/GraficoBarras";
 import GraficoLineas from "@/app/analisis-datos/GraficoLineas";
+import GraficoTorta from "@/app/analisis-datos/GraficoTorta";
 import Indicador from "@/app/analisis-datos/Indicador";
 import FiltroPeriodo from "./FiltroPeriodo";
 import "@/app/analisis-datos/graficos.css";
@@ -69,16 +71,14 @@ export default async function MetricasUsoPage({
 
   return (
     <Encabezado
-      acciones={(["csv", "pdf"] as const).map((formato) => (
-        <a
-          key={formato}
-          href={`/analisis-datos/exportar?${queryDeFiltros(rango, { formato, vista: "uso" })}`}
-          download
-          className="rounded-full border-2 border-ink bg-paper px-4 py-2 text-sm text-ink transition hover:bg-foam"
-        >
-          Exportar {formato.toUpperCase()}
-        </a>
-      ))}
+      acciones={
+        <BotonesExportar
+          hrefs={{
+            csv: `/analisis-datos/exportar?${queryDeFiltros(rango, { formato: "csv", vista: "uso" })}`,
+            pdf: `/analisis-datos/exportar?${queryDeFiltros(rango, { formato: "pdf", vista: "uso" })}`,
+          }}
+        />
+      }
     >
       <FiltroPeriodo key={`${desde}|${hasta}`} desde={desde} hasta={hasta} />
 
@@ -123,15 +123,16 @@ export default async function MetricasUsoPage({
           )}
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <GraficoBarras
+            <GraficoTorta
               titulo="Usuarios registrados por estado"
               serie={datos.usuarios_registrados.por_estado}
-              total={datos.usuarios_registrados.total}
+              conocidas={ESTADOS_USUARIO}
             />
-            <GraficoBarras
+            {/* Torta solo con 3 a 6 perfiles; con más (o menos) queda en barras */}
+            <GraficoTorta
               titulo="Usuarios registrados por perfil"
               serie={datos.usuarios_registrados.por_perfil}
-              total={datos.usuarios_registrados.total}
+              agrupar={false}
             />
           </div>
         </>
@@ -146,7 +147,7 @@ function Encabezado({ acciones, children }: { acciones?: React.ReactNode; childr
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-sm font-medium tracking-[0.18em] text-clay uppercase">Administración</p>
-          <h1 className="font-display mt-2 text-4xl text-ink">Métricas de uso</h1>
+          <h1 className="font-display mt-2 text-4xl text-balance text-ink">Métricas de uso</h1>
           <p className="mt-2 text-sm text-ink/70">
             Qué funcionalidades se usan, cuánto y por cuántos usuarios. Por defecto, los últimos 30 días.
           </p>

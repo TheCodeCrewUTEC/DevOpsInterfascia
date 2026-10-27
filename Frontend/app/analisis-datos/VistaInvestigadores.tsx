@@ -1,6 +1,7 @@
-import { formatoNumero, type AnalisisInvestigadores, type Filtros } from "@/lib/analisis";
+import { FORMACIONES, formatoNumero, type AnalisisInvestigadores, type Filtros } from "@/lib/analisis";
 import AvisoFiltros, { NOTA_TEMATICA } from "./AvisoFiltros";
 import GraficoBarras from "./GraficoBarras";
+import GraficoTorta from "./GraficoTorta";
 import Indicador from "./Indicador";
 import NoDisponible from "./NoDisponible";
 
@@ -38,9 +39,9 @@ export default function VistaInvestigadores({ datos, filtros }: VistaInvestigado
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <GraficoBarras titulo="Investigadores por institución" serie={datos.por_institucion} total={datos.total} />
             <GraficoBarras titulo="Investigadores por área temática" serie={datos.por_area_tematica} nota={NOTA_TEMATICA} />
-            <GraficoBarras titulo="Investigadores por nivel SNI" serie={datos.por_nivel_sni} total={datos.total} />
-            <GraficoBarras titulo="Investigadores por categoría SNI" serie={datos.por_categoria_sni} total={datos.total} />
-            <GraficoBarras titulo="Investigadores por formación" serie={datos.por_formacion} total={datos.total} />
+            <GraficoTorta titulo="Investigadores por nivel SNI" serie={datos.por_nivel_sni} />
+            <GraficoTorta titulo="Investigadores por categoría SNI" serie={datos.por_categoria_sni} />
+            <GraficoTorta titulo="Investigadores por formación" serie={datos.por_formacion} conocidas={FORMACIONES} />
           </div>
         </>
       )}

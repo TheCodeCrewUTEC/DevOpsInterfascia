@@ -49,8 +49,8 @@ export default function VistaTendencias({ datos, filtros }: VistaTendenciasProps
             aria-current={opcion.valor === filtros.agrupar ? "true" : undefined}
             className={
               opcion.valor === filtros.agrupar
-                ? "rounded-full border-2 border-ink bg-ink px-4 py-1.5 text-sm text-paper"
-                : "rounded-full border-2 border-ink bg-paper px-4 py-1.5 text-sm text-ink transition hover:bg-foam"
+                ? "presionable inline-flex min-h-9 items-center rounded-full border-2 border-ink bg-ink px-4 text-sm text-paper pointer-coarse:min-h-11"
+                : "presionable inline-flex min-h-9 items-center rounded-full border-2 border-ink bg-paper px-4 text-sm text-ink hover:bg-foam pointer-coarse:min-h-11"
             }
           >
             {opcion.label}

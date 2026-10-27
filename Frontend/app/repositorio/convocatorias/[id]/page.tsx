@@ -72,8 +72,14 @@ export default async function ConvocatoriaPage({ params }: { params: Promise<{ i
   return (
     <main className="px-6 pb-20 pt-10">
       <div className="mx-auto flex max-w-[100rem] flex-col gap-6">
-        <Link href="/repositorio" className="w-fit text-sm text-pine-text transition hover:underline">
-          ← Volver al repositorio
+        <Link
+          href="/repositorio"
+          className="inline-flex min-h-11 w-fit items-center gap-1.5 text-sm text-pine-text underline-offset-4 hover:underline"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M10 3.5 5.5 8l4.5 4.5" />
+          </svg>
+          Volver al repositorio
         </Link>
 
         {error ? (
@@ -88,7 +94,7 @@ export default async function ConvocatoriaPage({ params }: { params: Promise<{ i
               <p className="text-sm font-medium tracking-[0.18em] text-clay uppercase">
                 Convocatoria · {texto(convocatoria.institucion, "Sin institución")}
               </p>
-              <h1 className="font-display mt-3 text-4xl leading-tight text-ink sm:text-5xl">
+              <h1 className="font-display mt-3 text-4xl leading-tight text-balance break-words text-ink sm:text-5xl">
                 {texto(convocatoria.titulo, "Sin título")}
               </h1>
               <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm text-ink/80">
@@ -135,7 +141,7 @@ export default async function ConvocatoriaPage({ params }: { params: Promise<{ i
                                 href={documento.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-pine-text underline-offset-2 hover:underline"
+                                className="inline-flex min-h-9 items-center break-all text-pine-text underline-offset-4 hover:underline pointer-coarse:min-h-11"
                               >
                                 {nombre}
                               </a>

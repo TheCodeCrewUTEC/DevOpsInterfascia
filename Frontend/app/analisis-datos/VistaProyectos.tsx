@@ -1,6 +1,8 @@
-import type { AnalisisProyectos, Filtros } from "@/lib/analisis";
+import { ESTADOS_PROYECTO, type AnalisisProyectos, type Filtros } from "@/lib/analisis";
 import AvisoFiltros, { NOTA_TEMATICA } from "./AvisoFiltros";
 import GraficoBarras from "./GraficoBarras";
+import GraficoColumnas from "./GraficoColumnas";
+import GraficoTorta from "./GraficoTorta";
 import Indicador from "./Indicador";
 import NoDisponible from "./NoDisponible";
 
@@ -29,8 +31,8 @@ export default function VistaProyectos({ datos, filtros }: VistaProyectosProps) 
           </div>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <GraficoBarras titulo="Proyectos por estado" serie={datos.por_estado} total={datos.total} />
-            <GraficoBarras titulo="Proyectos por año" serie={datos.por_anio} total={datos.total} />
+            <GraficoTorta titulo="Proyectos por estado" serie={datos.por_estado} conocidas={ESTADOS_PROYECTO} />
+            <GraficoColumnas titulo="Proyectos por año" serie={datos.por_anio} total={datos.total} />
             <GraficoBarras titulo="Proyectos por área temática" serie={datos.por_tematica} nota={NOTA_TEMATICA} />
           </div>
         </>

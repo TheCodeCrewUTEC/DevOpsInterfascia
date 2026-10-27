@@ -4,6 +4,7 @@ import "./globals.css";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import Breadcrumbs from "./components/Breadcrumbs";
+import Avisos from "./components/Avisos";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -36,6 +37,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <Breadcrumbs />
         <div className="flex flex-1 flex-col">{children}</div>
         <Footer />
+        <Avisos />
       </body>
     </html>
   );

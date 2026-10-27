@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
+  ESTADOS,
   FILTROS_VACIOS,
+  agruparOtros,
+  arcosTorta,
+  caminoArco,
+  colorCategoria,
+  debeSerTorta,
+  esResto,
+  ordenarAnios,
   anchoBarra,
   avisoNoAplicados,
   coordenadasLinea,
@@ -11,6 +19,7 @@ import {
   hrefAnalisis,
   leerFiltros,
   marcasEje,
+  nombreDeDescarga,
   porcentaje,
   puntosLinea,
   queryDeFiltros,
@@ -177,5 +186,117 @@ describe("etiquetas", () => {
   it("formatea períodos mensuales", () => {
     expect(etiquetaPeriodo("2025-03")).toBe("mar 2025");
     expect(etiquetaPeriodo("2025")).toBe("2025");
+  });
+});
+
+const serie = (...pares: [string, number][]) => pares.map(([etiqueta, cantidad]) => ({ etiqueta, cantidad }));
+
+describe("arcosTorta", () => {
+  it("con total 0 devuelve []", () => {
+    expect(arcosTorta([])).toEqual([]);
+    expect(arcosTorta(serie(["A", 0], ["B", 0]))).toEqual([]);
+  });
+
+  it("empieza a las 12, va en orden y suma una vuelta", () => {
+    const arcos = arcosTorta(serie(["A", 1], ["B", 0], ["C", 3]));
+    expect(arcos.map((arco) => arco.etiqueta)).toEqual(["A", "C"]);
+    expect(arcos[0].inicio).toBeCloseTo(-Math.PI / 2);
+    expect(arcos[0].fin).toBeCloseTo(arcos[1].inicio);
+    expect(arcos[1].fin - arcos[0].inicio).toBeCloseTo(Math.PI * 2);
+    expect(arcos[0].porcentaje).toBeCloseTo(25);
+    expect(arcos[1].porcentaje).toBeCloseTo(75);
+  });
+});
+
+describe("caminoArco", () => {
+  it("una porción de un cuarto es un solo arco chico de dona", () => {
+    expect(caminoArco(100, 100, 50, 30, -Math.PI / 2, 0)).toBe(
+      "M 100 50 A 50 50 0 0 1 150 100 L 130 100 A 30 30 0 0 0 100 70 Z",
+    );
+  });
+
+  it("marca arco grande cuando pasa de media vuelta", () => {
+    expect(caminoArco(0, 0, 10, 5, 0, Math.PI * 1.5)).toContain("A 10 10 0 1 1");
+  });
+
+  it("sin radio interior cierra en el centro", () => {
+    expect(caminoArco(100, 100, 50, 0, -Math.PI / 2, 0)).toBe("M 100 50 A 50 50 0 0 1 150 100 L 100 100 Z");
+  });
+
+  it("una porción del 100% se dibuja en dos medias vueltas", () => {
+    const camino = caminoArco(100, 100, 50, 30, -Math.PI / 2, (Math.PI * 3) / 2);
+    expect(camino).toBe(
+      "M 100 50 A 50 50 0 1 1 100 150 A 50 50 0 1 1 100 50 Z " +
+        "M 100 70 A 30 30 0 1 0 100 130 A 30 30 0 1 0 100 70 Z",
+    );
+    expect(camino).not.toContain("NaN");
+  });
+});
+
+describe("agruparOtros", () => {
+  it("deja igual una serie corta, con los Sin … al final", () => {
+    expect(agruparOtros(serie(["Sin dato", 9], ["A", 5], ["B", 2]))).toEqual(serie(["A", 5], ["B", 2], ["Sin dato", 9]));
+  });
+
+  it("con más de 6 deja las 5 primeras y suma el resto en Otros", () => {
+    const larga = serie(["A", 9], ["B", 8], ["C", 7], ["D", 6], ["E", 5], ["F", 4], ["G", 3], ["Sin dato", 2]);
+    expect(agruparOtros(larga)).toEqual(serie(["A", 9], ["B", 8], ["C", 7], ["D", 6], ["E", 5], ["Otros", 9]));
+  });
+
+  it("respeta el máximo pedido", () => {
+    expect(agruparOtros(serie(["A", 3], ["B", 2], ["C", 1], ["D", 1]), 3)).toEqual(serie(["A", 3], ["B", 2], ["Otros", 2]));
+  });
+});
+
+describe("debeSerTorta", () => {
+  it("solo de 3 a 6 porciones con datos", () => {
+    expect(debeSerTorta(serie(["A", 1]))).toBe(false);
+    expect(debeSerTorta(serie(["A", 1], ["B", 1]))).toBe(false);
+    expect(debeSerTorta(serie(["A", 1], ["B", 1], ["C", 0]))).toBe(false);
+    expect(debeSerTorta(serie(["A", 1], ["B", 1], ["C", 1]))).toBe(true);
+    expect(debeSerTorta(serie(...Array.from({ length: 10 }, (_, i): [string, number] => [`C${i}`, 1])))).toBe(true);
+  });
+});
+
+describe("colorCategoria", () => {
+  it("usa la posición en las conocidas aunque cambie el orden de la serie", () => {
+    expect(colorCategoria("Cerrada", 0, ESTADOS)).toBe("var(--cat-3)");
+    expect(colorCategoria("Abierta", 2, ESTADOS)).toBe("var(--cat-1)");
+  });
+
+  it("sin conocidas usa la posición en la serie", () => {
+    expect(colorCategoria("Nivel I", 1)).toBe("var(--cat-2)");
+  });
+
+  it("Otros y Sin … van en gris", () => {
+    expect(colorCategoria("Otros", 0)).toBe("var(--cat-resto)");
+    expect(colorCategoria("Sin estado", 4, ESTADOS)).toBe("var(--cat-resto)");
+    expect(esResto("Sin año")).toBe(true);
+    expect(esResto("Otro")).toBe(false);
+  });
+});
+
+describe("ordenarAnios", () => {
+  it("ordena los años de menor a mayor y deja Sin año al final", () => {
+    expect(ordenarAnios(serie(["Sin año", 1], ["2024", 3], ["2019", 2], ["2021", 5]))).toEqual(
+      serie(["2019", 2], ["2021", 5], ["2024", 3], ["Sin año", 1]),
+    );
+  });
+});
+
+describe("nombreDeDescarga", () => {
+  it("lee filename entre comillas o sin ellas", () => {
+    expect(nombreDeDescarga('attachment; filename="fondos_2026-10-26.csv"', "x.csv")).toBe("fondos_2026-10-26.csv");
+    expect(nombreDeDescarga("attachment; filename=uso.pdf", "x.pdf")).toBe("uso.pdf");
+  });
+
+  it("prefiere filename* codificado en UTF-8", () => {
+    expect(nombreDeDescarga("attachment; filename=\"a.csv\"; filename*=UTF-8''an%C3%A1lisis.csv", "x.csv")).toBe("análisis.csv");
+  });
+
+  it("sin cabecera o mal formada usa el nombre por defecto", () => {
+    expect(nombreDeDescarga(null, "interfascia.csv")).toBe("interfascia.csv");
+    expect(nombreDeDescarga("attachment", "interfascia.pdf")).toBe("interfascia.pdf");
+    expect(nombreDeDescarga("attachment; filename*=UTF-8''%E0%A4%A", "x.csv")).toBe("x.csv");
   });
 });

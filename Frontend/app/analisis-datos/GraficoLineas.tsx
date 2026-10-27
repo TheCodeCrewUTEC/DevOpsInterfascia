@@ -116,7 +116,7 @@ export default function GraficoLineas({ titulo, series, nota }: GraficoLineasPro
               return (
                 <div key={marca} className="absolute right-0 left-0" style={{ top: y }}>
                   <div className={`border-t ${marca === 0 ? "border-ink/15" : "border-ink/10"}`} />
-                  <span className="absolute right-full mr-2 -translate-y-1/2 text-xs text-ink/60">
+                  <span className="absolute right-full mr-2 -translate-y-1/2 text-xs text-ink/70">
                     {formatoNumero(marca)}
                   </span>
                 </div>
@@ -125,7 +125,7 @@ export default function GraficoLineas({ titulo, series, nota }: GraficoLineasPro
 
             <svg
               aria-hidden="true"
-              className="absolute inset-0 h-full w-full overflow-visible"
+              className="entrada-linea absolute inset-0 h-full w-full overflow-visible"
               viewBox={`0 0 100 ${ALTO}`}
               preserveAspectRatio="none"
             >
@@ -183,7 +183,7 @@ export default function GraficoLineas({ titulo, series, nota }: GraficoLineasPro
                     />
                   ))}
                   <div
-                    className={`pointer-events-none absolute -top-2 z-10 hidden -translate-y-full rounded-lg border-2 border-ink bg-paper px-2.5 py-1.5 text-xs whitespace-nowrap text-ink shadow-md group-hover:block ${alineacion}`}
+                    className={`pointer-events-none absolute -top-2 z-10 -translate-y-full rounded-lg border-2 border-ink bg-paper px-2.5 py-1.5 text-xs whitespace-nowrap text-ink shadow-md tooltip-grafico ${alineacion}`}
                   >
                     <p className="font-medium">{etiquetaPeriodo(periodo)}</p>
                     {visibles.map((serie, indiceSerie) => (
@@ -201,7 +201,7 @@ export default function GraficoLineas({ titulo, series, nota }: GraficoLineasPro
             {etiquetadosX.map((indice) => (
               <span
                 key={periodos[indice]}
-                className={`absolute top-full mt-2 text-xs whitespace-nowrap text-ink/60 ${
+                className={`absolute top-full mt-2 text-xs whitespace-nowrap text-ink/70 ${
                   indice === 0 && periodos.length > 1 ? "" : indice === ultimo ? "-translate-x-full" : "-translate-x-1/2"
                 }`}
                 style={{ left: `${coordenadas[0][indice].x}%` }}
@@ -219,10 +219,10 @@ export default function GraficoLineas({ titulo, series, nota }: GraficoLineasPro
     <figure className="grafico-analisis flex min-w-0 flex-col gap-3 rounded-3xl border-2 border-ink bg-paper p-5">
       <figcaption className="text-base font-medium text-ink">{titulo}</figcaption>
       {contenido}
-      {nota ? <p className="text-xs text-ink/60">{nota}</p> : null}
+      {nota ? <p className="text-xs text-ink/70">{nota}</p> : null}
       {hayDatos ? (
         <details className="text-sm text-ink">
-          <summary className="cursor-pointer text-ink/70 hover:text-ink">Ver tabla</summary>
+          <summary className="inline-flex min-h-9 cursor-pointer items-center rounded-lg text-ink/70 hover:text-ink pointer-coarse:min-h-11">Ver tabla</summary>
           <div className="mt-2 max-w-full overflow-x-auto">
             <table className="w-full text-left text-sm">
               <caption className="sr-only">{titulo}</caption>

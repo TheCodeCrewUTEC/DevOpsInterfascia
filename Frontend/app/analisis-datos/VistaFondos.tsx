@@ -1,6 +1,8 @@
-import { formatoNumero, porcentaje, type AnalisisFondos, type Filtros } from "@/lib/analisis";
+import { ESTADOS, formatoNumero, porcentaje, type AnalisisFondos, type Filtros } from "@/lib/analisis";
 import AvisoFiltros, { NOTA_TEMATICA } from "./AvisoFiltros";
 import GraficoBarras from "./GraficoBarras";
+import GraficoColumnas from "./GraficoColumnas";
+import GraficoTorta from "./GraficoTorta";
 import Indicador from "./Indicador";
 import NoDisponible from "./NoDisponible";
 
@@ -42,8 +44,8 @@ export default function VistaFondos({ datos, filtros }: VistaFondosProps) {
               serie={datos.por_tematica}
               nota={datos.tematica_multiple ? NOTA_TEMATICA : undefined}
             />
-            <GraficoBarras titulo="Fondos por estado de convocatoria" serie={datos.por_estado} total={datos.total} />
-            <GraficoBarras titulo="Fondos por año de apertura" serie={datos.por_anio_apertura} total={datos.total} />
+            <GraficoTorta titulo="Fondos por estado de convocatoria" serie={datos.por_estado} conocidas={ESTADOS} />
+            <GraficoColumnas titulo="Fondos por año de apertura" serie={datos.por_anio_apertura} total={datos.total} />
           </div>
         </>
       )}

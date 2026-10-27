@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   agruparSuscripciones,
+  cuerpoSuscripcion,
+  nombreSuscripcion,
   diasRestantes,
   etiquetaTipo,
   filasCambios,
@@ -108,5 +110,36 @@ describe("validarDias", () => {
     expect(validarDias(61)).not.toBeNull();
     expect(validarDias(Number.NaN)).not.toBeNull();
     expect(validarDias(2.5)).not.toBeNull();
+  });
+});
+
+describe("nombreSuscripcion y cuerpoSuscripcion", () => {
+  const base: Suscripcion = {
+    id: 7,
+    tipo: "institucion",
+    convocatoria_id: null,
+    valor: "ANII",
+    titulo_convocatoria: null,
+    creado: "2026-01-01T00:00:00Z",
+  };
+
+  it("nombra por valor o por título de la convocatoria", () => {
+    expect(nombreSuscripcion(base)).toBe("ANII");
+    expect(nombreSuscripcion({ ...base, tipo: "convocatoria", convocatoria_id: 3, valor: null, titulo_convocatoria: "Fondo X" })).toBe("Fondo X");
+    expect(nombreSuscripcion({ ...base, tipo: "convocatoria", convocatoria_id: 3, valor: null })).toBe("la convocatoria #3");
+    expect(nombreSuscripcion({ ...base, valor: "  " })).toBe("la suscripción #7");
+  });
+
+  it("arma el cuerpo para volver a crearla", () => {
+    expect(cuerpoSuscripcion(base)).toEqual({ tipo: "institucion", valor: "ANII" });
+    expect(cuerpoSuscripcion({ ...base, tipo: "convocatoria", convocatoria_id: 3, valor: null })).toEqual({
+      tipo: "convocatoria",
+      convocatoria_id: 3,
+    });
+  });
+
+  it("sin el dato que la identifica no ofrece deshacer", () => {
+    expect(cuerpoSuscripcion({ ...base, valor: null })).toBeNull();
+    expect(cuerpoSuscripcion({ ...base, tipo: "convocatoria", convocatoria_id: null, valor: null })).toBeNull();
   });
 });

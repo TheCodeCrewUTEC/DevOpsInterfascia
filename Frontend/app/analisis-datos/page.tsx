@@ -14,6 +14,7 @@ import {
   type OpcionesAnalisis,
   type ResumenAnalisis,
 } from "@/lib/analisis";
+import BotonesExportar from "./BotonesExportar";
 import FiltrosAnaliticos from "./FiltrosAnaliticos";
 import VistaFondos from "./VistaFondos";
 import VistaInvestigadores from "./VistaInvestigadores";
@@ -56,32 +57,31 @@ export default async function AnalisisDatosPage({
     obtener<unknown>(`/api/analisis/${filtros.vista}${query ? `?${query}` : ""}`),
   ]);
 
+  const hrefExportar = (formato: "csv" | "pdf") =>
+    `/analisis-datos/exportar?${queryDeFiltros(filtros, {
+      formato,
+      vista: filtros.vista,
+      agrupar: filtros.vista === "tendencias" ? filtros.agrupar : undefined,
+    })}`;
+
   return (
     <main className="mx-auto flex w-full max-w-[100rem] flex-1 flex-col gap-6 px-6 py-10">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-sm font-medium tracking-[0.18em] text-clay uppercase">Plataforma</p>
-          <h1 className="font-display mt-2 text-4xl text-ink">Análisis de Datos</h1>
+          <h1 className="font-display mt-2 text-4xl text-balance text-ink">Análisis de Datos</h1>
           <p className="mt-2 text-sm text-ink/70">
             Indicadores y distribución de fondos, investigadores y proyectos cargados en Interfascia.
           </p>
         </div>
-        {/* Exportación de la vista activa con los filtros aplicados (RF006-07). <a> y no Link: es una descarga */}
-        <div className="flex flex-wrap gap-2" data-acciones="exportar">
-          {(["csv", "pdf"] as const).map((formato) => (
-            <a
-              key={formato}
-              href={`/analisis-datos/exportar?${queryDeFiltros(filtros, {
-                formato,
-                vista: filtros.vista,
-                agrupar: filtros.vista === "tendencias" ? filtros.agrupar : undefined,
-              })}`}
-              download
-              className="rounded-full border-2 border-ink bg-paper px-4 py-2 text-sm text-ink transition hover:bg-foam"
-            >
-              Exportar {formato.toUpperCase()}
-            </a>
-          ))}
+        {/* Exportación de la vista activa con los filtros aplicados (RF006-07) */}
+        <div data-acciones="exportar">
+          <BotonesExportar
+            hrefs={{
+              csv: hrefExportar("csv"),
+              pdf: hrefExportar("pdf"),
+            }}
+          />
         </div>
       </div>
 
@@ -93,8 +93,8 @@ export default async function AnalisisDatosPage({
             aria-current={valor === filtros.vista ? "page" : undefined}
             className={
               valor === filtros.vista
-                ? "rounded-full border-2 border-ink bg-pine px-4 py-2 text-sm font-medium text-ink"
-                : "rounded-full border-2 border-ink bg-paper px-4 py-2 text-sm text-ink transition hover:bg-foam"
+                ? "presionable inline-flex min-h-10 items-center rounded-full border-2 border-ink bg-pine px-4 text-sm text-ink pointer-coarse:min-h-11"
+                : "presionable inline-flex min-h-10 items-center rounded-full border-2 border-ink bg-paper px-4 text-sm text-ink hover:bg-foam pointer-coarse:min-h-11"
             }
           >
             {ETIQUETAS_VISTA[valor]}

@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { DIAS_MAXIMO, DIAS_MINIMO, validarDias, type Preferencias } from "@/lib/alertas";
 import { Aviso } from "@/app/perfil/campos";
 import { guardarPreferencias } from "../actions";
@@ -18,9 +19,14 @@ export default function FormularioPreferencias({ preferencias }: { preferencias:
   const [dias, setDias] = useState(String(preferencias.dias_anticipacion_cierre));
   const errorDias = validarDias(Number(dias));
 
+  // Cada respuesta del guardado también se avisa (el mensaje en pantalla queda igual)
   useEffect(() => {
-    if (estado?.ok) {
+    if (!estado) return;
+    if (estado.ok) {
+      toast.success(estado.mensaje);
       router.refresh();
+    } else {
+      toast.error(estado.mensaje);
     }
   }, [estado, router]);
 
@@ -33,7 +39,7 @@ export default function FormularioPreferencias({ preferencias }: { preferencias:
       <fieldset className="flex flex-col gap-3">
         <legend className="font-display mb-2 text-xl text-ink">Qué alertas querés recibir</legend>
         {TIPOS.map((tipo) => (
-          <label key={tipo.name} className="flex items-start gap-3 text-sm text-ink">
+          <label key={tipo.name} className="flex cursor-pointer items-start gap-3 rounded-xl py-1 text-sm text-ink pointer-coarse:min-h-11">
             <input
               type="checkbox"
               name={tipo.name}
@@ -42,7 +48,7 @@ export default function FormularioPreferencias({ preferencias }: { preferencias:
             />
             <span>
               {tipo.label}
-              <span className="block text-xs text-ink/50">{tipo.ayuda}</span>
+              <span className="block text-xs text-ink/70">{tipo.ayuda}</span>
             </span>
           </label>
         ))}
@@ -64,7 +70,7 @@ export default function FormularioPreferencias({ preferencias }: { preferencias:
             onChange={(evento) => setDias(evento.target.value)}
             aria-invalid={errorDias ? true : undefined}
             aria-describedby={errorDias ? "dias_error" : undefined}
-            className="h-11 w-24 rounded-xl border-2 border-ink bg-foam/70 px-3 text-sm text-ink outline-none transition focus:border-pine focus:bg-paper"
+            className="h-11 w-24 rounded-xl border-2 border-ink bg-foam/70 px-3 text-sm text-ink tabular-nums outline-none transition-colors focus:border-pine focus:bg-paper aria-invalid:border-clay pointer-coarse:text-base"
           />
           días de anticipación
         </label>
@@ -76,7 +82,7 @@ export default function FormularioPreferencias({ preferencias }: { preferencias:
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <label className="flex items-start gap-3 text-sm text-ink">
+        <label className="flex cursor-pointer items-start gap-3 rounded-xl py-1 text-sm text-ink pointer-coarse:min-h-11">
           <input
             type="checkbox"
             role="switch"
@@ -86,7 +92,7 @@ export default function FormularioPreferencias({ preferencias }: { preferencias:
           />
           <span>
             Recibir también por correo electrónico
-            <span className="block text-xs text-ink/50">
+            <span className="block text-xs text-ink/70">
               {preferencias.email
                 ? `Te escribimos a ${preferencias.email}.`
                 : "No hay un correo válido asociado a tu cuenta, así que solo vas a ver las alertas acá."}
@@ -101,9 +107,9 @@ export default function FormularioPreferencias({ preferencias }: { preferencias:
         <button
           type="submit"
           disabled={guardando || Boolean(errorDias)}
-          className="rounded-full bg-pine px-5 py-2 text-sm font-medium text-ink shadow-sm transition hover:bg-pine-hover disabled:cursor-not-allowed disabled:opacity-60"
+          className="presionable inline-flex min-h-11 items-center rounded-full bg-pine px-5 text-sm font-medium text-ink shadow-sm hover:bg-pine-hover disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {guardando ? "Guardando..." : "Guardar preferencias"}
+          {guardando ? "Guardando…" : "Guardar preferencias"}
         </button>
       </div>
     </form>

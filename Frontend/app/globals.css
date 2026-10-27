@@ -161,3 +161,143 @@ body {
     stroke-dashoffset: 0;
   }
 }
+
+/* ============================================================
+   Movimiento y superficies del navegador (pulido RF005/RF006)
+   Curvas y duraciones cortas: la app es de uso diario (modo Operate).
+   ============================================================ */
+
+:root {
+  --ease-out-quint: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-out-expo: cubic-bezier(0.19, 1, 0.22, 1);
+  --duracion-rapida: 150ms;
+  --duracion-media: 220ms;
+}
+
+::selection {
+  background-color: color-mix(in srgb, var(--color-pine) 28%, transparent);
+  color: var(--color-ink);
+}
+
+/* Foco de teclado visible y del mismo color en toda la app (casi negro, no de marca) */
+:where(a, button, summary, [role="tab"], [tabindex]):focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+}
+
+/* Presión de botones: confirma el toque sin mover el layout */
+.presionable {
+  transition-property: background-color, border-color, color, opacity, transform;
+  transition-duration: var(--duracion-rapida);
+  transition-timing-function: ease;
+}
+
+.presionable:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* Tooltips propios de los gráficos: aparecen con un fundido corto */
+.tooltip-grafico {
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity var(--duracion-rapida) ease,
+    visibility 0s linear var(--duracion-rapida);
+}
+
+.group:hover > .tooltip-grafico,
+.group:focus-within > .tooltip-grafico {
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity var(--duracion-rapida) ease,
+    visibility 0s;
+}
+
+/* Entrada de los datos al montar: las marcas crecen desde su base (el único momento animado) */
+.entrada-barra {
+  transform-origin: left center;
+  animation: crecer-x 480ms var(--ease-out-quint) both;
+}
+
+.entrada-columna {
+  transform-origin: center bottom;
+  animation: crecer-y 480ms var(--ease-out-quint) both;
+}
+
+.entrada-linea {
+  animation: revelar-x 600ms var(--ease-out-quint) both;
+}
+
+.entrada-torta {
+  animation: girar-torta 520ms var(--ease-out-quint) both;
+}
+
+/* Paneles que se despliegan (detalle de una alerta) */
+.entrada-panel {
+  animation: aparecer-abajo var(--duracion-media) var(--ease-out-quint) both;
+}
+
+@keyframes crecer-x {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@keyframes crecer-y {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+
+@keyframes revelar-x {
+  from { clip-path: inset(0 100% 0 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+
+@keyframes girar-torta {
+  from {
+    opacity: 0;
+    transform: rotate(-24deg) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(0) scale(1);
+  }
+}
+
+@keyframes aparecer-abajo {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .presionable:active:not(:disabled) {
+    transform: none;
+  }
+
+  .tooltip-grafico,
+  .group:hover > .tooltip-grafico,
+  .group:focus-within > .tooltip-grafico {
+    transition: none;
+  }
+
+  .entrada-barra,
+  .entrada-columna,
+  .entrada-linea,
+  .entrada-torta,
+  .entrada-panel {
+    animation: none;
+  }
+
+  /* Vaul anima el panel con transform; sin movimiento aparece directo */
+  [data-vaul-drawer],
+  [data-vaul-overlay] {
+    animation-duration: 1ms !important;
+    transition: none !important;
+  }
+}
