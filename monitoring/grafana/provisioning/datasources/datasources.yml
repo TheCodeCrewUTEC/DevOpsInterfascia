@@ -9,6 +9,14 @@ datasources:
     isDefault: true
     editable: false
 
+  # Logs de los contenedores (los junta Alloy)
+  - name: Loki
+    uid: loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    editable: false
+
   # Datos de negocio (formularios procesados, datos confirmados) directo de la base
   - name: Interfascia DB
     uid: interfascia-db

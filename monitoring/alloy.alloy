@@ -1,0 +1,39 @@
+// Alloy lee los logs de los contenedores por el socket de Docker y los manda a Loki.
+
+discovery.docker "contenedores" {
+  host = "unix:///var/run/docker.sock"
+}
+
+// Etiquetas para filtrar en Grafana: contenedor, servicio del compose y proyecto
+discovery.relabel "contenedores" {
+  targets = []
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "container"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label  = "service"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+    target_label  = "project"
+  }
+}
+
+loki.source.docker "contenedores" {
+  host          = "unix:///var/run/docker.sock"
+  targets       = discovery.docker.contenedores.targets
+  relabel_rules = discovery.relabel.contenedores.rules
+  forward_to    = [loki.write.local.receiver]
+}
+
+loki.write "local" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

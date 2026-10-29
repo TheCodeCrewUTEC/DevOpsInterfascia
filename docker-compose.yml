@@ -217,7 +217,33 @@ services:
       - grafana_data:/var/lib/grafana
     depends_on:
       - prometheus
+      - loki
       - db
+    networks:
+      - interfascia-net
+
+  # ---------- Logs: Alloy lee los logs de los contenedores y los guarda en Loki ----------
+  loki:
+    image: grafana/loki:3.1.0
+    container_name: interfascia-loki
+    restart: unless-stopped
+    command: ["-config.file=/etc/loki/loki.yml"]
+    volumes:
+      - ./monitoring/loki.yml:/etc/loki/loki.yml:ro
+      - loki_data:/loki
+    networks:
+      - interfascia-net
+
+  alloy:
+    image: grafana/alloy:v1.3.0
+    container_name: interfascia-alloy
+    restart: unless-stopped
+    command: ["run", "/etc/alloy/config.alloy", "--storage.path=/var/lib/alloy/data"]
+    volumes:
+      - ./monitoring/alloy.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - loki
     networks:
       - interfascia-net
 
@@ -253,6 +279,7 @@ volumes:
   huggingface_cache:
   prometheus_data:
   grafana_data:
+  loki_data:
 
 networks:
   interfascia-net:
