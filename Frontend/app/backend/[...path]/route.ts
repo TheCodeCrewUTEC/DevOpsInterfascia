@@ -26,13 +26,13 @@ async function fetchApi(request: NextRequest, destino: URL) {
     headers.set("Authorization", `Bearer ${session.accessToken}`);
   }
 
+  const cuerpo = conCuerpo ? Buffer.from(await request.arrayBuffer()) : undefined;
+
   let actual = destino;
   let response = await fetch(actual, {
     method: request.method,
     headers,
-    body: conCuerpo ? request.body : undefined,
-    // @ts-expect-error Node fetch exige duplex al reenviar un body en stream.
-    duplex: "half",
+    body: cuerpo ? Buffer.from(cuerpo) : undefined,
     cache: "no-store",
     redirect: "manual",
   });
@@ -48,6 +48,7 @@ async function fetchApi(request: NextRequest, destino: URL) {
     response = await fetch(actual, {
       method: request.method,
       headers,
+      body: cuerpo ? Buffer.from(cuerpo) : undefined,
       cache: "no-store",
       redirect: "manual",
     });
@@ -94,3 +95,4 @@ export const PUT = proxy;
 export const PATCH = proxy;
 export const DELETE = proxy;
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;

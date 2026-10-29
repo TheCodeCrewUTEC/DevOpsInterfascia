@@ -1,196 +1,223 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import Pestanas from "../Pestanas";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "/backend";
+const LIMITE_DOCUMENTOS = 3;
+const CLAVE = "relacionar-conversacion";
 
-type Convocatoria = {
+const SUGERENCIAS = [
+  "¿Qué fondos de financiamiento se adecuan más a mi proyecto?",
+  "¿Qué requisitos piden esos fondos?",
+  "¿Cómo es el proceso de postulación?",
+];
+
+type Fondo = {
   id: number;
   titulo: string | null;
   estado: string | null;
-  fecha_apertura: string | null;
-  fecha_cierre: string | null;
-  descripcion: string | null;
-  financiamiento: number | string | null;
+  motivo?: string | null;
 };
 
-type ConvocatoriasResponse = {
-  items: Convocatoria[];
+type Mensaje = {
+  rol: string;
+  contenido: string;
+  fondos?: Fondo[];
 };
 
-type Proyecto = {
+type Conversacion = {
   id: number;
-  nombre: string | null;
-  estado: string | null;
-  anio: string | null;
-  descripcion: string | null;
-};
-
-type Investigador = {
-  id: number;
-  nombre: string | null;
-  apellido: string | null;
-  institucion: string | null;
-  titulo: string | null;
-  investigaciones: string | null;
-  nivel_sni: string | null;
-  categoria_sni: string | null;
-};
-
-type Resultado = {
-  key: string;
-  href: string | null;
-  tipo: "Convocatoria" | "Proyecto";
-  titulo: string;
-  descripcion: string;
   estado: string;
-  detalle: string;
-  financiamiento: string | null;
+  error: string | null;
+  documentos: string[];
+  mensajes: Mensaje[];
 };
 
-function texto(valor: string | null | undefined, vacio = "—") {
-  const limpio = valor?.trim();
-  return limpio ? limpio : vacio;
-}
-
-function pesos(valor: number | string | null | undefined) {
-  if (valor == null || valor === "") return null;
-  const numero = typeof valor === "number" ? valor : Number(valor);
-  if (!Number.isFinite(numero)) return null;
-  return `$U ${new Intl.NumberFormat("es-UY", { maximumFractionDigits: 0 }).format(numero)}`;
-}
-
-function detalleFecha(item: { fecha_apertura: string | null; fecha_cierre: string | null }) {
-  if (item.fecha_cierre) return `Cierre: ${formatFecha(item.fecha_cierre)}`;
-  if (item.fecha_apertura) return `Apertura: ${formatFecha(item.fecha_apertura)}`;
-  return "Sin fecha";
-}
-
-function formatFecha(valor: string | null) {
-  if (!valor) return "Sin fecha";
-  const [anio, mes, dia] = valor.slice(0, 10).split("-");
-  if (!anio || !mes || !dia) return valor;
-  return `${dia}/${mes}/${anio}`;
-}
-
-function campo(valor: string | null | undefined, vacio: string) {
-  const limpio = valor?.trim();
-  if (!limpio) return vacio;
-  return limpio.length <= 50 ? limpio : `${limpio.slice(0, 49)}…`;
-}
-
-function primerTermino(valor: string | null | undefined) {
-  return valor?.trim().split(/\s+/)[0] ?? "";
-}
-
-function nombreCorto(persona: Investigador) {
-  return campo(
-    [primerTermino(persona.nombre), primerTermino(persona.apellido)].filter(Boolean).join(" "),
-    "Sin nombre",
-  );
-}
-
-function enunciado(valor: string | null | undefined) {
-  const primera = valor
-    ?.split(/\r?\n/)
-    .map((linea) => linea.trim())
-    .find(Boolean);
-  if (!primera) return null;
-  const fin = primera.search(/[.!?](?:\s|$)/);
-  return fin >= 0 ? primera.slice(0, fin + 1) : primera;
-}
-
-async function leerJson<T>(response: Response, recurso: string): Promise<T> {
-  if (!response.ok) {
-    throw new Error(`No se pudieron cargar ${recurso} (${response.status}).`);
-  }
-  return response.json() as Promise<T>;
+async function leerError(response: Response, respaldo: string) {
+  const data = await response.json().catch(() => null);
+  const detail = data?.detail;
+  if (typeof detail === "string" && detail.trim()) return detail;
+  if (Array.isArray(detail) && typeof detail[0]?.msg === "string") return detail[0].msg;
+  return `${respaldo} (${response.status}).`;
 }
 
 export default function RelacionarPage() {
-  const [borrador, setBorrador] = useState("");
-  const [busqueda, setBusqueda] = useState("");
-  const [resultados, setResultados] = useState<Resultado[]>([]);
-  const [investigadores, setInvestigadores] = useState<Investigador[]>([]);
-  const [cargando, setCargando] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [documentos, setDocumentos] = useState<File[]>([]);
+  const [conversacion, setConversacion] = useState<Conversacion | null>(null);
+  const [fase, setFase] = useState<"cargando" | "subir" | "chat">("cargando");
+  const [subiendo, setSubiendo] = useState(false);
+  const [pregunta, setPregunta] = useState("");
+  const [pensando, setPensando] = useState(false);
+  const [error, setError] = useState("");
+  const hilo = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const controlador = new AbortController();
-
-    async function cargar() {
-      setCargando(true);
-      setError(null);
-
-      const consulta = busqueda.trim();
-      const params = new URLSearchParams({ limit: "50" });
-      if (consulta) params.set("buscar", consulta);
-      const query = params.toString();
-
-      try {
-        const [convocatoriasRes, proyectosRes, investigadoresRes] = await Promise.all([
-          fetch(`${API_URL}/api/convocatorias/?${query}`, { signal: controlador.signal }),
-          fetch(`${API_URL}/api/proyectos/?${query}`, { signal: controlador.signal }),
-          fetch(`${API_URL}/api/investigadores/?${query}`, { signal: controlador.signal }),
-        ]);
-
-        const [convocatorias, proyectos, personas] = await Promise.all([
-          leerJson<ConvocatoriasResponse>(convocatoriasRes, "las convocatorias"),
-          leerJson<Proyecto[]>(proyectosRes, "los proyectos"),
-          leerJson<Investigador[]>(investigadoresRes, "los investigadores"),
-        ]);
-
-        const tarjetas: Resultado[] = [
-          ...convocatorias.items.map((item) => ({
-            key: `convocatoria-${item.id}`,
-            href: `/repositorio/convocatorias/${item.id}`,
-            tipo: "Convocatoria" as const,
-            titulo: texto(item.titulo, "Sin título"),
-            descripcion: texto(item.descripcion, "Sin descripción"),
-            estado: texto(item.estado, "Sin estado"),
-            detalle: detalleFecha(item),
-            financiamiento: pesos(item.financiamiento),
-          })),
-          ...proyectos.map((item) => ({
-            key: `proyecto-${item.id}`,
-            href: null,
-            tipo: "Proyecto" as const,
-            titulo: texto(item.nombre, "Sin nombre"),
-            descripcion: texto(item.descripcion, "Sin descripción"),
-            estado: texto(item.estado, "Sin estado"),
-            detalle: `Año: ${texto(item.anio)}`,
-            financiamiento: null,
-          })),
-        ];
-
-        setResultados(tarjetas);
-        setInvestigadores(personas);
-      } catch (err) {
-        if (controlador.signal.aborted) return;
-        setResultados([]);
-        setInvestigadores([]);
-        const mensaje = err instanceof Error ? err.message : "";
-        setError(
-          mensaje && mensaje !== "Failed to fetch"
-            ? mensaje
-            : "No se pudo conectar con el backend.",
-        );
-      } finally {
-        if (!controlador.signal.aborted) setCargando(false);
-      }
+    const guardada = sessionStorage.getItem(CLAVE);
+    if (!guardada || guardada === "nueva") {
+      setFase("subir");
+      return;
+    }
+    const id = Number(guardada);
+    if (!Number.isInteger(id)) {
+      sessionStorage.setItem(CLAVE, "nueva");
+      setFase("subir");
+      return;
     }
 
-    void cargar();
+    let activa = true;
+    fetch(`${API_URL}/api/relacionar/conversaciones/${id}`)
+      .then(async (response) => {
+        if (!activa || sessionStorage.getItem(CLAVE) !== guardada) return;
+        if (!response.ok) {
+          sessionStorage.setItem(CLAVE, "nueva");
+          setFase("subir");
+          return;
+        }
+        const data = (await response.json()) as Conversacion;
+        if (!activa || sessionStorage.getItem(CLAVE) !== guardada) return;
+        setConversacion(data);
+        setFase("chat");
+      })
+      .catch(() => {
+        if (!activa || sessionStorage.getItem(CLAVE) !== guardada) return;
+        sessionStorage.setItem(CLAVE, "nueva");
+        setFase("subir");
+      });
 
-    return () => controlador.abort();
-  }, [busqueda]);
+    return () => {
+      activa = false;
+    };
+  }, []);
 
-  function enviar(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setBusqueda(borrador);
+  useEffect(() => {
+    if (!conversacion) return;
+    if (conversacion.estado !== "PENDING" && conversacion.estado !== "PROCESSING") return;
+
+    const id = conversacion.id;
+    const timer = setInterval(async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/relacionar/conversaciones/${id}`);
+        if (!response.ok || sessionStorage.getItem(CLAVE) !== String(id)) return;
+        const data = (await response.json()) as Conversacion;
+        if (sessionStorage.getItem(CLAVE) !== String(id)) return;
+        setConversacion(data);
+      } catch {
+        // El próximo intento vuelve a consultar.
+      }
+    }, 4000);
+
+    return () => clearInterval(timer);
+  }, [conversacion]);
+
+  useEffect(() => {
+    hilo.current?.scrollTo({ top: hilo.current.scrollHeight });
+  }, [conversacion?.mensajes.length, pensando]);
+
+  function elegirDocumentos(lista: File[]) {
+    if (lista.length === 0) return;
+    setError("");
+    setDocumentos((actuales) => {
+      const siguientes = [...actuales];
+      for (const archivo of lista) {
+        if (siguientes.length >= LIMITE_DOCUMENTOS) break;
+        const repetido = siguientes.some(
+          (documento) => documento.name === archivo.name && documento.size === archivo.size,
+        );
+        if (!repetido) siguientes.push(archivo);
+      }
+      return siguientes;
+    });
   }
+
+  async function subir() {
+    if (documentos.length === 0 || subiendo) return;
+    setSubiendo(true);
+    setError("");
+    try {
+      const cuerpo = new FormData();
+      documentos.forEach((documento) => cuerpo.append("documentos", documento));
+      const response = await fetch(`${API_URL}/api/relacionar/conversaciones`, {
+        method: "POST",
+        body: cuerpo,
+      });
+      if (!response.ok) {
+        throw new Error(await leerError(response, "No se pudieron subir los documentos"));
+      }
+      const data = (await response.json()) as Conversacion;
+      sessionStorage.setItem(CLAVE, String(data.id));
+      setConversacion(data);
+      setFase("chat");
+      setDocumentos([]);
+    } catch (err) {
+      const mensaje = err instanceof Error ? err.message : "";
+      setError(mensaje && mensaje !== "Failed to fetch" ? mensaje : "No se pudo conectar con el backend.");
+    } finally {
+      setSubiendo(false);
+    }
+  }
+
+  async function enviar(texto: string) {
+    const limpio = texto.trim();
+    if (!conversacion || !limpio || pensando) return;
+    setPensando(true);
+    setError("");
+    setPregunta("");
+    setConversacion({
+      ...conversacion,
+      mensajes: [...conversacion.mensajes, { rol: "usuario", contenido: limpio }],
+    });
+    try {
+      const response = await fetch(
+        `${API_URL}/api/relacionar/conversaciones/${conversacion.id}/mensajes`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ texto: limpio }),
+        },
+      );
+      if (!response.ok) {
+        throw new Error(await leerError(response, "No se pudo consultar a Qwen"));
+      }
+      const data = (await response.json()) as { contenido: string; fondos: Fondo[] };
+      setConversacion((actual) =>
+        actual
+          ? {
+              ...actual,
+              mensajes: [
+                ...actual.mensajes,
+                { rol: "asistente", contenido: data.contenido, fondos: data.fondos ?? [] },
+              ],
+            }
+          : actual,
+      );
+    } catch (err) {
+      const mensaje = err instanceof Error ? err.message : "";
+      setError(mensaje && mensaje !== "Failed to fetch" ? mensaje : "No se pudo conectar con el backend.");
+    } finally {
+      setPensando(false);
+    }
+  }
+
+  function onSubmit(event: FormEvent) {
+    event.preventDefault();
+    void enviar(pregunta);
+  }
+
+  function empezarDeNuevo() {
+    sessionStorage.setItem(CLAVE, "nueva");
+    setConversacion(null);
+    setFase("subir");
+    setError("");
+    setPregunta("");
+    setDocumentos([]);
+  }
+
+  const leyendo =
+    conversacion?.estado === "PENDING" || conversacion?.estado === "PROCESSING";
+  const lista = conversacion?.estado === "READY";
+  const fallo = conversacion?.estado === "FAILED";
 
   return (
     <main>
@@ -206,146 +233,225 @@ export default function RelacionarPage() {
             Relacionar
           </h1>
           <p className="rise rise-2 mt-6 max-w-2xl text-lg leading-relaxed text-ink/75">
-            Contá de qué trata tu proyecto y encontrá fondos, antecedentes y personas afines.
+            Subí hasta tres documentos del proyecto. Cuando termine de leerlos, preguntame qué fondos se adecuan, qué requisitos piden o cómo es el proceso de postulación.
           </p>
           <Pestanas actual="relacionar" />
-
-          <form onSubmit={enviar} className="rise rise-3 mt-8">
-            <label htmlFor="proyecto" className="mb-2 block text-sm text-ink">
-              Contame de qué trata tu proyecto
-            </label>
-            <div className="relative">
-              <textarea
-                id="proyecto"
-                name="proyecto"
-                rows={5}
-                value={borrador}
-                onChange={(event) => setBorrador(event.target.value)}
-                placeholder="Mi proyecto trata sobre..."
-                className="w-full resize-none rounded-3xl border border-pine/20 bg-paper px-5 py-4 pr-16 text-sm text-ink shadow-sm outline-none transition focus:border-pine"
-              />
+          {fase === "chat" && conversacion ? (
+            <div className="mt-8">
               <button
-                type="submit"
-                className="absolute right-3 bottom-3 flex h-10 w-10 items-center justify-center rounded-full bg-pine text-ink transition hover:bg-pine-hover"
-                aria-label="Buscar"
+                type="button"
+                onClick={empezarDeNuevo}
+                className="rounded-full bg-pine px-5 py-2.5 text-sm font-medium text-ink transition hover:bg-pine-hover"
               >
-                <Lupa />
+                Nueva consulta
               </button>
             </div>
-          </form>
-
-          {busqueda.trim() ? (
-            <p className="rise mt-4 text-sm text-pine-text">
-              Resultados para: {busqueda.trim()}
-            </p>
           ) : null}
         </div>
       </section>
 
       <section className="px-6 pb-20">
-        <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[1.6fr_0.9fr]">
-          {error ? (
-            <p className="rounded-2xl border border-clay/30 bg-paper px-5 py-4 text-sm text-ink lg:col-span-full" role="alert">
-              {error} Comprobá que el backend esté disponible.
-            </p>
+        <div className="mx-auto max-w-6xl">
+          {fase === "cargando" ? (
+            <p className="text-sm text-ink/60">Cargando la consulta...</p>
           ) : null}
 
-          {!error ? (
-            <div className="flex flex-col gap-4">
-              {cargando ? <Estado mensaje="Buscando fondos y antecedentes..." /> : null}
-              {!cargando && resultados.length === 0 ? (
-                <Estado mensaje="No hay convocatorias ni proyectos para esta búsqueda." />
+          {fase === "subir" ? (
+            <div className="grid gap-4">
+              <div>
+                <p className="mb-2 text-sm text-ink">
+                  Documentos del proyecto
+                  <span className="text-ink/55"> · hasta {LIMITE_DOCUMENTOS}</span>
+                </p>
+                <label
+                  htmlFor="documentos-proyecto"
+                  className="flex min-h-56 cursor-pointer flex-col items-center justify-center rounded-3xl border border-dashed border-pine/30 bg-paper/70 px-6 py-10 text-center transition hover:border-pine hover:bg-paper"
+                >
+                  <span className="text-sm text-ink/70">
+                    Elegí hasta 3 documentos. PDF, Word, Excel o texto.
+                  </span>
+                  <input
+                    id="documentos-proyecto"
+                    type="file"
+                    multiple
+                    accept=".pdf,.docx,.xlsx,.xls,.txt,.csv"
+                    className="sr-only"
+                    onChange={(event) => {
+                      const archivos = Array.from(event.target.files ?? []);
+                      event.target.value = "";
+                      elegirDocumentos(archivos);
+                    }}
+                  />
+                </label>
+              </div>
+
+              {documentos.length > 0 ? (
+                <div className="rounded-3xl border border-pine/10 bg-paper p-5 shadow-sm">
+                  <p className="text-sm text-pine-text">
+                    Documentos seleccionados ({documentos.length} de {LIMITE_DOCUMENTOS})
+                  </p>
+                  <ul className="mt-3 flex flex-col gap-2">
+                    {documentos.map((documento, index) => (
+                      <li
+                        key={`${documento.name}-${documento.size}-${index}`}
+                        className="flex items-center justify-between gap-3 rounded-2xl bg-sand px-4 py-2"
+                      >
+                        <span className="min-w-0 truncate text-sm text-ink/80">{documento.name}</span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setDocumentos((actuales) => actuales.filter((_, i) => i !== index))
+                          }
+                          className="shrink-0 text-sm text-ink/50 transition hover:text-clay"
+                        >
+                          Quitar
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               ) : null}
-              {resultados.map((item, index) => {
-                const clase = `rise rise-${(index % 4) + 1} block rounded-3xl border border-pine/10 bg-paper p-5 shadow-sm transition duration-300 sm:p-6 ${
-                  item.href ? "hover:-translate-y-1 hover:border-pine/30 hover:shadow-lg" : ""
-                }`;
-                const contenido = (
-                  <>
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <p className="text-xs font-medium tracking-[0.16em] text-clay uppercase">{item.tipo}</p>
-                      <p className="text-xs text-pine-text">{item.detalle}</p>
-                    </div>
-                    <h2 className="font-display mt-2 text-2xl text-ink">{item.titulo}</h2>
-                    <p className="mt-3 text-sm leading-relaxed text-ink/70">{item.descripcion}</p>
-                    <p className="mt-4 text-sm text-ink/80">
-                      <span className="text-pine-text">Estado</span> · {item.estado}
-                    </p>
-                    {item.financiamiento ? (
-                      <p className="mt-2 text-sm text-ink/80">
-                        <span className="text-pine-text">Financiamiento</span> · {item.financiamiento}
-                      </p>
-                    ) : null}
-                  </>
-                );
-                return item.href ? (
-                  <Link key={item.key} href={item.href} className={clase}>
-                    {contenido}
-                  </Link>
-                ) : (
-                  <article key={item.key} className={clase}>
-                    {contenido}
-                  </article>
-                );
-              })}
+
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => void subir()}
+                  disabled={subiendo || documentos.length === 0}
+                  className="rounded-full bg-pine px-5 py-2.5 text-sm font-medium text-ink transition hover:bg-pine-hover disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {subiendo ? "Subiendo..." : "Leer documentos"}
+                </button>
+              </div>
             </div>
           ) : null}
 
-          <aside className="rise rise-2 h-fit rounded-[2rem] bg-pine-deep px-6 py-8 text-paper">
-            <h2 className="font-display text-3xl">Investigación</h2>
-            <p className="mt-2 text-sm leading-relaxed text-paper/75">
-              Personas e instituciones con trayectoria en el tema.
-            </p>
-            {cargando ? <p className="mt-6 text-sm text-paper/75">Cargando investigadores...</p> : null}
-            {!cargando && error ? (
-              <p className="mt-6 text-sm text-paper/75">No se pudieron cargar los investigadores.</p>
-            ) : null}
-            {!cargando && !error && investigadores.length === 0 ? (
-              <p className="mt-6 text-sm text-paper/75">No hay investigadores para esta búsqueda.</p>
-            ) : null}
-            <ul className="mt-6 flex flex-col gap-4">
-              {investigadores.map((persona) => (
-                <li key={persona.id}>
-                  <Link
-                    href={`/repositorio/investigadores/${persona.id}`}
-                    className="block rounded-2xl bg-white/10 p-4 ring-1 ring-white/15 transition duration-300 hover:bg-white/20"
+          {fase === "chat" && leyendo ? (
+            <div className="rounded-3xl border border-pine/15 bg-paper px-6 py-8 shadow-sm">
+              <p className="font-display text-2xl text-ink">Leyendo los documentos del proyecto</p>
+              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink/70">
+                Esta parte es la que demora. Estoy leyendo
+                {" "}
+                {conversacion?.documentos.length
+                  ? conversacion.documentos.join(", ")
+                  : "los documentos"}
+                . Puede tardar varios minutos. Cuando termine, te pregunto en qué querés ayuda.
+              </p>
+            </div>
+          ) : null}
+
+          {fase === "chat" && fallo ? (
+            <div className="rounded-3xl border border-clay/30 bg-paper px-6 py-8 shadow-sm">
+              <p className="text-sm text-ink">{conversacion?.error || "No pude leer los documentos."}</p>
+              <button
+                type="button"
+                onClick={empezarDeNuevo}
+                className="mt-4 rounded-full bg-pine px-5 py-2.5 text-sm font-medium text-ink transition hover:bg-pine-hover"
+              >
+                Subir otros documentos
+              </button>
+            </div>
+          ) : null}
+
+          {fase === "chat" && lista ? (
+            <div className="grid gap-4">
+              <div
+                ref={hilo}
+                className="flex max-h-[32rem] flex-col gap-3 overflow-y-auto rounded-3xl border border-pine/10 bg-paper p-5 shadow-sm"
+              >
+                {conversacion?.mensajes.map((mensaje, index) => {
+                  const propio = mensaje.rol === "usuario";
+                  return (
+                    <div key={`${mensaje.rol}-${index}`} className={propio ? "flex justify-end" : ""}>
+                      <div
+                        className={
+                          propio
+                            ? "max-w-[85%] rounded-3xl bg-foam px-4 py-3 text-sm leading-relaxed text-ink"
+                            : "max-w-[85%] rounded-3xl bg-sand px-4 py-3 text-sm leading-relaxed text-ink"
+                        }
+                      >
+                        <p className="whitespace-pre-wrap">{mensaje.contenido}</p>
+                        {mensaje.fondos && mensaje.fondos.length > 0 ? (
+                          <ul className="mt-3 flex flex-col gap-2">
+                            {mensaje.fondos.map((fondo) => (
+                              <li key={fondo.id}>
+                                <Link
+                                  href={`/repositorio/convocatorias/${fondo.id}`}
+                                  className="block rounded-2xl border border-pine/20 bg-paper px-4 py-3 transition hover:border-pine"
+                                >
+                                  <span className="block text-sm font-medium text-ink">
+                                    {fondo.titulo || `Convocatoria ${fondo.id}`}
+                                  </span>
+                                  {fondo.estado ? (
+                                    <span className="mt-1 block text-xs text-pine-text">{fondo.estado}</span>
+                                  ) : null}
+                                  {fondo.motivo ? (
+                                    <span className="mt-1 block text-sm text-ink/70">{fondo.motivo}</span>
+                                  ) : null}
+                                </Link>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
+                      </div>
+                    </div>
+                  );
+                })}
+                {pensando ? (
+                  <p className="text-sm text-ink/60">Estoy revisando los fondos y los documentos...</p>
+                ) : null}
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {SUGERENCIAS.map((sugerencia) => (
+                  <button
+                    key={sugerencia}
+                    type="button"
+                    disabled={pensando}
+                    onClick={() => void enviar(sugerencia)}
+                    className="rounded-full border border-pine/30 bg-paper px-4 py-2 text-left text-sm text-ink/80 transition hover:border-pine hover:text-ink disabled:opacity-50"
                   >
-                    <p className="font-display text-xl">{nombreCorto(persona)}</p>
-                    <p className="mt-2 text-sm text-paper/80">{campo(persona.institucion, "Sin institución")}</p>
-                    <p className="mt-1 text-sm text-paper/70">{campo(persona.titulo, "Sin título")}</p>
-                    <p className="mt-3 text-xs tracking-wide text-gold uppercase">
-                      Nivel · {campo(persona.nivel_sni, "—")}
-                    </p>
-                    <p className="mt-1 text-xs tracking-wide text-gold uppercase">
-                      Categoría · {campo(persona.categoria_sni, "—")}
-                    </p>
-                    <p className="mt-3 text-sm leading-relaxed text-paper/75">
-                      {campo(enunciado(persona.investigaciones), "Sin investigaciones cargadas")}
-                    </p>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </aside>
+                    {sugerencia}
+                  </button>
+                ))}
+              </div>
+
+              <form onSubmit={onSubmit} className="relative">
+                <label htmlFor="pregunta" className="sr-only">
+                  Pregunta
+                </label>
+                <textarea
+                  id="pregunta"
+                  rows={3}
+                  maxLength={2000}
+                  value={pregunta}
+                  onChange={(event) => setPregunta(event.target.value)}
+                  placeholder="Preguntá por fondos, requisitos o el proceso de postulación"
+                  disabled={pensando}
+                  className="w-full resize-none rounded-3xl border border-pine/20 bg-paper px-5 py-4 pr-28 text-sm text-ink shadow-sm outline-none transition focus:border-pine disabled:opacity-70"
+                />
+                <button
+                  type="submit"
+                  disabled={pensando || pregunta.trim().length < 2}
+                  className="absolute right-3 bottom-3 rounded-full bg-pine px-4 py-2 text-sm font-medium text-ink transition hover:bg-pine-hover disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Preguntar
+                </button>
+              </form>
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm text-ink/60">
+                  Las respuestas son cortas. Abrí un fondo para ver el detalle y después podés preguntar algo puntual.
+                </p>
+              </div>
+            </div>
+          ) : null}
+
+          {error ? (
+            <p className="mt-4 rounded-2xl border border-clay/30 bg-paper px-5 py-4 text-sm text-ink" role="alert">
+              {error}
+            </p>
+          ) : null}
         </div>
       </section>
     </main>
-  );
-}
-
-function Estado({ mensaje }: { mensaje: string }) {
-  return (
-    <p className="rounded-3xl border border-dashed border-pine/30 bg-paper/70 px-6 py-10 text-center text-sm text-ink/70">
-      {mensaje}
-    </p>
-  );
-}
-
-function Lupa() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
-      <circle cx="7" cy="7" r="4.25" fill="none" stroke="currentColor" strokeWidth="1.6" />
-      <path d="M10.2 10.2 13 13" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-    </svg>
   );
 }
