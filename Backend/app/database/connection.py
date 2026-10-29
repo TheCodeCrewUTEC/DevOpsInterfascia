@@ -100,6 +100,38 @@ def ensure_schema():
                     ADD COLUMN IF NOT EXISTS fuente TEXT
                 """
             )
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS relacionar_conversacion (
+                    id SERIAL PRIMARY KEY,
+                    usuario_sub TEXT NOT NULL,
+                    estado TEXT NOT NULL,
+                    error TEXT,
+                    documentos TEXT[] NOT NULL DEFAULT '{}',
+                    creado TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    listo TIMESTAMPTZ
+                )
+                """
+            )
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS relacionar_mensaje (
+                    id SERIAL PRIMARY KEY,
+                    conversacion_id INTEGER NOT NULL
+                        REFERENCES relacionar_conversacion(id) ON DELETE CASCADE,
+                    rol TEXT NOT NULL,
+                    contenido TEXT NOT NULL,
+                    fondos JSONB,
+                    creado TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+                """
+            )
+            cur.execute(
+                """
+                ALTER TABLE relacionar_mensaje
+                    ADD COLUMN IF NOT EXISTS fondos JSONB
+                """
+            )
             # Las consulta el Consultor IA; sin ellas /api/proyectos y /api/investigadores dan 500
             cur.execute(
                 """

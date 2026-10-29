@@ -21,6 +21,7 @@ from app.routers import investigadores
 from app.routers import proyectos
 from app.routers import usuarios
 from app.routers import perfil
+from app.routers import relacionar
 
 
 app = FastAPI(
@@ -50,6 +51,7 @@ app.include_router(investigadores.router)
 app.include_router(proyectos.router)
 app.include_router(usuarios.router)
 app.include_router(perfil.router)
+app.include_router(relacionar.router)
 
 def custom_openapi():
     if app.openapi_schema:

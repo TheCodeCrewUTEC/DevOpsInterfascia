@@ -360,7 +360,10 @@ def _listar_convocatorias(
         FROM convocatoria
         WHERE 1=1
         {where}
-        ORDER BY id DESC
+        ORDER BY
+            CASE WHEN lower(btrim(estado)) = 'abierta' THEN 0 ELSE 1 END,
+            GREATEST(fecha_apertura, fecha_cierre) DESC NULLS LAST,
+            id DESC
         LIMIT %s
         OFFSET %s
         """,

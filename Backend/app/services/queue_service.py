@@ -7,6 +7,25 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+async def encolar_relacionar(conversacion_id: int):
+    redis = await create_pool(
+        RedisSettings(
+            host=os.getenv("REDIS_HOST"),
+            port=int(os.getenv("REDIS_PORT")),
+            database=int(os.getenv("REDIS_DB"))
+        )
+    )
+
+    try:
+        return await redis.enqueue_job(
+            "procesar_relacionar",
+            conversacion_id,
+            _job_id=f"relacionar_{conversacion_id}",
+        )
+    finally:
+        await redis.close()
+
+
 async def encolar_formulario(job_id: int):
 
     redis = await create_pool(
