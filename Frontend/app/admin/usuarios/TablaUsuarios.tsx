@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Combobox from "@/app/components/Combobox";
 import { cambiarHabilitado, cambiarRol, type Resultado } from "./actions";
 
 export type Usuario = {
@@ -58,7 +59,7 @@ export default function TablaUsuarios({
         </p>
       ) : null}
 
-      <div className="overflow-x-auto rounded-3xl border border-pine/10 bg-paper shadow-sm">
+      <div className="overflow-x-auto rounded-3xl border-2 border-ink bg-paper shadow-sm">
         <table className="w-full min-w-[640px] text-left text-sm">
           <thead className="border-b border-pine/10 text-xs tracking-[0.12em] text-ink/50 uppercase">
             <tr>
@@ -142,19 +143,15 @@ function Fila({
       </td>
 
       <td className="px-5 py-4 align-middle">
-        <select
+        <Combobox
+          id={`rol-${usuario.keycloak_id}`}
           value={rol}
           disabled={esYo || guardando}
-          aria-label={`Rol de ${nombre}`}
-          onChange={(evento) => elegirRol(evento.target.value)}
-          className="w-full max-w-60 rounded-xl border border-pine/30 bg-paper px-3 py-2 text-sm text-ink transition hover:border-pine focus:border-pine focus:outline-none focus:ring-2 focus:ring-pine/30 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {ROLES.map((opcion) => (
-            <option key={opcion.valor} value={opcion.valor}>
-              {opcion.label}
-            </option>
-          ))}
-        </select>
+          ariaLabel={`Rol de ${nombre}`}
+          onChange={elegirRol}
+          options={ROLES}
+          className="w-full max-w-60"
+        />
       </td>
     </tr>
   );

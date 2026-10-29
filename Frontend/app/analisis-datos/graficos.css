@@ -1,0 +1,17 @@
+/* Colores de los gráficos de análisis (RF006).
+   Series (líneas, barras, columnas): una sola usa --serie-1; con dos, el orden es fijo: --serie-1 y después --serie-2.
+   Categorías (porciones de torta): orden fijo por posición, nunca por valor; --cat-resto para "Otros"/"Sin …".
+   La paleta categórica está validada para daltonismo, incluida la adyacencia 6 → 1.
+   Tres de estos colores tienen contraste < 3:1 con el blanco: la torta siempre lleva leyenda con texto. */
+.grafico-analisis {
+  --serie-1: #2a78d6;
+  --serie-2: #eb6834;
+
+  --cat-1: #2a78d6;
+  --cat-2: #eb6834;
+  --cat-3: #1baf7a;
+  --cat-4: #eda100;
+  --cat-5: #e87ba4;
+  --cat-6: #008300;
+  --cat-resto: #a8a7a2;
+}

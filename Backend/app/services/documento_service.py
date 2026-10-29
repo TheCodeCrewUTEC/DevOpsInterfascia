@@ -74,6 +74,14 @@ def obtener_documento_por_convocatoria(convocatoria_id: int):
     conn = get_connection()
     cursor = conn.cursor()
 
+    # La tabla documento la crea el scraping, no ensure_schema: en una base sin
+    # documentos cargados el detalle del fondo se muestra igual, sin documentos
+    cursor.execute("SELECT to_regclass('documento')")
+    if cursor.fetchone()[0] is None:
+        cursor.close()
+        conn.close()
+        return []
+
     cursor.execute("""
         SELECT
             id,

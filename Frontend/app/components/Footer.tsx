@@ -20,7 +20,7 @@ const fila2 = logos.slice(mitad);
 export default function Footer() {
   return (
     <footer className="mt-auto border-t border-pine/10 bg-pine-deep px-6 py-10 text-paper">
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-[100rem]">
         <p className="font-display text-lg">Avalado por</p>
         <p className="mt-1 text-sm text-paper/70">
           Instituciones que acompañan el piloto en el territorio.

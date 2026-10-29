@@ -30,8 +30,16 @@ const caminos = [
     kicker: "Leer el territorio",
     titulo: "Análisis de datos",
     texto:
-      "Un espacio para mirar patrones de financiamiento y capacidades de investigación.",
-    accion: "Ver el módulo",
+      "Indicadores, gráficos y tendencias de fondos, proyectos e investigadores, con filtros y reportes para descargar.",
+    accion: "Ver los indicadores",
+  },
+  {
+    href: "/alertas",
+    kicker: "Seguimiento",
+    titulo: "Alertas",
+    texto:
+      "Seguí fondos, instituciones o temas y recibí avisos de aperturas, cierres próximos y cambios, también por correo.",
+    accion: "Ver mis alertas",
   },
 ];
 
@@ -57,7 +65,7 @@ export default function Home() {
         <div className="blob pointer-events-none absolute -left-16 top-8 h-56 w-56 rounded-full bg-gold/50 blur-3xl" />
         <div className="blob-late pointer-events-none absolute right-0 top-24 h-64 w-64 rounded-full bg-pine/20 blur-3xl" />
 
-        <div className="relative mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="relative mx-auto grid max-w-[100rem] items-center gap-12 lg:grid-cols-[1.1fr_0.9fr]">
           <div>
             <p className="rise text-sm font-medium tracking-[0.18em] text-clay uppercase">
               Plataforma piloto · Uruguay
@@ -90,7 +98,7 @@ export default function Home() {
       </section>
 
       <section id="que-es-interfascia" className="scroll-mt-24 px-6 py-16">
-        <div className="mx-auto max-w-6xl">
+        <div className="mx-auto max-w-[100rem]">
           <div className="rise flex items-center gap-4">
             <div className="h-px flex-1 bg-pine/20" />
             <h2 className="font-display text-3xl text-ink">¿Qué es Interfascia?</h2>
@@ -103,12 +111,12 @@ export default function Home() {
             estar repartida y pasa a poder consultarse, compararse y relacionarse.
           </p>
 
-          <div className="mt-12 grid gap-5 md:grid-cols-2">
+          <div className="mt-12 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
             {caminos.map((camino, index) => (
               <Link
                 key={camino.href}
                 href={camino.href}
-                className={`rise rise-${index + 1} group flex flex-col rounded-3xl border border-pine/10 bg-paper p-6 shadow-sm transition duration-300 hover:-translate-y-1.5 hover:border-pine/30 hover:shadow-lg`}
+                className={`rise rise-${Math.min(index + 1, 4)} group flex flex-col rounded-3xl border border-pine/10 bg-paper p-6 shadow-sm transition duration-300 hover:-translate-y-1.5 hover:border-pine/30 hover:shadow-lg`}
               >
                 <span className="text-xs font-medium tracking-[0.16em] text-clay uppercase">
                   {camino.kicker}
@@ -127,7 +135,7 @@ export default function Home() {
       </section>
 
       <section className="px-6 pb-20">
-        <div className="mx-auto max-w-6xl rounded-[2rem] bg-pine-deep px-6 py-10 text-paper sm:px-10">
+        <div className="mx-auto max-w-[100rem] rounded-[2rem] bg-pine-deep px-6 py-10 text-paper sm:px-10">
           <h2 className="font-display text-3xl">Cómo se vincula</h2>
           <p className="mt-3 max-w-2xl text-paper/75">
             El recorrido de la plataforma une la idea, el financiamiento y quién puede llevarla adelante.

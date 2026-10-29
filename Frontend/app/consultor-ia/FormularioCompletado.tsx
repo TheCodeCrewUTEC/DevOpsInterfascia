@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Combobox from "../components/Combobox";
 import {
   agruparPorPagina,
   esObligatorio,
@@ -14,6 +15,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "/backend";
 type Props = {
   jobId: number;
   campos: CampoFormulario[];
+  validado?: boolean;
   onVolver: () => void;
 };
 
@@ -23,11 +25,12 @@ function valoresIniciales(campos: CampoFormulario[]) {
   return Object.fromEntries(campos.map((campo) => [campo.id, normalizarValor(campo.respuesta)]));
 }
 
-export default function FormularioCompletado({ jobId, campos, onVolver }: Props) {
+export default function FormularioCompletado({ jobId, campos, validado = false, onVolver }: Props) {
   const [valores, setValores] = useState<Record<number, string>>(() => valoresIniciales(campos));
   const [guardados, setGuardados] = useState<Record<number, string>>(() => valoresIniciales(campos));
   const [guardando, setGuardando] = useState(false);
   const [estado, setEstado] = useState<Estado>(null);
+  const [confirmado, setConfirmado] = useState(validado);
 
   const secciones = useMemo(() => agruparPorPagina(campos), [campos]);
   const pendientesDeGuardar = campos.filter((campo) => valores[campo.id] !== guardados[campo.id]);
@@ -36,6 +39,38 @@ export default function FormularioCompletado({ jobId, campos, onVolver }: Props)
   function cambiar(id: number, valor: string) {
     setValores((actuales) => ({ ...actuales, [id]: valor }));
     setEstado(null);
+    setConfirmado(false);
+  }
+
+  // Human in the loop: la persona da por buenos los datos revisados y quedan
+  // guardados para sugerirlos en el próximo formulario.
+  async function confirmar() {
+    if (!(await guardar())) return;
+
+    setGuardando(true);
+    try {
+      const response = await fetch(`${API_URL}/formularios/jobs/${jobId}/confirmar`, { method: "POST" });
+      if (!response.ok) {
+        throw new Error(
+          response.status === 401
+            ? "Iniciá sesión para guardar los datos confirmados."
+            : `No se pudieron confirmar los datos (${response.status}).`,
+        );
+      }
+      const { guardados } = (await response.json()) as { guardados: number };
+      setConfirmado(true);
+      setEstado({
+        tipo: "ok",
+        texto: `Datos confirmados: ${guardados} campo${guardados === 1 ? "" : "s"} se sugerirán en tu próximo formulario.`,
+      });
+    } catch (err) {
+      setEstado({
+        tipo: "error",
+        texto: err instanceof Error ? err.message : "No se pudieron confirmar los datos.",
+      });
+    } finally {
+      setGuardando(false);
+    }
   }
 
   async function guardar(): Promise<boolean> {
@@ -113,13 +148,13 @@ export default function FormularioCompletado({ jobId, campos, onVolver }: Props)
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="rounded-3xl border border-pine/10 bg-paper p-5 shadow-sm sm:p-6">
+      <div className="rounded-3xl border-2 border-ink bg-paper p-5 shadow-sm sm:p-6">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <p className="text-sm text-ink">
             <span className="font-medium">{completos}</span> de {campos.length} campos completados
           </p>
           <p className="text-xs text-ink/60">
-            Revisá cada campo: la IA puede equivocarse. Lo que corrijas queda guardado.
+            Revisá cada campo: la IA puede equivocarse. Al confirmar, los datos quedan guardados para tus próximos formularios.
           </p>
         </div>
         <div className="mt-3 h-2 overflow-hidden rounded-full bg-foam" aria-hidden="true">
@@ -134,7 +169,7 @@ export default function FormularioCompletado({ jobId, campos, onVolver }: Props)
         <section key={seccion.titulo} className="flex flex-col gap-4">
           <h2 className="text-xs font-medium tracking-[0.18em] text-clay uppercase">{seccion.titulo}</h2>
 
-          <div className="flex flex-col gap-4 rounded-3xl border border-pine/10 bg-paper p-5 shadow-sm sm:p-6">
+          <div className="flex flex-col gap-4 rounded-3xl border-2 border-ink bg-paper p-5 shadow-sm sm:p-6">
             {seccion.campos.map((campo) => (
               <Campo
                 key={campo.id}
@@ -161,6 +196,9 @@ export default function FormularioCompletado({ jobId, campos, onVolver }: Props)
           <BotonSecundario onClick={volver}>Volver</BotonSecundario>
           <BotonSecundario onClick={() => void guardar()} disabled={guardando || pendientesDeGuardar.length === 0}>
             {guardando ? "Guardando..." : "Guardar cambios"}
+          </BotonSecundario>
+          <BotonSecundario onClick={() => void confirmar()} disabled={guardando || confirmado}>
+            {confirmado ? "Datos confirmados ✓" : "Confirmar datos"}
           </BotonSecundario>
           <button
             type="button"
@@ -192,8 +230,8 @@ function Campo({
   const editado = valor !== sugerenciaIa;
   const vacio = !valor.trim();
 
-  const clases = `w-full rounded-xl border px-3 py-2.5 text-sm text-ink outline-none transition focus:border-pine focus:bg-paper ${
-    vacio && esObligatorio(campo.campo) ? "border-gold bg-gold/10" : "border-pine/20 bg-foam/60"
+  const clases = `w-full rounded-xl border-2 px-3 py-2.5 text-sm text-ink outline-none transition focus:border-pine focus:bg-paper ${
+    vacio && esObligatorio(campo.campo) ? "border-gold bg-gold/10" : "border-ink bg-foam/60"
   }`;
 
   let control;
@@ -203,12 +241,13 @@ function Campo({
     );
   } else if (campo.tipo === "checkbox") {
     control = (
-      <select id={id} value={valor} onChange={(e) => onChange(e.target.value)} className={clases}>
-        <option value="">Sin indicar</option>
-        <option value="Sí">Sí</option>
-        <option value="No">No</option>
-        {valor && valor !== "Sí" && valor !== "No" ? <option value={valor}>{valor}</option> : null}
-      </select>
+      <Combobox
+        id={id}
+        value={valor}
+        onChange={onChange}
+        opcionVacia="Sin indicar"
+        options={["Sí", "No", ...(valor && valor !== "Sí" && valor !== "No" ? [valor] : [])]}
+      />
     );
   } else {
     control = (
@@ -224,7 +263,7 @@ function Campo({
   }
 
   return (
-    <div className="flex flex-col gap-2 border-b border-pine/10 pb-4 last:border-0 last:pb-0">
+    <div className="flex flex-col gap-2 border-b border-ink/15 pb-4 last:border-0 last:pb-0">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <label htmlFor={id} className="text-sm font-medium text-ink">
           {etiqueta}
@@ -247,6 +286,21 @@ function Campo({
       </div>
 
       {control}
+
+      {campo.dato_guardado && valor.trim() !== campo.dato_guardado.trim() ? (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-pine/30 bg-foam/60 px-3 py-2 text-xs text-ink/80">
+          <span>
+            Dato que confirmaste antes: <span className="font-medium text-ink">{campo.dato_guardado}</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => onChange(campo.dato_guardado ?? "")}
+            className="rounded-full bg-pine px-2.5 py-0.5 font-medium text-ink transition hover:bg-pine-hover"
+          >
+            Usar este dato
+          </button>
+        </div>
+      ) : null}
 
       {sinDatosIa && !editado ? (
         <p className="text-xs text-ink/60">La IA no encontró este dato en los documentos. Completalo a mano.</p>

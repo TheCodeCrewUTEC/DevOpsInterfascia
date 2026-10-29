@@ -1,9 +1,7 @@
 "use client";
 
 import { useState } from "react";
-
-const chevron =
-  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%23102a3c' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 7.5 10 12.5 15 7.5'/%3E%3C/svg%3E\")";
+import Combobox from "./Combobox";
 
 interface AddableSelectProps {
   id: string;
@@ -65,30 +63,17 @@ export default function AddableSelect({
 
         return (
           <div key={`${id}-${index}`} className="flex items-center gap-3">
-            <select
-              key={`${id}-${index}-${value}`}
+            <Combobox
               id={`${id}-${index}`}
               name={name}
               value={value}
-              onChange={(event) => update(index, event.target.value)}
-              aria-invalid={rowInvalid}
-              aria-required={required && index === 0}
-              className={
-                rowInvalid
-                  ? "h-11 flex-1 appearance-none rounded-xl border border-red-600 bg-red-50 bg-[length:16px] bg-[position:right_1.25rem_center] bg-no-repeat px-4 pr-14 text-sm text-ink outline-none transition focus:border-red-600"
-                  : "h-11 flex-1 appearance-none rounded-xl border border-pine/20 bg-foam/70 bg-[length:16px] bg-[position:right_1.25rem_center] bg-no-repeat px-4 pr-14 text-sm text-ink outline-none transition focus:border-pine focus:bg-paper"
-              }
-              style={{ backgroundImage: chevron }}
-            >
-              <option value="" disabled>
-                {placeholder}
-              </option>
-              {available.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
+              onChange={(nuevo) => update(index, nuevo)}
+              options={available}
+              placeholder={placeholder}
+              required={required && index === 0}
+              invalid={rowInvalid}
+              className="flex-1"
+            />
 
             {canRemove ? (
               <button

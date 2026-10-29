@@ -3,6 +3,7 @@
 import { useActionState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import AddableSelect from "@/app/components/AddableSelect";
+import Combobox from "@/app/components/Combobox";
 import { DEPARTAMENTOS, INSTITUCIONES } from "@/lib/opciones-perfil";
 import { guardarPerfil } from "./actions";
 import { Aviso, Campo, ESTILO_INPUT } from "./campos";
@@ -33,7 +34,7 @@ export default function FormularioPerfil({ perfil }: { perfil: Perfil }) {
     <form
       key={JSON.stringify(perfil)}
       action={accion}
-      className="flex flex-col gap-5 rounded-3xl border border-pine/10 bg-paper p-6 shadow-sm"
+      className="flex flex-col gap-5 rounded-3xl border-2 border-ink bg-paper p-6 shadow-sm"
     >
       <div className="grid gap-5 sm:grid-cols-2">
         <Campo id="nombre" label="Nombre" requerido>
@@ -62,22 +63,14 @@ export default function FormularioPerfil({ perfil }: { perfil: Perfil }) {
       </Campo>
 
       <Campo id="departamento_residencia" label="Departamento de residencia" requerido>
-        <select
+        <Combobox
           id="departamento_residencia"
           name="departamento_residencia"
           required
           defaultValue={perfil.departamento_residencia ?? ""}
-          className={ESTILO_INPUT}
-        >
-          <option value="" disabled>
-            Seleccioná un departamento
-          </option>
-          {DEPARTAMENTOS.map((departamento) => (
-            <option key={departamento} value={departamento}>
-              {departamento}
-            </option>
-          ))}
-        </select>
+          options={DEPARTAMENTOS}
+          placeholder="Escribí o elegí un departamento"
+        />
       </Campo>
 
       <AddableSelect

@@ -6,14 +6,36 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Clave de pg_advisory_xact_lock para ensure_schema (5005 y 5006 son de las alertas)
+BLOQUEO_ESQUEMA = 5004
+
+SEGUNDOS_CONEXION_POR_DEFECTO = 5
+
+
+def segundos_conexion() -> int:
+    """Lee DB_CONNECT_TIMEOUT sin lanzar nunca.
+
+    Vacío o no numérico ("5s") → 5. Menor que 1 → 1, porque con 0 libpq espera sin límite.
+    """
+
+    try:
+        segundos = int((os.getenv("DB_CONNECT_TIMEOUT") or "").strip())
+    except ValueError:
+        return SEGUNDOS_CONEXION_POR_DEFECTO
+    return max(segundos, 1)
+
+
 def get_connection():
     port = os.getenv("DB_PORT")
+    # Sin límite, con la base caída cada conexión espera lo que decida el sistema operativo.
+    # Solo afecta al conectar, no a la duración de las consultas.
     return psycopg2.connect(
         host=os.getenv("DB_HOST"),
         port=int(port) if port else None,
         database=os.getenv("DB_NAME"),
         user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASSWORD")
+        password=os.getenv("DB_PASSWORD"),
+        connect_timeout=segundos_conexion()
     )
 
 
@@ -35,6 +57,10 @@ def ensure_schema():
 
     try:
         with conn.cursor() as cur:
+            # Backend y worker corren esto al arrancar: sin el lock, en una base vacía los
+            # CREATE TABLE IF NOT EXISTS simultáneos chocan en el catálogo (UniqueViolation).
+            # Todo va en una sola transacción, así que el lock se libera con el commit.
+            cur.execute("SELECT pg_advisory_xact_lock(%s)", (BLOQUEO_ESQUEMA,))
             cur.execute(
                 """
                 CREATE TABLE IF NOT EXISTS formulario_job (
@@ -86,6 +112,32 @@ def ensure_schema():
                 ALTER TABLE formulario_job
                     ADD COLUMN IF NOT EXISTS usuario_sub TEXT,
                     ADD COLUMN IF NOT EXISTS consulta_token TEXT
+                """
+            )
+            # Human in the loop: lo que la persona revisó y confirmó de un formulario
+            # completado. Se ofrece como sugerencia en los formularios siguientes.
+            cur.execute(
+                """
+                ALTER TABLE formulario_job
+                    ADD COLUMN IF NOT EXISTS validado_en TIMESTAMPTZ
+                """
+            )
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS dato_proyecto_validado (
+                    id SERIAL PRIMARY KEY,
+                    usuario_sub TEXT NOT NULL,
+                    campo_clave TEXT NOT NULL,
+                    campo TEXT NOT NULL,
+                    valor TEXT NOT NULL,
+                    respuesta_ia TEXT,
+                    editado_por_usuario BOOLEAN NOT NULL DEFAULT FALSE,
+                    job_id INTEGER REFERENCES formulario_job(id) ON DELETE SET NULL,
+                    veces_confirmado INTEGER NOT NULL DEFAULT 1,
+                    creado TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    actualizado TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    UNIQUE (usuario_sub, campo_clave)
+                )
                 """
             )
             # Las consulta el Consultor IA; sin ellas /api/proyectos y /api/investigadores dan 500
@@ -141,6 +193,103 @@ def ensure_schema():
                     actualizado TIMESTAMPTZ NOT NULL DEFAULT NOW()
                 )
                 """
+            )
+            # Alertas (RF005). Cada fila de convocatoria es un fondo; esa tabla viene de una
+            # base existente y no se crea acá, por eso convocatoria_id no tiene FK.
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS suscripcion (
+                    id SERIAL PRIMARY KEY,
+                    usuario_sub TEXT NOT NULL,
+                    tipo TEXT NOT NULL CHECK (tipo IN ('convocatoria', 'institucion', 'tematica')),
+                    convocatoria_id INTEGER,
+                    valor TEXT,
+                    creado TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+                """
+            )
+            cur.execute(
+                """
+                CREATE UNIQUE INDEX IF NOT EXISTS suscripcion_unica
+                    ON suscripcion (usuario_sub, tipo, COALESCE(convocatoria_id, 0), COALESCE(lower(valor), ''))
+                """
+            )
+            cur.execute(
+                "CREATE INDEX IF NOT EXISTS suscripcion_por_usuario ON suscripcion (usuario_sub)"
+            )
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS preferencia_notificacion (
+                    usuario_sub TEXT PRIMARY KEY,
+                    alerta_apertura BOOLEAN NOT NULL DEFAULT TRUE,
+                    alerta_cierre BOOLEAN NOT NULL DEFAULT TRUE,
+                    alerta_actualizacion BOOLEAN NOT NULL DEFAULT TRUE,
+                    dias_anticipacion_cierre INTEGER NOT NULL DEFAULT 7
+                        CHECK (dias_anticipacion_cierre BETWEEN 1 AND 60),
+                    email_habilitado BOOLEAN NOT NULL DEFAULT FALSE,
+                    email_habilitado_desde TIMESTAMPTZ,
+                    email TEXT,
+                    creado TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    actualizado TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+                """
+            )
+            # clave_dedup evita repetir la misma alerta al mismo usuario
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS notificacion (
+                    id SERIAL PRIMARY KEY,
+                    usuario_sub TEXT NOT NULL,
+                    tipo TEXT NOT NULL CHECK (tipo IN ('apertura', 'cierre', 'actualizacion')),
+                    convocatoria_id INTEGER,
+                    titulo TEXT NOT NULL,
+                    mensaje TEXT NOT NULL,
+                    detalle JSONB,
+                    clave_dedup TEXT NOT NULL,
+                    leida BOOLEAN NOT NULL DEFAULT FALSE,
+                    eliminada BOOLEAN NOT NULL DEFAULT FALSE,
+                    creado TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    email_enviado_en TIMESTAMPTZ,
+                    email_intentos INTEGER NOT NULL DEFAULT 0,
+                    email_error TEXT,
+                    UNIQUE (usuario_sub, clave_dedup)
+                )
+                """
+            )
+            cur.execute(
+                """
+                CREATE INDEX IF NOT EXISTS notificacion_por_usuario
+                    ON notificacion (usuario_sub, eliminada, creado DESC)
+                """
+            )
+            # Última foto de cada convocatoria, para detectar cambios entre corridas
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS convocatoria_seguimiento (
+                    convocatoria_id INTEGER PRIMARY KEY,
+                    datos JSONB NOT NULL,
+                    apertura_notificada BOOLEAN NOT NULL DEFAULT FALSE,
+                    actualizado TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+                """
+            )
+            # Métricas de uso (RF006-08): la llena el middleware de app/main.py.
+            # Solo funcionalidad, usuario y fecha; nunca términos de búsqueda.
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS evento_uso (
+                    id BIGSERIAL PRIMARY KEY,
+                    tipo TEXT NOT NULL,
+                    usuario_sub TEXT,
+                    creado TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+                """
+            )
+            cur.execute(
+                "CREATE INDEX IF NOT EXISTS evento_uso_creado ON evento_uso (creado)"
+            )
+            cur.execute(
+                "CREATE INDEX IF NOT EXISTS evento_uso_tipo_creado ON evento_uso (tipo, creado)"
             )
         conn.commit()
     finally:

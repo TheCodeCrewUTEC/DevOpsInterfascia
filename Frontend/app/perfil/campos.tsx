@@ -1,5 +1,5 @@
 export const ESTILO_INPUT =
-  "h-11 w-full rounded-xl border border-pine/20 bg-foam/70 px-4 text-sm text-ink outline-none transition focus:border-pine focus:bg-paper disabled:cursor-not-allowed disabled:opacity-70";
+  "h-11 w-full rounded-xl border-2 border-ink bg-foam/70 px-4 text-sm text-ink outline-none transition focus:border-pine focus:bg-paper disabled:cursor-not-allowed disabled:opacity-70";
 
 export function Campo({
   id,

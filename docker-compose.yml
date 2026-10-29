@@ -54,6 +54,16 @@ services:
       REDIS_PORT: "6379"
       REDIS_DB: "0"
 
+      # Correos de alertas (mismas variables SMTP que Keycloak)
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_FROM: ${SMTP_FROM:-${SMTP_USER}}
+      INTERFASCIA_APP_URL: "http://localhost:3000"
+
+      # Métricas de uso (RF006-08): "0" deja de registrarlas
+      REGISTRAR_USO: ${REGISTRAR_USO:-1}
+      DB_CONNECT_TIMEOUT: ${DB_CONNECT_TIMEOUT:-5}
+
     depends_on:
       db:
         condition: service_healthy
@@ -90,6 +100,11 @@ services:
       HF_HUB_DOWNLOAD_TIMEOUT: "300"
       HF_HUB_ETAG_TIMEOUT: "60"
       HF_HOME: /hf-cache
+      # Correos de alertas (mismas variables SMTP que Keycloak)
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_FROM: ${SMTP_FROM:-${SMTP_USER}}
+      INTERFASCIA_APP_URL: "http://localhost:3000"
     depends_on:
       redis:
         condition: service_started
@@ -154,6 +169,84 @@ services:
     networks:
       - interfascia-net
 
+  # ---------- Monitoreo: Prometheus junta métricas, Grafana las muestra ----------
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.62.0
+    container_name: interfascia-redis-exporter
+    restart: unless-stopped
+    environment:
+      REDIS_ADDR: "redis://redis:6379"
+    depends_on:
+      - redis
+    networks:
+      - interfascia-net
+
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: interfascia-prometheus
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=15d"
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    depends_on:
+      - backend
+      - redis-exporter
+    networks:
+      - interfascia-net
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    container_name: interfascia-grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      # Lo usa el datasource de Postgres (monitoring/grafana/provisioning)
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/etc/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+      - loki
+      - db
+    networks:
+      - interfascia-net
+
+  # ---------- Logs: Alloy lee los logs de los contenedores y los guarda en Loki ----------
+  loki:
+    image: grafana/loki:3.1.0
+    container_name: interfascia-loki
+    restart: unless-stopped
+    command: ["-config.file=/etc/loki/loki.yml"]
+    volumes:
+      - ./monitoring/loki.yml:/etc/loki/loki.yml:ro
+      - loki_data:/loki
+    networks:
+      - interfascia-net
+
+  alloy:
+    image: grafana/alloy:v1.3.0
+    container_name: interfascia-alloy
+    restart: unless-stopped
+    command: ["run", "/etc/alloy/config.alloy", "--storage.path=/var/lib/alloy/data"]
+    volumes:
+      - ./monitoring/alloy.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - loki
+    networks:
+      - interfascia-net
+
   db:
     image: pgvector/pgvector:pg16
     ports:
@@ -184,6 +277,9 @@ volumes:
   postgres_data:
   formularios_storage:
   huggingface_cache:
+  prometheus_data:
+  grafana_data:
+  loki_data:
 
 networks:
   interfascia-net:

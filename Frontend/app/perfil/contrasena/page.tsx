@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
+import { auth } from "@/auth";
 import FormularioContrasena from "./FormularioContrasena";
 
 export const metadata: Metadata = {
   title: "Cambiar contraseña | Interfascia",
 };
 
-export default function ContrasenaPage() {
+export default async function ContrasenaPage() {
+  const session = await auth();
+
   return (
-    <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-6 px-6 py-10">
+    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-6 py-10">
       <div>
         <p className="text-sm font-medium tracking-[0.18em] text-clay uppercase">Mi cuenta</p>
         <h1 className="font-display mt-2 text-4xl text-ink">Cambiar contraseña</h1>
@@ -16,7 +19,7 @@ export default function ContrasenaPage() {
         </p>
       </div>
 
-      <FormularioContrasena />
+      <FormularioContrasena usuario={session?.user?.email ?? ""} />
     </main>
   );
 }

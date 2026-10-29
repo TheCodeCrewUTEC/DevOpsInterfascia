@@ -72,7 +72,7 @@ textarea {
 
 .ifx-navbar__inner {
   display: grid;
-  max-width: 72rem;
+  max-width: 100rem;
   margin: 0 auto;
   grid-template-columns: 1fr auto;
   align-items: center;
@@ -310,13 +310,13 @@ textarea {
 .ifx-card {
   position: relative;
   width: 100%;
-  max-width: 28rem;
+  max-width: 36rem;
   border-radius: 2rem;
   background: var(--paper);
   padding: 40px 32px;
   color: var(--ink);
   box-shadow: 0 1px 2px rgb(16 42 60 / 0.05);
-  outline: 1px solid rgb(0 174 239 / 0.1);
+  outline: 2px solid var(--ink);
 }
 
 .ifx-card__close {
@@ -416,7 +416,7 @@ textarea {
 .ifx-card select {
   height: 44px;
   width: 100%;
-  border: 1px solid rgb(0 174 239 / 0.2);
+  border: 2px solid var(--ink);
   border-radius: 0.75rem;
   background: rgb(230 246 252 / 0.7);
   padding: 0 12px;
@@ -681,7 +681,7 @@ textarea {
   display: flex;
   flex: 1 0 auto;
   width: 100%;
-  max-width: 72rem;
+  max-width: 100rem;
   margin: 0 auto;
   padding: 40px 24px;
 }
@@ -767,7 +767,7 @@ textarea {
   background: var(--paper);
   padding: 32px 24px;
   box-shadow: 0 1px 2px rgb(16 42 60 / 0.05);
-  outline: 1px solid rgb(0 174 239 / 0.1);
+  outline: 2px solid var(--ink);
 }
 
 .ifx-form--compact,
@@ -855,7 +855,7 @@ textarea {
 }
 
 .ifx-footer__inner {
-  max-width: 72rem;
+  max-width: 100rem;
   margin: 0 auto;
 }
 
@@ -1124,4 +1124,76 @@ textarea {
 
 .ifx-intentos__punto--libre {
   background: #d97706;
+}
+
+/* ---------- Combo con autocompletado (js/combobox.js) ---------- */
+
+.ifx-combo {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+/* El select real queda en el formulario (se envía y lo valida required-fields.js) */
+.ifx-combo > select {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ifx-field .ifx-combo__input {
+  padding-right: 40px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%23102a3c' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 7.5 10 12.5 15 7.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+}
+
+.ifx-combo:has(select[aria-invalid="true"]) .ifx-combo__input {
+  border-color: var(--red-600);
+  background-color: #fef2f2;
+}
+
+.ifx-combo__list {
+  position: absolute;
+  z-index: 40;
+  top: 100%;
+  left: 0;
+  right: 0;
+  max-height: 16rem;
+  margin: 4px 0 0;
+  padding: 4px;
+  overflow: auto;
+  list-style: none;
+  border: 2px solid rgb(16 42 60 / 0.6);
+  border-radius: 0.75rem;
+  background: var(--paper);
+  box-shadow: 0 10px 25px rgb(16 42 60 / 0.12);
+}
+
+.ifx-combo__option {
+  cursor: pointer;
+  border-radius: 0.5rem;
+  padding: 8px 12px;
+  font-size: 0.875rem;
+  color: var(--ink);
+}
+
+.ifx-combo__option[aria-selected="true"] {
+  font-weight: 600;
+  color: var(--pine-text);
+}
+
+/* Va después: la opción resaltada se ve oscura aunque sea la elegida */
+.ifx-combo__option[data-activa="true"] {
+  background: var(--pine-deep);
+  color: var(--paper);
+}
+
+.ifx-combo__vacio {
+  padding: 8px 12px;
+  font-size: 0.875rem;
+  color: rgb(16 42 60 / 0.6);
 }

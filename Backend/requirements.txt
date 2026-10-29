@@ -16,3 +16,4 @@ ftfy
 redis
 scrapy
 pdfplumber
+prometheus-fastapi-instrumentator

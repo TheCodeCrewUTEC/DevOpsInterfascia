@@ -194,7 +194,7 @@ export default function RelacionarPage() {
         <div className="blob pointer-events-none absolute -left-16 top-8 h-56 w-56 rounded-full bg-gold/50 blur-3xl" />
         <div className="blob-late pointer-events-none absolute right-0 top-16 h-64 w-64 rounded-full bg-pine/20 blur-3xl" />
 
-        <div className="relative mx-auto max-w-6xl">
+        <div className="relative mx-auto max-w-[100rem]">
           <p className="rise text-sm font-medium tracking-[0.18em] text-clay uppercase">
             Consultor IA
           </p>
@@ -218,7 +218,7 @@ export default function RelacionarPage() {
                 value={borrador}
                 onChange={(event) => setBorrador(event.target.value)}
                 placeholder="Mi proyecto trata sobre..."
-                className="w-full resize-none rounded-3xl border border-pine/20 bg-paper px-5 py-4 pr-16 text-sm text-ink shadow-sm outline-none transition focus:border-pine"
+                className="w-full resize-none rounded-3xl border-2 border-ink bg-paper px-5 py-4 pr-16 text-sm text-ink shadow-sm outline-none transition focus:border-pine"
               />
               <button
                 type="submit"
@@ -239,7 +239,7 @@ export default function RelacionarPage() {
       </section>
 
       <section className="px-6 pb-20">
-        <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[1.6fr_0.9fr]">
+        <div className="mx-auto grid max-w-[100rem] gap-6 lg:grid-cols-[1.6fr_0.9fr]">
           {error ? (
             <p className="rounded-2xl border border-clay/30 bg-paper px-5 py-4 text-sm text-ink lg:col-span-full" role="alert">
               {error} Comprobá que el backend esté disponible.
