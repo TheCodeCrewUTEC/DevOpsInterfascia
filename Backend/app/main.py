@@ -77,6 +77,7 @@ app.include_router(uso.router_admin)
 # Métricas para Prometheus/Grafana (requests, latencia, errores por ruta).
 # /metrics no se publica: el proxy de Next lo bloquea y Prometheus entra por la red de Docker.
 Instrumentator(excluded_handlers=["/metrics"]).instrument(app).expose(app, include_in_schema=False)
+app.include_router(relacionar.router)
 
 def custom_openapi():
     if app.openapi_schema:

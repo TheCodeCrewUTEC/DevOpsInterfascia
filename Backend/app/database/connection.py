@@ -114,30 +114,48 @@ def ensure_schema():
                     ADD COLUMN IF NOT EXISTS consulta_token TEXT
                 """
             )
-            # Human in the loop: lo que la persona revisó y confirmó de un formulario
-            # completado. Se ofrece como sugerencia en los formularios siguientes.
             cur.execute(
                 """
-                ALTER TABLE formulario_job
-                    ADD COLUMN IF NOT EXISTS validado_en TIMESTAMPTZ
+                ALTER TABLE convocatoria
+                    ADD COLUMN IF NOT EXISTS fuente TEXT
                 """
             )
             cur.execute(
                 """
-                CREATE TABLE IF NOT EXISTS dato_proyecto_validado (
+                ALTER TABLE investigadores
+                    ADD COLUMN IF NOT EXISTS fuente TEXT
+                """
+            )
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS relacionar_conversacion (
                     id SERIAL PRIMARY KEY,
                     usuario_sub TEXT NOT NULL,
-                    campo_clave TEXT NOT NULL,
-                    campo TEXT NOT NULL,
-                    valor TEXT NOT NULL,
-                    respuesta_ia TEXT,
-                    editado_por_usuario BOOLEAN NOT NULL DEFAULT FALSE,
-                    job_id INTEGER REFERENCES formulario_job(id) ON DELETE SET NULL,
-                    veces_confirmado INTEGER NOT NULL DEFAULT 1,
+                    estado TEXT NOT NULL,
+                    error TEXT,
+                    documentos TEXT[] NOT NULL DEFAULT '{}',
                     creado TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                    actualizado TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                    UNIQUE (usuario_sub, campo_clave)
+                    listo TIMESTAMPTZ
                 )
+                """
+            )
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS relacionar_mensaje (
+                    id SERIAL PRIMARY KEY,
+                    conversacion_id INTEGER NOT NULL
+                        REFERENCES relacionar_conversacion(id) ON DELETE CASCADE,
+                    rol TEXT NOT NULL,
+                    contenido TEXT NOT NULL,
+                    fondos JSONB,
+                    creado TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+                """
+            )
+            cur.execute(
+                """
+                ALTER TABLE relacionar_mensaje
+                    ADD COLUMN IF NOT EXISTS fondos JSONB
                 """
             )
             # Las consulta el Consultor IA; sin ellas /api/proyectos y /api/investigadores dan 500

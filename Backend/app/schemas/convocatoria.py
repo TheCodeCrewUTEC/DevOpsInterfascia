@@ -13,4 +13,5 @@ class ConvocatoriaResponse(BaseModel):
     beneficiarios: Optional[str] = None
     requisitos: Optional[str] = None
     financiamiento: Optional[int] = None
+    fuente: Optional[str] = None
     creado: Optional[datetime] = None

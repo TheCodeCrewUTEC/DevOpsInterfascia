@@ -215,10 +215,12 @@ def obtener_convocatoria_id(
         INSERT INTO convocatoria
         (
             titulo,
-            estado
+            estado,
+            fuente
         )
         VALUES
         (
+            %s,
             %s,
             %s
         )
@@ -226,7 +228,8 @@ def obtener_convocatoria_id(
         """,
         (
             titulo,
-            estado
+            estado,
+            fondo.get("link"),
         )
     )
 
@@ -573,10 +576,12 @@ def procesar_fondo(cur, fondo):
             INSERT INTO convocatoria
             (
                 titulo,
-                estado
+                estado,
+                fuente
             )
             VALUES
             (
+                %s,
                 %s,
                 %s
             )
@@ -584,7 +589,8 @@ def procesar_fondo(cur, fondo):
             """,
             (
                 nombre,
-                estado
+                estado,
+                fondo.get("link"),
             )
         )
 

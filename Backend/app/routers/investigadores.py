@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query
 from app.schemas.investigador import InvestigadorResponse
 from app.services import investigador_service
 
@@ -17,3 +17,11 @@ def obtener_investigadores(
         buscar=buscar,
         limit=limit,
     )
+
+
+@router.get("/{investigador_id}", response_model=InvestigadorResponse)
+def obtener_investigador(investigador_id: int):
+    investigador = investigador_service.obtener_investigador(investigador_id)
+    if investigador is None:
+        raise HTTPException(status_code=404, detail="Investigador no encontrado")
+    return investigador

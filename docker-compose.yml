@@ -53,6 +53,8 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       REDIS_DB: "0"
+      HF_HOME: /hf-cache
+      HF_HUB_DISABLE_XET: "1"
 
       # Correos de alertas (mismas variables SMTP que Keycloak)
       SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
@@ -73,6 +75,7 @@ services:
         condition: service_started
     volumes:
       - formularios_storage:/app/storage
+      - huggingface_cache:/hf-cache
     networks:
       - interfascia-net
 

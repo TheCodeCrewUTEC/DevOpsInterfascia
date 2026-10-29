@@ -109,6 +109,7 @@ def cargar():
                     investigaciones(persona.get("proyectos")),
                     persona.get("nivel") or None,
                     persona.get("categoria") or None,
+                    persona.get("link") or None,
                     nombre,
                     apellido,
                 )
@@ -120,7 +121,8 @@ def cargar():
                         titulo = %s,
                         investigaciones = %s,
                         nivel_sni = %s,
-                        categoria_sni = %s
+                        categoria_sni = %s,
+                        fuente = COALESCE(%s, fuente)
                     WHERE lower(nombre) = lower(%s)
                       AND lower(apellido) = lower(%s)
                     """,
@@ -139,10 +141,11 @@ def cargar():
                         investigaciones,
                         nivel_sni,
                         categoria_sni,
+                        fuente,
                         nombre,
                         apellido
                     )
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                     """,
                     datos,
                 )

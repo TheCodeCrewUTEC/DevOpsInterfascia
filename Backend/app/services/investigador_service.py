@@ -65,3 +65,48 @@ def obtener_investigadores(buscar: str | None = None, limit: int = 50):
         })
 
     return investigadores
+
+
+def obtener_investigador(investigador_id: int):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute(
+            """
+            SELECT
+                id,
+                nombre,
+                apellido,
+                institucion,
+                titulo,
+                investigaciones,
+                nivel_sni,
+                categoria_sni,
+                fuente,
+                creado
+            FROM investigadores
+            WHERE id = %s
+            """,
+            (investigador_id,),
+        )
+        row = cursor.fetchone()
+    finally:
+        cursor.close()
+        conn.close()
+
+    if row is None:
+        return None
+
+    return {
+        "id": row[0],
+        "nombre": row[1],
+        "apellido": row[2],
+        "institucion": row[3],
+        "titulo": row[4],
+        "investigaciones": row[5],
+        "nivel_sni": row[6],
+        "categoria_sni": row[7],
+        "fuente": row[8],
+        "creado": row[9],
+    }

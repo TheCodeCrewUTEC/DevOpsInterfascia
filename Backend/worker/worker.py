@@ -5,7 +5,7 @@ from arq import cron
 from arq.connections import RedisSettings
 from app.database.connection import ensure_schema
 from worker.tasks.formulario_task import procesar_formulario
-from worker.tasks.alertas_task import avisar_cierres_task, revisar_alertas
+from worker.tasks.alertas_task import avisar_cierres_task, revisar_alertas, procesar_relacionar
 
 load_dotenv()
 
@@ -27,13 +27,14 @@ class WorkerSettings:
         procesar_formulario,
         revisar_alertas,
         avisar_cierres_task,
+        procesar_relacionar
     ]
 
     # Alertas (RF005): revisión de convocatorias cada media hora y avisos de cierre
     # una vez por día. El contenedor está en UTC: 11:00 UTC son las 8:00 en Uruguay.
     cron_jobs = [
         cron(revisar_alertas, minute={0, 30}),
-        cron(avisar_cierres_task, hour={11}, minute={0}),
+        cron(avisar_cierres_task, hour={11}, minute={0})
     ]
 
     redis_settings = RedisSettings(
