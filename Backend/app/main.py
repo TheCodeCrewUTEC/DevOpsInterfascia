@@ -26,6 +26,7 @@ from app.routers import perfil
 from app.routers import alertas
 from app.routers import analisis
 from app.routers import uso
+from app.routers import relacionar
 
 
 app = FastAPI(

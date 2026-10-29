@@ -232,25 +232,11 @@ export default function RelacionarPage() {
           <h1 className="rise rise-1 font-display mt-4 text-5xl leading-[1.05] text-ink sm:text-6xl">
             Relacionar
           </h1>
-          <p className="rise rise-2 mt-6 max-w-2xl text-lg leading-relaxed text-ink/75">
-            Subí hasta tres documentos del proyecto. Cuando termine de leerlos, preguntame qué fondos se adecuan, qué requisitos piden o cómo es el proceso de postulación.
-          </p>
-          <Pestanas actual="relacionar" />
-
-          <form onSubmit={onSubmit} className="rise rise-3 mt-8">
-            <label htmlFor="proyecto" className="mb-2 block text-sm text-ink">
-              Contame de qué trata tu proyecto
-            </label>
-            <div className="relative">
-              <textarea
-                id="proyecto"
-                name="proyecto"
-                rows={5}
-                value={pregunta}
-                onChange={(event) => setPregunta(event.target.value)}
-                placeholder="Mi proyecto trata sobre..."
-                className="w-full resize-none rounded-3xl border-2 border-ink bg-paper px-5 py-4 pr-16 text-sm text-ink shadow-sm outline-none transition focus:border-pine"
-              />
+          <div className="rise rise-2 mt-6 flex flex-wrap items-end justify-between gap-4">
+            <p className="max-w-2xl text-lg leading-relaxed text-ink/75">
+              Subí hasta tres documentos del proyecto. Cuando termine de leerlos, preguntame qué fondos se adecuan, qué requisitos piden o cómo es el proceso de postulación.
+            </p>
+            {fase === "chat" && conversacion ? (
               <button
                 type="button"
                 onClick={empezarDeNuevo}
@@ -258,8 +244,9 @@ export default function RelacionarPage() {
               >
                 Nueva consulta
               </button>
-            </div>
-          </form>
+            ) : null}
+          </div>
+          <Pestanas actual="relacionar" />
         </div>
       </section>
 

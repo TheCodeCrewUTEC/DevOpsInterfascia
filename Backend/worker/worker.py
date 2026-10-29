@@ -5,7 +5,8 @@ from arq import cron
 from arq.connections import RedisSettings
 from app.database.connection import ensure_schema
 from worker.tasks.formulario_task import procesar_formulario
-from worker.tasks.alertas_task import avisar_cierres_task, revisar_alertas, procesar_relacionar
+from worker.tasks.alertas_task import avisar_cierres_task, revisar_alertas
+from worker.tasks.relacionar_task import procesar_relacionar
 
 load_dotenv()
 

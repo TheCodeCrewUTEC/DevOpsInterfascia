@@ -217,7 +217,9 @@ def obtener_convocatorias(
         estado, institucion, buscar,
         fecha_apertura_desde, fecha_apertura_hasta,
         fecha_cierre_desde, fecha_cierre_hasta,
-        fecha_desde, fecha_hasta,
+        beneficiario, tematica, alcance, ubicacion,
+        financiamiento_min, financiamiento_max,
+        proximas_a_abrir,
         page, limit,
     )
     cache_service.guardar(clave_cache, resultado)
@@ -228,7 +230,9 @@ def _consultar_convocatorias(
     estado, institucion, buscar,
     fecha_apertura_desde, fecha_apertura_hasta,
     fecha_cierre_desde, fecha_cierre_hasta,
-    fecha_desde, fecha_hasta,
+    beneficiario, tematica, alcance, ubicacion,
+    financiamiento_min, financiamiento_max,
+    proximas_a_abrir,
     page, limit,
 ):
 

@@ -1,17 +1,7 @@
-import type { Metadata } from "next";
-import type { ReactElement, ReactNode } from "react";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
-import { apiFetch } from "@/lib/api";
-import { formatFecha } from "@/lib/suscripciones";
+import { Seccion, Volver, enlaceFuente, fecha, pesos, texto } from "../../ficha";
 import SuscripcionBotones from "./SuscripcionBotones";
-
-export const metadata: Metadata = {
-  title: "Detalle del fondo | Interfascia",
-};
-
-import {  Volver, enlaceFuente, fecha, pesos, texto} from "../../ficha";
 
 const API_URL = (process.env.API_URL ?? "http://localhost:8000").replace(/\/$/, "");
 
@@ -22,6 +12,7 @@ type Documento = {
 };
 
 type Convocatoria = {
+  id: number;
   titulo: string | null;
   institucion: string | null;
   estado: string | null;
@@ -34,18 +25,6 @@ type Convocatoria = {
   fuente: string | null;
   documentos: Documento[];
 };
-
-function Seccion({ titulo, children }: {
-    titulo: string;
-    children: ReactNode;
-}): ReactElement {
-    return (
-        <section>
-            <h2>{titulo}</h2>
-            {children}
-        </section>
-    );
-}
 
 export const dynamic = "force-dynamic";
 
@@ -70,6 +49,8 @@ export default async function PaginaConvocatoria({
   const convocatoria = (await response.json()) as Convocatoria;
   const documentos = convocatoria.documentos ?? [];
   const fuente = enlaceFuente(convocatoria.fuente);
+  const session = await auth();
+  const logueado = Boolean(session?.user) && !session?.error;
 
   return (
     <main>
@@ -92,6 +73,13 @@ export default async function PaginaConvocatoria({
               Fuente · {fuente.etiqueta}
             </a>
           ) : null}
+          <div className="mt-6">
+            <SuscripcionBotones
+              convocatoriaId={convocatoria.id}
+              institucion={convocatoria.institucion?.trim() || null}
+              logueado={logueado}
+            />
+          </div>
         </div>
       </section>
 
