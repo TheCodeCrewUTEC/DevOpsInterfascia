@@ -172,6 +172,22 @@ def ensure_schema():
                 )
                 """
             )
+            cur.execute("ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS codigo TEXT")
+            cur.execute("ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS fuente TEXT")
+            cur.execute("ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS beneficiario TEXT")
+            cur.execute("ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS instrumento TEXT")
+            cur.execute("ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS sector TEXT")
+            cur.execute("ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS area TEXT")
+            cur.execute("ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS subsidio TEXT")
+            cur.execute("ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS fecha_inicio TEXT")
+            cur.execute("ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS duracion TEXT")
+            cur.execute("ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS fase TEXT")
+            cur.execute(
+                """
+                CREATE UNIQUE INDEX IF NOT EXISTS proyectos_fuente_unica
+                ON proyectos (fuente)
+                """
+            )
             cur.execute(
                 """
                 CREATE TABLE IF NOT EXISTS investigadores (

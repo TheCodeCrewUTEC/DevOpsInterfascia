@@ -24,6 +24,7 @@ CAMPOS = {
 RESUMENES = {
     'RESUMEN PUBLICABLE INICIAL': 'resumen_inicial',
     'RESUMEN PUBLICABLE FINAL': 'resumen_final',
+    'RESUMEN PUBLICABLE': 'resumen',
 }
 
 
@@ -91,6 +92,8 @@ class  AniiSpyder(scrapy.Spider):
                 'anio_convocatoria': celdas[4],
                 'link': Proyecto.css('a::attr(href)').get(),
             }
+            if not proyecto["link"]:
+                continue
             if self.solo_listado:
                 yield proyecto
                 continue
