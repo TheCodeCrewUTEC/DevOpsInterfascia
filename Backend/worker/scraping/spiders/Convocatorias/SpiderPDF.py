@@ -15,7 +15,7 @@ class SpiderPDF(scrapy.Spider):
         "DOWNLOAD_DELAY": 2,
     }
 
-    async def start(self):
+    def start_requests(self):
 
         with open(
             "FondosInversores.json",

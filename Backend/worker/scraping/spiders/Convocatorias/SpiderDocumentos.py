@@ -20,7 +20,7 @@ class SpiderDocumentos(scrapy.Spider):
     def __init__(self):
         self.converter = DocumentConverter()
 
-    async def start(self):
+    def start_requests(self):
 
         with open(
             "FondosConDocumentos.json",
