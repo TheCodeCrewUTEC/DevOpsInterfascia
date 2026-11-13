@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Activa el segundo factor por correo (autenticador email-otp) y el formulario de login con
-# contador de intentos (auth-username-password-form-intentos) en un realm que ya existe.
+# Deja el login en usuario y contraseña (con contador de intentos) y desactiva el código
+# por correo. En la rama Performance ese segundo factor impide automatizar las pruebas.
+# El autenticador email-otp sigue instalado, pero el flujo no lo exige.
 #
 # realm-interfascia.json ya trae esta configuración, pero Keycloak solo lo importa cuando el
 # realm no existe (si ya está en la base, "Import skipped"). Este script aplica lo mismo sobre
@@ -37,24 +38,23 @@ agregar() { # flujo provider requisito
 }
 
 if kc get authentication/flows -r "$R" --fields alias --format csv --noquotes | grep -qx "$FLUJO"; then
-  echo "El flujo $FLUJO ya existe, no se modifica."
+  echo "El flujo $FLUJO ya existe."
 else
   echo "Creando el flujo $FLUJO..."
   kc create authentication/flows -r "$R" -s alias="$FLUJO" -s providerId=basic-flow \
-    -s topLevel=true -s builtIn=false -s "description=Navegador: usuario y contraseña + código por correo" >/dev/null
+    -s topLevel=true -s builtIn=false -s "description=Navegador: usuario y contraseña, sin código por correo" >/dev/null
 
   agregar "$FLUJO" auth-cookie ALTERNATIVE
   agregar "$FLUJO" identity-provider-redirector ALTERNATIVE
 
   kc create "authentication/flows/$FLUJO/executions/flow" -r "$R" -s alias="$FORMS" \
     -s type=basic-flow -s provider=registration-page-form \
-    -s "description=Usuario y contraseña, después el código enviado al correo" >/dev/null
+    -s "description=Usuario y contraseña, sin código por correo" >/dev/null
   id_forms=$(kc get "authentication/flows/$FLUJO/executions" -r "$R" --fields id,displayName --format csv --noquotes \
     | grep ",$FORMS\$" | cut -d, -f1)
   kc update "authentication/flows/$FLUJO/executions" -r "$R" -b "{\"id\":\"$id_forms\",\"requirement\":\"ALTERNATIVE\"}"
 
   agregar "$FORMS" auth-username-password-form-intentos REQUIRED
-  agregar "$FORMS" email-otp REQUIRED
 fi
 
 # Flujos creados antes del contador de intentos: se cambia el formulario estándar de Keycloak
@@ -68,8 +68,14 @@ if [ -n "$VIEJA" ]; then
   kc delete "authentication/executions/$VIEJA" -r "$R"
 fi
 
-# Orden fijo: primero usuario y contraseña, después el código por correo.
-# (raise-priority no sirve: las ejecuciones agregadas por la API quedan todas con prioridad 0)
+# El código por correo, si el flujo ya lo tenía, queda fuera del login.
+OTP=$(kc get "authentication/flows/$FORMS/executions" -r "$R" --fields id,providerId --format csv --noquotes \
+  | grep ",email-otp\$" | cut -d, -f1 || true)
+if [ -n "$OTP" ]; then
+  echo "Desactivando el código por correo..."
+  kc update "authentication/flows/$FORMS/executions" -r "$R" -b "{\"id\":\"$OTP\",\"requirement\":\"DISABLED\"}"
+fi
+
 prioridad() { # provider prioridad
   local id
   id=$(kc get "authentication/flows/$FORMS/executions" -r "$R" --fields id,providerId --format csv --noquotes \
@@ -77,7 +83,6 @@ prioridad() { # provider prioridad
   kc update "authentication/flows/$FORMS/executions" -r "$R" -b "{\"id\":\"$id\",\"requirement\":\"REQUIRED\",\"priority\":$2}"
 }
 prioridad auth-username-password-form-intentos 10
-prioridad email-otp 20
 
 echo "Usando $FLUJO como flujo de login y el tema de correo interfascia..."
 kc update "realms/$R" -s browserFlow="$FLUJO" -s emailTheme=interfascia
@@ -96,7 +101,7 @@ if [ -n "${SMTP_USER:-}" ] && [ -n "${SMTP_PASSWORD:-}" ]; then
     -s "smtpServer.auth=true" -s "smtpServer.starttls=true" -s "smtpServer.ssl=false" \
     -s "smtpServer.user=$SMTP_USER" -s "smtpServer.password=$SMTP_PASSWORD"
 else
-  echo "AVISO: faltan SMTP_USER / SMTP_PASSWORD en el .env; sin SMTP no se pueden enviar los códigos."
+  echo "AVISO: faltan SMTP_USER / SMTP_PASSWORD en el .env. El login no los necesita."
 fi
 
 rm -f "$CFG"

@@ -101,7 +101,7 @@
   "authenticationFlows": [
     {
       "alias": "browser-email-otp",
-      "description": "Navegador: usuario y contraseña + código por correo",
+      "description": "Navegador: usuario y contraseña, sin código por correo",
       "providerId": "basic-flow",
       "topLevel": true,
       "builtIn": false,
@@ -131,7 +131,7 @@
     },
     {
       "alias": "browser-email-otp-forms",
-      "description": "Usuario y contraseña (con contador de intentos), después el código enviado al correo",
+      "description": "Usuario y contraseña (con contador de intentos). Sin código por correo, para las pruebas de performance.",
       "providerId": "basic-flow",
       "topLevel": false,
       "builtIn": false,
@@ -141,13 +141,6 @@
           "authenticatorFlow": false,
           "requirement": "REQUIRED",
           "priority": 10,
-          "userSetupAllowed": false
-        },
-        {
-          "authenticator": "email-otp",
-          "authenticatorFlow": false,
-          "requirement": "REQUIRED",
-          "priority": 20,
           "userSetupAllowed": false
         }
       ]
