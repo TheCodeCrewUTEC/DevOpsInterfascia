@@ -111,7 +111,26 @@ def ensure_schema():
                 """
                 ALTER TABLE formulario_job
                     ADD COLUMN IF NOT EXISTS usuario_sub TEXT,
-                    ADD COLUMN IF NOT EXISTS consulta_token TEXT
+                    ADD COLUMN IF NOT EXISTS consulta_token TEXT,
+                    ADD COLUMN IF NOT EXISTS validado_en TIMESTAMPTZ
+                """
+            )
+            # Lo confirmado en el formulario (human in the loop). Lo lee Grafana.
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS dato_proyecto_validado (
+                    id SERIAL PRIMARY KEY,
+                    usuario_sub TEXT NOT NULL,
+                    campo_clave TEXT NOT NULL,
+                    campo TEXT NOT NULL,
+                    valor TEXT NOT NULL,
+                    respuesta_ia TEXT,
+                    editado_por_usuario BOOLEAN NOT NULL DEFAULT FALSE,
+                    job_id INTEGER REFERENCES formulario_job(id) ON DELETE SET NULL,
+                    veces_confirmado INTEGER NOT NULL DEFAULT 1,
+                    actualizado TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    UNIQUE (usuario_sub, campo_clave)
+                )
                 """
             )
             # IF EXISTS: en una base nueva convocatoria todavía no existe (la crea la carga de
