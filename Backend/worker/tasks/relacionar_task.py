@@ -3,6 +3,7 @@ from app.services.relacionar_chat_service import (
     carpeta_conversacion,
     guardar_fragmentos,
     marcar_error,
+    marcar_etapa,
     marcar_lista,
     marcar_procesando,
     obtener_estado,
@@ -31,6 +32,7 @@ async def procesar_relacionar(ctx, conversacion_id: int):
             )
             return
 
+        marcar_etapa(conversacion_id, "EMBEDDINGS")
         guardar_fragmentos(conversacion_id, generar_embeddings(chunks))
         asegurar_pregunta_inicial(conversacion_id)
         marcar_lista(conversacion_id)

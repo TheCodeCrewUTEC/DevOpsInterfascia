@@ -133,15 +133,17 @@ def ensure_schema():
                 )
                 """
             )
+            # IF EXISTS: en una base nueva convocatoria todavía no existe (la crea la carga de
+            # datos) e investigadores se crea más abajo; sin esto la API no arranca.
             cur.execute(
                 """
-                ALTER TABLE convocatoria
+                ALTER TABLE IF EXISTS convocatoria
                     ADD COLUMN IF NOT EXISTS fuente TEXT
                 """
             )
             cur.execute(
                 """
-                ALTER TABLE investigadores
+                ALTER TABLE IF EXISTS investigadores
                     ADD COLUMN IF NOT EXISTS fuente TEXT
                 """
             )
@@ -175,6 +177,13 @@ def ensure_schema():
                 """
                 ALTER TABLE relacionar_mensaje
                     ADD COLUMN IF NOT EXISTS fondos JSONB
+                """
+            )
+            # Etapa de la lectura de documentos, para la barra de progreso del front
+            cur.execute(
+                """
+                ALTER TABLE relacionar_conversacion
+                    ADD COLUMN IF NOT EXISTS etapa TEXT
                 """
             )
             # Las consulta el Consultor IA; sin ellas /api/proyectos y /api/investigadores dan 500

@@ -32,8 +32,25 @@ type Conversacion = {
   estado: string;
   error: string | null;
   documentos: string[];
+  etapa?: string | null;
   mensajes: Mensaje[];
 };
+
+// Pasos de la lectura de documentos, para la barra de progreso.
+const PASOS_CARGA = [
+  { clave: "RECIBIDOS", titulo: "Documentos recibidos", detalle: "Guardamos tus documentos y los pusimos en cola." },
+  { clave: "LEYENDO", titulo: "Leyendo los documentos", detalle: "Estamos extrayendo el texto de cada documento. Esta parte es la que más demora." },
+  { clave: "EMBEDDINGS", titulo: "Analizando el contenido", detalle: "Procesamos el texto para entender de qué trata el proyecto." },
+  { clave: "LISTO", titulo: "Listo para preguntar", detalle: "Ya podés hacer tus consultas sobre fondos." },
+];
+
+// Devuelve en qué paso está, según el estado y la etapa de la conversación.
+function pasoActualCarga(conv: Conversacion | null): number {
+  if (conv?.estado === "READY") return 3;
+  if (conv?.etapa === "EMBEDDINGS") return 2;
+  if (conv?.etapa === "LEYENDO" || conv?.estado === "PROCESSING") return 1;
+  return 0;
+}
 
 async function leerError(response: Response, respaldo: string) {
   const data = await response.json().catch(() => null);
@@ -326,17 +343,70 @@ export default function RelacionarPage() {
           ) : null}
 
           {fase === "chat" && leyendo ? (
-            <div className="rounded-3xl border border-pine/15 bg-paper px-6 py-8 shadow-sm">
-              <p className="font-display text-2xl text-ink">Leyendo los documentos del proyecto</p>
-              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink/70">
-                Esta parte es la que demora. Estoy leyendo
-                {" "}
-                {conversacion?.documentos.length
-                  ? conversacion.documentos.join(", ")
-                  : "los documentos"}
-                . Puede tardar varios minutos. Cuando termine, te pregunto en qué querés ayuda.
-              </p>
-            </div>
+            (() => {
+              const paso = pasoActualCarga(conversacion);
+              const porcentaje = Math.round((paso / (PASOS_CARGA.length - 1)) * 100);
+              return (
+                <div className="rounded-3xl border border-pine/15 bg-paper px-6 py-8 shadow-sm">
+                  <p className="font-display text-2xl text-ink">Preparando tu consulta</p>
+                  <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink/70">
+                    Estamos leyendo
+                    {" "}
+                    {conversacion?.documentos.length
+                      ? conversacion.documentos.join(", ")
+                      : "los documentos"}
+                    . Puede tardar varios minutos; te vamos mostrando en qué paso vamos.
+                  </p>
+
+                  {/* Barra de progreso con las etapas reales */}
+                  <div className="mt-8" aria-label="Progreso de la lectura de documentos">
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-ink/10">
+                      <div
+                        className="h-full rounded-full bg-pine transition-all duration-700 ease-out"
+                        style={{ width: `${porcentaje}%` }}
+                      />
+                    </div>
+
+                    <ol className="mt-6 grid gap-5 sm:grid-cols-4 sm:gap-3">
+                      {PASOS_CARGA.map((item, indice) => {
+                        const hecho = indice < paso;
+                        const activo = indice === paso;
+                        return (
+                          <li
+                            key={item.clave}
+                            className="flex items-start gap-3 sm:flex-col sm:items-center sm:text-center"
+                            aria-current={activo ? "step" : undefined}
+                          >
+                            <span
+                              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 text-sm font-medium transition ${
+                                hecho
+                                  ? "border-pine bg-pine text-paper"
+                                  : activo
+                                    ? "border-pine bg-pine/20 text-ink animate-pulse"
+                                    : "border-ink/25 bg-paper text-ink/50"
+                              }`}
+                            >
+                              {hecho ? "✓" : indice + 1}
+                            </span>
+                            <span
+                              className={`text-sm ${activo ? "font-medium text-ink" : hecho ? "text-ink/80" : "text-ink/55"}`}
+                            >
+                              {item.titulo}
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ol>
+
+                    {/* Lo que el sistema está haciendo ahora */}
+                    <p className="mt-6 flex items-center gap-2 text-sm text-ink/75">
+                      <span className="inline-block h-2 w-2 shrink-0 animate-pulse rounded-full bg-pine" />
+                      {PASOS_CARGA[paso]?.detalle}
+                    </p>
+                  </div>
+                </div>
+              );
+            })()
           ) : null}
 
           {fase === "chat" && fallo ? (
