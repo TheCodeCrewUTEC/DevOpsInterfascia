@@ -48,6 +48,14 @@ def listar_usuarios(
     if estado is not None and estado not in usuario_service.ESTADOS:
         raise HTTPException(status_code=400, detail="Estado inválido")
 
+    # La consola de Keycloak no avisa el borrado. Al abrir la lista se
+    # descartan las filas cuyo id ya no existe, para no mostrarlas como activas.
+    try:
+        vigentes = {usuario["id"] for usuario in keycloak.listar_usuarios()}
+        usuario_service.eliminar_ausentes(vigentes)
+    except keycloak.KeycloakAdminError:
+        pass
+
     return usuario_service.listar_usuarios(estado)
 
 

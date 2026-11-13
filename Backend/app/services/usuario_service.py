@@ -68,6 +68,32 @@ def guardar_usuario(datos: dict, actualizar_estado: bool = False) -> dict:
         conn.close()
 
 
+def eliminar_ausentes(ids_vigentes: set[str]) -> int:
+    """Borra de la tabla a quien ya no existe en Keycloak.
+
+    Un alta nueva tiene otro id; la fila del id viejo no se pisa sola.
+    """
+
+    conn = get_connection()
+
+    try:
+        with conn.cursor() as cur:
+            if ids_vigentes:
+                cur.execute(
+                    "DELETE FROM usuarios WHERE keycloak_id <> ALL(%s)",
+                    (list(ids_vigentes),),
+                )
+            else:
+                cur.execute("DELETE FROM usuarios")
+            borrados = cur.rowcount
+
+        conn.commit()
+        return borrados
+
+    finally:
+        conn.close()
+
+
 def listar_usuarios(estado: str | None = None) -> list[dict]:
     conn = get_connection()
 
