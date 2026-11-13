@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { auth } from "@/auth";
+import { puedeVerAnalisis } from "@/lib/roles";
 import { apiFetch } from "@/lib/api";
 import { leerFiltros, queryDeFiltros } from "@/lib/analisis";
 import {
@@ -19,6 +20,9 @@ export async function GET(request: NextRequest) {
   const session = await auth();
   if (!session?.accessToken || session.error) {
     return new Response("Tenés que iniciar sesión para exportar.", { status: 401 });
+  }
+  if (!puedeVerAnalisis(session)) {
+    return new Response("No tenés permisos para esta acción", { status: 403 });
   }
 
   const params = request.nextUrl.searchParams;

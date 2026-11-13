@@ -11,9 +11,11 @@ from fastapi import (
 from pydantic import BaseModel
 
 from app.auth import (
+    ROLES_CONSULTOR,
     es_admin,
-    obtener_usuario_actual,
     obtener_usuario_opcional,
+    requiere_algun_rol,
+    tiene_algun_rol,
 )
 from app.services.respuesta_service_db import actualizar_respuestas
 from app.services.dato_validado_service import (
@@ -109,7 +111,7 @@ async def crear_formulario_job(
         ...,
         media_type="multipart/form-data"
     ),
-    usuario: dict | None = Depends(obtener_usuario_opcional),
+    usuario: dict = Depends(requiere_algun_rol(*ROLES_CONSULTOR)),
 ):
 
     # VALIDAR FORMULARIO
@@ -138,7 +140,7 @@ async def crear_formulario_job(
         )
 
     # CREAR JOB
-    job = crear_job(None, usuario.get("sub") if usuario else None)
+    job = crear_job(None, usuario.get("sub"))
 
     job_id = job["id"]
 
@@ -253,7 +255,7 @@ async def crear_formulario_job(
 
 @router.get("/jobs")
 def listar_formularios(
-    usuario: dict = Depends(obtener_usuario_actual),
+    usuario: dict = Depends(requiere_algun_rol(*ROLES_CONSULTOR)),
 ):
     sub = usuario.get("sub")
     if not sub:
@@ -267,6 +269,14 @@ def obtener_resultado_job(
     consulta: str | None = None,
     usuario: dict | None = Depends(obtener_usuario_opcional),
 ):
+    # Sin rol de consultor solo se puede seguir un trabajo con su token de consulta.
+    if usuario is not None and not tiene_algun_rol(usuario, ROLES_CONSULTOR):
+        if not consulta:
+            raise HTTPException(
+                status_code=403,
+                detail="No tenés permisos para esta acción",
+            )
+        usuario = None
 
     conn = get_connection()
 
@@ -349,7 +359,7 @@ def obtener_resultado_job(
 def guardar_correcciones(
     job_id: int,
     cambios: list[CambioRespuesta],
-    usuario: dict = Depends(obtener_usuario_actual),
+    usuario: dict = Depends(requiere_algun_rol(*ROLES_CONSULTOR)),
 ):
     """Guarda lo que el usuario corrigió en el formulario completado."""
 
@@ -372,7 +382,7 @@ def guardar_correcciones(
 @router.post("/jobs/{job_id}/confirmar")
 def confirmar_formulario(
     job_id: int,
-    usuario: dict = Depends(obtener_usuario_actual),
+    usuario: dict = Depends(requiere_algun_rol(*ROLES_CONSULTOR)),
 ):
     """La persona revisó el formulario y confirma sus datos (human in the loop).
 

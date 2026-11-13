@@ -18,6 +18,7 @@ vi.mock("@/lib/api", () => ({
 // Sin vitest.config no hay alias "@/": se apuntan a los módulos reales
 vi.mock("@/lib/analisis", async () => await import("../lib/analisis"));
 vi.mock("@/lib/reportes", async () => await import("../lib/reportes"));
+vi.mock("@/lib/roles", async () => await import("../lib/roles"));
 
 import { GET } from "../app/analisis-datos/exportar/route";
 
@@ -26,8 +27,13 @@ function pedir(query: string) {
   return GET({ nextUrl: url } as never);
 }
 
+function tokenDe(roles: string[]) {
+  const payload = Buffer.from(JSON.stringify({ realm_access: { roles } })).toString("base64url");
+  return `eyJhbGciOiJub25lIn0.${payload}.firma`;
+}
+
 beforeEach(() => {
-  estado.session = { accessToken: "token" };
+  estado.session = { accessToken: tokenDe(["gestor_innovacion"]) };
   estado.paths = [];
   estado.respuesta = null;
 });
@@ -41,8 +47,15 @@ describe("exportar", () => {
   });
 
   it("con la sesión vencida (error de refresh) responde 401", async () => {
-    estado.session = { accessToken: "token", error: "RefreshTokenError" };
+    estado.session = { accessToken: tokenDe(["gestor_innovacion"]), error: "RefreshTokenError" };
     expect((await pedir("formato=csv&vista=fondos")).status).toBe(401);
+  });
+
+  it("un emprendedor no exporta y no llama a la API", async () => {
+    estado.session = { accessToken: tokenDe(["emprendedor"]) };
+    const r = await pedir("formato=csv&vista=fondos");
+    expect(r.status).toBe(403);
+    expect(estado.paths).toEqual([]);
   });
 
   it.each([

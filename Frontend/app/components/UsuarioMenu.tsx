@@ -5,22 +5,19 @@ import { useEffect, useRef, useState } from "react";
 
 type UsuarioMenuProps = {
   nombre: string;
-  admin: boolean;
+  gestionarUsuarios: boolean;
+  verMetricas: boolean;
 };
 
 // Nombre del usuario logueado; al hacer click despliega sus opciones
-export default function UsuarioMenu({ nombre, admin }: UsuarioMenuProps) {
+export default function UsuarioMenu({ nombre, gestionarUsuarios, verMetricas }: UsuarioMenuProps) {
   const opciones = [
     { href: "/perfil", label: "Mi perfil" },
     { href: "/alertas", label: "Mis alertas" },
     { href: "/alertas/preferencias", label: "Preferencias de alertas" },
     { href: "/perfil/contrasena", label: "Cambiar contraseña" },
-    ...(admin
-      ? [
-          { href: "/admin/usuarios", label: "Gestión de usuarios" },
-          { href: "/admin/metricas-uso", label: "Métricas de uso" },
-        ]
-      : []),
+    ...(verMetricas ? [{ href: "/admin/metricas-uso", label: "Métricas de uso" }] : []),
+    ...(gestionarUsuarios ? [{ href: "/admin/usuarios", label: "Gestión de usuarios" }] : []),
   ];
   const [abierto, setAbierto] = useState(false);
   const contenedor = useRef<HTMLDivElement>(null);

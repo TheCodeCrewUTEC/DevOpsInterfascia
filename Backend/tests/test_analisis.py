@@ -24,7 +24,11 @@ from app.services.analisis_service import (
 )
 from app.services.convocatoria_service import CONDICION_VISIBLE
 
-USUARIO = {"sub": "usuario-1", "email": "ana@example.com"}
+USUARIO = {
+    "sub": "usuario-1",
+    "email": "ana@example.com",
+    "realm_access": {"roles": ["gestor_innovacion"]},
+}
 
 app = FastAPI()
 app.include_router(analisis.router)
@@ -360,6 +364,17 @@ def test_rutas_exigen_token(ruta, servicio):
     respuesta = client_sin_token.get(ruta)
     assert respuesta.status_code == 401
     assert servicio.llamadas == []
+
+
+def test_investigador_no_ve_el_analisis():
+    app_investigador = FastAPI()
+    app_investigador.include_router(analisis.router)
+    app_investigador.dependency_overrides[obtener_usuario_actual] = lambda: {
+        "sub": "investigador-1",
+        "realm_access": {"roles": ["investigador"]},
+    }
+    respuesta = TestClient(app_investigador).get("/api/analisis/resumen")
+    assert respuesta.status_code == 403
 
 
 def test_sin_token_gana_aunque_el_filtro_sea_invalido(servicio):

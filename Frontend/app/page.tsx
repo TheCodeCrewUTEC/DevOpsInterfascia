@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { auth } from "@/auth";
+import { puedeConsultarIa, puedeVerAnalisis } from "@/lib/roles";
 
 const caminos = [
   {
@@ -58,7 +60,16 @@ const vinculos = [
   },
 ];
 
-export default function Home() {
+export default async function Home() {
+  const session = await auth();
+  const logueado = Boolean(session?.user) && !session?.error;
+  const mostrarIa = !logueado || puedeConsultarIa(session);
+  const mostrarAnalisis = !logueado || puedeVerAnalisis(session);
+  const visibles = caminos.filter((camino) => {
+    if (camino.href.startsWith("/consultor-ia")) return mostrarIa;
+    if (camino.href.startsWith("/analisis-datos")) return mostrarAnalisis;
+    return true;
+  });
   return (
     <main>
       <section className="relative overflow-hidden px-6 pb-16 pt-12 sm:pt-16">
@@ -84,12 +95,14 @@ export default function Home() {
               >
                 Explorar el repositorio
               </Link>
-              <Link
-                href="/consultor-ia/relacionar"
-                className="rounded-full border border-ink/15 bg-paper px-5 py-3 text-sm text-ink transition duration-200 hover:-translate-y-0.5 hover:border-pine hover:text-pine"
-              >
-                Contar mi proyecto
-              </Link>
+              {mostrarIa ? (
+                <Link
+                  href="/consultor-ia/relacionar"
+                  className="rounded-full border border-ink/15 bg-paper px-5 py-3 text-sm text-ink transition duration-200 hover:-translate-y-0.5 hover:border-pine hover:text-pine"
+                >
+                  Contar mi proyecto
+                </Link>
+              ) : null}
             </div>
           </div>
 
@@ -112,7 +125,7 @@ export default function Home() {
           </p>
 
           <div className="mt-12 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-            {caminos.map((camino, index) => (
+            {visibles.map((camino, index) => (
               <Link
                 key={camino.href}
                 href={camino.href}

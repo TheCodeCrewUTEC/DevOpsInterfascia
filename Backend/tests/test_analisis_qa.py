@@ -24,7 +24,10 @@ from app.services.analisis_service import (
     rellenar_periodos,
 )
 
-USUARIO = {"sub": "usuario-1", "realm_access": {"roles": []}}
+USUARIO = {
+    "sub": "usuario-1",
+    "realm_access": {"roles": ["gestor_innovacion"]},
+}
 
 
 # --- Contrato con Frontend/lib/analisis.ts ---

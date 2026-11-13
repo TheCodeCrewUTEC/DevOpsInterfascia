@@ -83,21 +83,51 @@ def obtener_usuario_opcional(
     return obtener_usuario_actual(credenciales)
 
 
+ROL_ADMIN = "admin"
+ROL_GESTOR = "gestor_innovacion"
+ROL_INVESTIGADOR = "investigador"
+
+# Consultor IA: investigador, gestor y admin. El emprendedor no entra.
+ROLES_CONSULTOR = frozenset({ROL_INVESTIGADOR, ROL_GESTOR, ROL_ADMIN})
+# Análisis de datos y métricas de uso: gestor y admin. El investigador no entra.
+ROLES_ANALISIS = frozenset({ROL_GESTOR, ROL_ADMIN})
+
+
+def roles_de(usuario: dict | None) -> set[str]:
+    if not usuario:
+        return set()
+    return set(usuario.get("realm_access", {}).get("roles", []))
+
+
 def es_admin(usuario: dict | None) -> bool:
-    return bool(usuario) and "admin" in usuario.get("realm_access", {}).get("roles", [])
+    return ROL_ADMIN in roles_de(usuario)
+
+
+def tiene_algun_rol(usuario: dict | None, permitidos: frozenset[str]) -> bool:
+    return bool(roles_de(usuario) & permitidos)
+
+
+def _prohibido() -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="No tenés permisos para esta acción",
+    )
 
 
 def requiere_rol(rol: str):
     """Dependencia que exige un rol de realm de Keycloak."""
 
-    def verificar(usuario: dict = Depends(obtener_usuario_actual)) -> dict:
-        roles = usuario.get("realm_access", {}).get("roles", [])
+    return requiere_algun_rol(rol)
 
-        if rol not in roles:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="No tenés permisos para esta acción"
-            )
+
+def requiere_algun_rol(*permitidos: str):
+    """Dependencia que exige al menos uno de los roles de realm indicados."""
+
+    esperados = frozenset(permitidos)
+
+    def verificar(usuario: dict = Depends(obtener_usuario_actual)) -> dict:
+        if not tiene_algun_rol(usuario, esperados):
+            raise _prohibido()
 
         return usuario
 

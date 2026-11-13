@@ -2,16 +2,16 @@ from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.auth import obtener_usuario_actual
+from app.auth import ROLES_ANALISIS, requiere_algun_rol
 from app.services import alerta_service, analisis_service
 from app.services.analisis_service import FiltrosAnalisis
 from app.services.deteccion_alertas_service import normalizar
 
-# Análisis de datos (RF006). Solo lectura; cualquier usuario con sesión puede verlo.
+# Análisis de datos (RF006). Solo lectura. Lo ven gestor de innovación y admin.
 router = APIRouter(
     prefix="/api/analisis",
     tags=["Análisis"],
-    dependencies=[Depends(obtener_usuario_actual)],
+    dependencies=[Depends(requiere_algun_rol(*ROLES_ANALISIS))],
 )
 
 LARGO_MAXIMO_ORGANISMO = 200

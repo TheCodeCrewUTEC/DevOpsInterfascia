@@ -440,6 +440,13 @@ def test_uso_sin_rol_admin_403(resumen):
     assert resumen == []
 
 
+def test_uso_gestor_puede_ver_metricas(resumen):
+    gestor = {**USUARIO, "realm_access": {"roles": ["gestor_innovacion"]}}
+    response = _cliente_admin(gestor).get("/api/admin/analisis/uso")
+    assert response.status_code == 200
+    assert resumen
+
+
 def test_uso_con_rol_admin_por_defecto_ultimos_30_dias(resumen):
     response = _cliente_admin(ADMIN).get("/api/admin/analisis/uso")
 

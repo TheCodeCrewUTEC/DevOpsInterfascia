@@ -3,7 +3,7 @@ import { auth } from "@/auth";
 import { apiFetch } from "@/lib/api";
 import { ESTADOS_USUARIO, esFechaValida, queryDeFiltros } from "@/lib/analisis";
 import { fechaCorta, type MetricasUso } from "@/lib/reportes";
-import { esAdmin } from "@/lib/roles";
+import { puedeVerAnalisis } from "@/lib/roles";
 import BotonesExportar from "@/app/analisis-datos/BotonesExportar";
 import GraficoBarras from "@/app/analisis-datos/GraficoBarras";
 import GraficoLineas from "@/app/analisis-datos/GraficoLineas";
@@ -23,7 +23,7 @@ function primero(valor: string | string[] | undefined) {
   return ((Array.isArray(valor) ? valor[0] : valor) ?? "").trim();
 }
 
-// Métricas de uso de la plataforma (RF006-08), solo para administradores
+// Métricas de uso de la plataforma (RF006-08): gestor de innovación y admin.
 export default async function MetricasUsoPage({
   searchParams,
 }: {
@@ -32,10 +32,10 @@ export default async function MetricasUsoPage({
   const params = await searchParams;
   const session = await auth();
 
-  if (!esAdmin(session)) {
+  if (!puedeVerAnalisis(session)) {
     return (
       <Encabezado>
-        <Aviso texto="Esta página es solo para administradores." />
+        <Aviso texto="Esta página es para gestores de innovación y administradores." />
       </Encabezado>
     );
   }

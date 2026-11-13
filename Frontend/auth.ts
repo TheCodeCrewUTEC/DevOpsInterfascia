@@ -1,6 +1,8 @@
 import NextAuth from "next-auth";
 import type { JWT } from "next-auth/jwt";
+import { NextResponse } from "next/server";
 import Keycloak from "next-auth/providers/keycloak";
+import { esAdmin, puedeConsultarIa, puedeVerAnalisis } from "@/lib/roles";
 
 // ============================================================
 // KEYCLOAK
@@ -124,19 +126,39 @@ export const {
 
   callbacks: {
 
-    // Consultor IA (también "Contar mi proyecto"), el perfil, las alertas, el análisis de datos y las páginas de admin exigen sesión.
-    // false manda a /login y Auth.js conserva la ruta para volver después.
-    authorized({ auth, request }) {
+    // El perfil y las alertas piden sesión. El consultor, el análisis y el admin
+    // además piden el rol. Sin rol, se vuelve a una página que explica el límite.
+    authorized({ auth: sesion, request }) {
       const ruta = request.nextUrl.pathname;
-      const protegida = ["/consultor-ia", "/perfil", "/alertas", "/analisis-datos", "/admin"].some(
+      const consultor = ruta === "/consultor-ia" || ruta.startsWith("/consultor-ia/");
+      const analisis = ruta === "/analisis-datos" || ruta.startsWith("/analisis-datos/");
+      const usuarios = ruta === "/admin/usuarios" || ruta.startsWith("/admin/usuarios/");
+      const metricas = ruta === "/admin/metricas-uso" || ruta.startsWith("/admin/metricas-uso/");
+      const cuenta = ["/perfil", "/alertas"].some(
         (base) => ruta === base || ruta.startsWith(`${base}/`),
       );
 
-      if (!protegida) {
+      if (!(consultor || analisis || usuarios || metricas || cuenta)) {
         return true;
       }
 
-      return Boolean(auth?.user) && !auth?.error;
+      const logueado = Boolean(sesion?.user) && !sesion?.error;
+      if (!logueado) {
+        return false;
+      }
+
+      const permitido =
+        (consultor && puedeConsultarIa(sesion)) ||
+        (analisis && puedeVerAnalisis(sesion)) ||
+        (usuarios && esAdmin(sesion)) ||
+        (metricas && puedeVerAnalisis(sesion)) ||
+        cuenta;
+
+      if (permitido) {
+        return true;
+      }
+
+      return NextResponse.redirect(new URL("/sin-acceso", request.nextUrl));
     },
 
     async jwt({ token, account }) {

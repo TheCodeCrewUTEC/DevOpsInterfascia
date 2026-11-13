@@ -2,7 +2,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
-from app.auth import obtener_usuario_actual
+from app.auth import ROLES_CONSULTOR, obtener_usuario_actual, requiere_algun_rol
 from app.schemas.relacionar import (
     ConversacionRelacionar,
     PreguntaRelacionar,
@@ -25,6 +25,7 @@ from app.services.relacionar_service import RelacionarError, recomendar
 router = APIRouter(
     prefix="/api/relacionar",
     tags=["Relacionar"],
+    dependencies=[Depends(requiere_algun_rol(*ROLES_CONSULTOR))],
 )
 
 LIMITE_DOCUMENTOS = 3

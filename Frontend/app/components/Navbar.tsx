@@ -2,7 +2,7 @@ import Link from "next/link";
 import Button from "./Button";
 import { auth } from "@/auth";
 import { cerrarSesion } from "../actions/auth";
-import { esAdmin } from "@/lib/roles";
+import { esAdmin, puedeConsultarIa, puedeVerAnalisis } from "@/lib/roles";
 import UsuarioMenu from "./UsuarioMenu";
 import ConsultorMenu from "./ConsultorMenu";
 import AvisosFormularios from "./AvisosFormularios";
@@ -21,6 +21,8 @@ export default async function Navbar() {
   // Si no se pudo renovar el token, la sesión de Keycloak venció
   const logueado = Boolean(session?.user) && !session?.error;
   const nombre = session?.user?.name ?? session?.user?.email;
+  const mostrarConsultor = !logueado || puedeConsultarIa(session);
+  const mostrarAnalisis = !logueado || puedeVerAnalisis(session);
 
   return (
     <>
@@ -45,22 +47,28 @@ export default async function Navbar() {
               {link.label}
             </Link>
           ))}
-          <ConsultorMenu />
-          {linksDespues.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="nav-link text-xs text-ink/80 transition-colors hover:text-pine sm:text-sm md:whitespace-nowrap"
-            >
-              {link.label}
-            </Link>
-          ))}
+          {mostrarConsultor ? <ConsultorMenu /> : null}
+          {mostrarAnalisis
+            ? linksDespues.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="nav-link text-xs text-ink/80 transition-colors hover:text-pine sm:text-sm md:whitespace-nowrap"
+                >
+                  {link.label}
+                </Link>
+              ))
+            : null}
         </div>
 
         <div className="col-start-2 row-start-1 flex shrink-0 items-center justify-end justify-self-end gap-3 max-md:[&_a]:whitespace-nowrap max-md:[&_a]:px-3 max-md:[&_a]:py-1.5 max-md:[&_a]:text-xs max-md:[&_button]:whitespace-nowrap max-md:[&_button]:px-3 max-md:[&_button]:py-1.5 max-md:[&_button]:text-xs md:col-start-3">
           {logueado ? (
             <>
-              <UsuarioMenu nombre={nombre ?? ""} admin={esAdmin(session)} />
+              <UsuarioMenu
+                nombre={nombre ?? ""}
+                gestionarUsuarios={esAdmin(session)}
+                verMetricas={puedeVerAnalisis(session)}
+              />
               <form action={cerrarSesion}>
                 <Button type="submit" variant="secondary">Cerrar sesión</Button>
               </form>
@@ -75,7 +83,7 @@ export default async function Navbar() {
         </div>
       </div>
     </nav>
-    {logueado ? <AvisosFormularios /> : null}
+    {logueado && puedeConsultarIa(session) ? <AvisosFormularios /> : null}
     </>
   );
 }

@@ -2,15 +2,15 @@ from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.auth import requiere_rol
+from app.auth import ROLES_ANALISIS, requiere_algun_rol
 from app.services import uso_service
 from app.services.deteccion_alertas_service import hoy_uruguay
 
-# Métricas de uso de la plataforma (RF006-08). Solo para administradores.
+# Métricas de uso (RF006-08). Gestor de innovación y admin; no es gestión de usuarios.
 router_admin = APIRouter(
     prefix="/api/admin/analisis",
     tags=["Análisis"],
-    dependencies=[Depends(requiere_rol("admin"))],
+    dependencies=[Depends(requiere_algun_rol(*ROLES_ANALISIS))],
 )
 
 DIAS_POR_DEFECTO = 30

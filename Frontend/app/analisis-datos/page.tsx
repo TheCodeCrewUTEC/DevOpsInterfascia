@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import Link from "next/link";
+import { auth } from "@/auth";
 import { apiFetch } from "@/lib/api";
+import { puedeVerAnalisis } from "@/lib/roles";
 import {
   ETIQUETAS_VISTA,
   VISTAS,
@@ -49,6 +52,11 @@ export default async function AnalisisDatosPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const session = await auth();
+  if (!puedeVerAnalisis(session)) {
+    redirect("/sin-acceso");
+  }
+
   const filtros = leerFiltros(await searchParams);
   const query = queryDeFiltros(filtros, filtros.vista === "tendencias" ? { agrupar: filtros.agrupar } : {});
 
