@@ -4,6 +4,7 @@ import threading
 import unicodedata
 from pathlib import Path
 
+import psycopg2
 from langchain_ollama import ChatOllama
 from psycopg2.extras import Json
 
@@ -76,7 +77,33 @@ def crear_conversacion(usuario_sub: str, documentos: list[str]) -> dict:
 
 
 def marcar_procesando(conversacion_id: int) -> None:
-    _marcar(conversacion_id, "PROCESSING", None)
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE relacionar_conversacion
+                SET estado = 'PROCESSING', error = NULL, etapa = 'LEYENDO'
+                WHERE id = %s
+                """,
+                (conversacion_id,),
+            )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def marcar_etapa(conversacion_id: int, etapa: str) -> None:
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE relacionar_conversacion SET etapa = %s WHERE id = %s",
+                (etapa, conversacion_id),
+            )
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def marcar_lista(conversacion_id: int) -> None:
@@ -86,7 +113,7 @@ def marcar_lista(conversacion_id: int) -> None:
             cur.execute(
                 """
                 UPDATE relacionar_conversacion
-                SET estado = 'READY', error = NULL, listo = NOW()
+                SET estado = 'READY', error = NULL, etapa = NULL, listo = NOW()
                 WHERE id = %s
                 """,
                 (conversacion_id,),
@@ -147,7 +174,7 @@ def obtener_conversacion(conversacion_id: int, usuario_sub: str) -> dict | None:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT estado, error, documentos
+                SELECT estado, error, documentos, etapa
                 FROM relacionar_conversacion
                 WHERE id = %s AND usuario_sub = %s
                 """,
@@ -165,6 +192,7 @@ def obtener_conversacion(conversacion_id: int, usuario_sub: str) -> dict | None:
         "estado": fila[0],
         "error": fila[1],
         "documentos": list(fila[2] or []),
+        "etapa": fila[3],
         "mensajes": _mensajes(conversacion_id),
     }
 
@@ -323,6 +351,9 @@ def _extractos_fondos(fondos: list[dict], vector) -> str:
                 (ids, _vector_pg(vector)),
             )
             filas = cur.fetchall()
+    except psycopg2.Error:
+        # chunk/documento las crea el scraping; sin esas tablas el chat sigue sin extractos
+        return ""
     finally:
         conn.close()
 
@@ -730,6 +761,9 @@ def _material_proceso(fondos: list[dict]) -> tuple[list[tuple[str, str | None]],
                 (ids,),
             )
             filas = cur.fetchall()
+    except psycopg2.Error:
+        # Sin las tablas del scraping (chunk/documento) no hay material de proceso
+        filas = []
     finally:
         conn.close()
 

@@ -75,6 +75,7 @@ class ConversacionRelacionar(BaseModel):
     estado: str
     error: Optional[str] = None
     documentos: list[str]
+    etapa: Optional[str] = None
     mensajes: list[MensajeRelacionar]
 
 

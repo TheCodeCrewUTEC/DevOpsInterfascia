@@ -1,6 +1,8 @@
 import re
 from datetime import date
 
+import psycopg2
+
 from app.database.connection import get_connection
 from app.services import cache_service
 from app.services.documento_service import obtener_documento_por_convocatoria
@@ -259,6 +261,17 @@ def _consultar_convocatorias(
             page=page,
             limit=limit,
         )
+    except psycopg2.errors.UndefinedTable:
+        # La tabla convocatoria la crea la carga de datos (scraping). Hasta que se
+        # corra, el repositorio muestra "no hay convocatorias" en vez de un 500.
+        conn.rollback()
+        return {
+            "items": [],
+            "page": page,
+            "limit": limit,
+            "total": 0,
+            "total_pages": 0,
+        }
     finally:
         cursor.close()
         conn.close()

@@ -70,6 +70,10 @@ async function proxy(
     return NextResponse.json({ detail: "No encontrado." }, { status: 404 });
   }
 
+  // Log de cada llamada a la API para que quede en los logs del contenedor (Alloy -> Loki)
+  const inicio = Date.now();
+  const ruta = `/${path.join("/")}`;
+
   try {
     const response = await fetchApi(request, destinoDesde(request));
 
@@ -79,11 +83,19 @@ async function proxy(
     respuestaHeaders.delete("transfer-encoding");
     respuestaHeaders.delete("location");
 
+    console.log(
+      `[proxy] ${request.method} ${ruta} -> ${response.status} (${Date.now() - inicio}ms)`,
+    );
+
     return new NextResponse(response.body, {
       status: response.status,
       headers: respuestaHeaders,
     });
-  } catch {
+  } catch (error) {
+    console.error(
+      `[proxy] ${request.method} ${ruta} -> 502 sin conexión con la API (${Date.now() - inicio}ms):`,
+      error instanceof Error ? error.message : error,
+    );
     return NextResponse.json(
       { detail: "No se pudo conectar con la API." },
       { status: 502 },
