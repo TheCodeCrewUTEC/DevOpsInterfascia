@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import FormularioCompletado from "../FormularioCompletado";
-import type { CampoFormulario, Fuente } from "../formulario";
+import { cancelarGeneracion, type CampoFormulario, type Fuente } from "../formulario";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "/backend";
 
@@ -43,6 +43,20 @@ export default function EditorFormulario({ jobId }: { jobId: number }) {
   const router = useRouter();
   const [resultado, setResultado] = useState<Resultado | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [cancelando, setCancelando] = useState(false);
+
+  async function cancelar() {
+    setCancelando(true);
+    setError(null);
+    try {
+      await cancelarGeneracion(jobId);
+      setResultado((actual) => ({ estado: "CANCELLED", respuestas: actual?.respuestas ?? [] }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo cancelar la generación.");
+    } finally {
+      setCancelando(false);
+    }
+  }
 
   useEffect(() => {
     let activo = true;
@@ -80,7 +94,7 @@ export default function EditorFormulario({ jobId }: { jobId: number }) {
         });
         setError(null);
 
-        const termino = datos.estado === "COMPLETED" || datos.estado === "FAILED";
+        const termino = datos.estado === "COMPLETED" || datos.estado === "FAILED" || datos.estado === "CANCELLED";
         if (activo && !termino) {
           espera = window.setTimeout(() => void cargar(), 5000);
         }
@@ -104,6 +118,22 @@ export default function EditorFormulario({ jobId }: { jobId: number }) {
         <div className="mx-auto max-w-3xl">
           <p role="alert" className="text-clay">
             {error}
+          </p>
+          <Link href="/consultor-ia/mis-formularios" className="mt-6 inline-flex text-sm text-pine-text">
+            Volver a Mis formularios
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
+  if (resultado?.estado === "CANCELLED") {
+    return (
+      <main className="px-6 py-16">
+        <div className="mx-auto max-w-3xl">
+          <h1 className="font-display text-4xl text-ink">Generación cancelada</h1>
+          <p className="mt-4 text-ink/75">
+            Este formulario salió de la cola. El worker no lo va a volver a procesar.
           </p>
           <Link href="/consultor-ia/mis-formularios" className="mt-6 inline-flex text-sm text-pine-text">
             Volver a Mis formularios
@@ -165,12 +195,22 @@ export default function EditorFormulario({ jobId }: { jobId: number }) {
           Te avisamos con una notificación cuando esté listo. Podés salir de esta página: va a
           quedar en Mis formularios.
         </p>
-        <Link
-          href="/consultor-ia/mis-formularios"
-          className="mt-8 inline-flex rounded-full border border-pine/30 bg-paper px-4 py-2 text-sm text-ink"
-        >
-          Volver a Mis formularios
-        </Link>
+        <div className="mt-8 flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={() => void cancelar()}
+            disabled={cancelando}
+            className="rounded-full border border-ink/30 bg-paper px-4 py-2 text-sm text-ink disabled:opacity-50"
+          >
+            {cancelando ? "Cancelando..." : "Cancelar generación"}
+          </button>
+          <Link
+            href="/consultor-ia/mis-formularios"
+            className="inline-flex rounded-full border border-pine/30 bg-paper px-4 py-2 text-sm text-ink"
+          >
+            Volver a Mis formularios
+          </Link>
+        </div>
       </div>
     </main>
   );

@@ -4,7 +4,7 @@ import { ChangeEvent, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Loading from "../../components/Loading";
 import FormularioCompletado from "../FormularioCompletado";
-import type { CampoFormulario, Fuente } from "../formulario";
+import { cancelarGeneracion, type CampoFormulario, type Fuente } from "../formulario";
 import Pestanas from "../Pestanas";
 import Stepper from "../../components/Stepper";
 
@@ -72,6 +72,12 @@ const ESPERA_EN_PAGINA = 5 * 60 * 1000;
 class FormularioDemorado extends Error {
   constructor(readonly jobId: number) {
     super("demorado");
+  }
+}
+
+class FormularioCancelado extends Error {
+  constructor() {
+    super("cancelado");
   }
 }
 
@@ -144,6 +150,10 @@ async function consultarResultado(
       fuentes: normalizarFuentes(item.fuentes),
     }));
 
+    if (resultado.estado === "CANCELLED") {
+      throw new FormularioCancelado();
+    }
+
     if (resultado.estado === "COMPLETED" || resultado.estado === "FAILED") {
       return {
         job_id: resultado.job_id,
@@ -164,7 +174,8 @@ export default function PostularPage() {
   const [formulario, setFormulario] = useState<File | null>(null);
   const [documentos, setDocumentos] = useState<File[]>([]);
   const [subiendo, setSubiendo] = useState(false);
-  const [vista, setVista] = useState<"formulario" | "cargando" | "resultado" | "demorado">("formulario");
+  const [vista, setVista] = useState<"formulario" | "cargando" | "resultado" | "demorado" | "cancelado">("formulario");
+  const [cancelando, setCancelando] = useState(false);
   const [estadoJob, setEstadoJob] = useState<string | null>(null);
   const [respuestas, setRespuestas] = useState<RespuestaCampo[]>([]);
   const [jobId, setJobId] = useState<number | null>(null);
@@ -172,6 +183,7 @@ export default function PostularPage() {
   const [paso, setPaso] = useState(0);
   const [errorSubida, setErrorSubida] = useState<string | null>(null);
   const consultaJob = useRef<AbortController | null>(null);
+  const tokenConsulta = useRef<string | null>(null);
 
   useEffect(() => {
     return () => consultaJob.current?.abort();
@@ -265,6 +277,8 @@ export default function PostularPage() {
         throw new Error("La API no devolvió el identificador del formulario.");
       }
       setEstadoJob(job.estado ?? "PENDING");
+      setJobId(idJob);
+      tokenConsulta.current = job.consulta_token ?? null;
       setSubiendo(false);
 
       const resultado = await consultarResultado(
@@ -284,6 +298,10 @@ export default function PostularPage() {
       setVista("resultado");
     } catch (err) {
       if (controlador.signal.aborted) return;
+      if (err instanceof FormularioCancelado) {
+        setVista("cancelado");
+        return;
+      }
       if (err instanceof FormularioDemorado) {
         setJobId(err.jobId);
         setVista("demorado");
@@ -297,6 +315,26 @@ export default function PostularPage() {
       if (!controlador.signal.aborted) {
         setSubiendo(false);
       }
+    }
+  }
+
+  async function handleCancelar() {
+    if (jobId == null) {
+      consultaJob.current?.abort();
+      setVista("formulario");
+      setSubiendo(false);
+      return;
+    }
+
+    setCancelando(true);
+    try {
+      await cancelarGeneracion(jobId, tokenConsulta.current);
+      consultaJob.current?.abort();
+      setVista("cancelado");
+    } catch (err) {
+      setErrorSubida(err instanceof Error ? err.message : "No se pudo cancelar la generación.");
+    } finally {
+      setCancelando(false);
     }
   }
 
@@ -329,7 +367,36 @@ export default function PostularPage() {
   }
 
   if (vista === "cargando") {
-    return <Loading mensaje={mensajeEstado(estadoJob)} />;
+    return (
+      <Loading
+        mensaje={mensajeEstado(estadoJob)}
+        onCancelar={() => void handleCancelar()}
+        cancelando={cancelando}
+      />
+    );
+  }
+
+  if (vista === "cancelado") {
+    return (
+      <main className="px-6 py-16">
+        <div className="mx-auto max-w-3xl">
+          <p className="text-sm font-medium tracking-[0.18em] text-clay uppercase">Cancelado</p>
+          <h1 className="font-display mt-4 text-5xl leading-[1.05] text-ink">
+            Se cortó la generación
+          </h1>
+          <p className="mt-6 max-w-xl text-lg leading-relaxed text-ink/75">
+            El formulario salió de la cola. El worker no lo va a volver a procesar.
+          </p>
+          <button
+            type="button"
+            onClick={volverAlFormulario}
+            className="mt-8 rounded-full bg-pine px-5 py-2 text-sm font-medium text-ink"
+          >
+            Volver a postular
+          </button>
+        </div>
+      </main>
+    );
   }
 
   if (vista === "demorado") {
@@ -345,6 +412,14 @@ export default function PostularPage() {
             cuando esté listo para corregirlo y generar el PDF.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => void handleCancelar()}
+              disabled={cancelando}
+              className="rounded-full border border-ink/30 bg-paper px-5 py-2 text-sm text-ink disabled:opacity-50"
+            >
+              {cancelando ? "Cancelando..." : "Cancelar generación"}
+            </button>
             <Link
               href="/consultor-ia/mis-formularios"
               className="rounded-full bg-pine px-5 py-2 text-sm font-medium text-ink"

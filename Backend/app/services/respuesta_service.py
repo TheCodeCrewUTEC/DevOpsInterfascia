@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from typing import Any
 
 from dotenv import load_dotenv
@@ -17,12 +18,18 @@ OLLAMA_URL = os.getenv("OLLAMA_URL") or None
 
 # Mismo num_ctx que qwen_service: si cambia, Ollama recarga el modelo entre etapas
 NUM_CTX = 8192
+# Sin tope, un campo abierto ("Información sobre el Proyecto Postulado") hace que
+# el modelo redacte hasta llenar el contexto. La llamada es síncrona y el worker
+# no sigue hasta que termina. 512 tokens alcanzan para un JSON breve.
+NUM_PREDICT = 512
 
 llm = ChatOllama(
     model=MODEL_NAME,
     temperature=0,
     num_ctx=NUM_CTX,
+    num_predict=NUM_PREDICT,
     base_url=OLLAMA_URL,
+    client_kwargs={"timeout": 120},
 )
 
 # Hasta este tamaño se manda el documento completo en cada campo (~3 caracteres por
@@ -70,6 +77,49 @@ Página: {pagina}
         )
 
     return "\n".join(context_parts)
+
+
+# ============================================================
+# RESPUESTA CORTA
+# ============================================================
+
+def _primeras_oraciones(texto: str, cantidad: int = 2) -> str:
+    texto = " ".join(texto.split())
+    if len(texto) <= 400:
+        return texto
+
+    partes = re.split(r"(?<=[.!?])\s+", texto)
+    tomadas = [parte for parte in partes if parte][:cantidad]
+    return " ".join(tomadas) if tomadas else texto[:400]
+
+
+def _texto_de_respuesta(content: str) -> str | None:
+    """Saca el texto aunque el JSON haya quedado cortado por el tope de tokens."""
+
+    marca = re.search(r'"respuesta"\s*:\s*"', content)
+    if not marca:
+        return None
+
+    chars: list[str] = []
+    escaped = False
+
+    for ch in content[marca.end():]:
+        if escaped:
+            chars.append(" " if ch in "nt" else ch)
+            escaped = False
+            continue
+        if ch == "\\":
+            escaped = True
+            continue
+        if ch == '"':
+            break
+        chars.append(ch)
+
+    texto = "".join(chars).strip()
+    if not texto or texto.lower() == "null":
+        return None
+
+    return _primeras_oraciones(texto)
 
 
 # ============================================================
@@ -123,8 +173,9 @@ Reglas:
 4. Si la información necesaria no aparece claramente,
    responde null.
 
-5. Si existe información suficiente, responde de forma
-   breve y directa.
+5. Si existe información suficiente, responde en una o
+   dos oraciones. No redactes un informe ni copies
+   párrafos del documento.
 
 6. Mantén los datos exactamente como aparecen cuando se
    trate de identificadores, nombres, números, fechas,
@@ -165,6 +216,8 @@ Campo del formulario:
 
 Tipo de campo:
 {tipo}
+
+Cerrá el JSON. La respuesta es una o dos oraciones, nada más.
 """
 
     # --------------------------------------------------------
@@ -202,9 +255,10 @@ Tipo de campo:
     except json.JSONDecodeError:
 
         print("[QWEN] ⚠ No devolvió JSON válido")
+        respuesta = _texto_de_respuesta(content)
 
         return {
-            "respuesta": None,
+            "respuesta": respuesta,
             "fuentes": []
         }
 
@@ -224,6 +278,9 @@ Tipo de campo:
     respuesta = resultado.get(
         "respuesta"
     )
+
+    if isinstance(respuesta, str):
+        respuesta = _primeras_oraciones(respuesta)
 
     fuentes = resultado.get(
         "fuentes",

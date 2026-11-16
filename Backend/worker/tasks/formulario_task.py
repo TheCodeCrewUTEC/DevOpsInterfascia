@@ -1,3 +1,4 @@
+import asyncio
 from pathlib import Path
 
 from app.services.docling_service import procesar_job
@@ -8,7 +9,8 @@ from app.services.qwen_service import (
 
 from app.services.formulario_job_service import (
     obtener_job,
-    actualizar_estado_job
+    actualizar_estado_job,
+    esta_cancelado,
 )
 
 from app.services.document_embedding_service import (
@@ -44,7 +46,19 @@ async def procesar_formulario(
         f"[WORKER] Procesando formulario Job {job_id}"
     )
 
+    def cortado():
+        if not esta_cancelado(job_id):
+            return None
+        print(f"[WORKER] Job {job_id} cancelado, no sigue")
+        return {
+            "job_id": job_id,
+            "estado": "CANCELLED",
+        }
+
     try:
+
+        if (respuesta := cortado()):
+            return respuesta
 
         # ==========================================
         # 1. PENDING → PROCESSING
@@ -54,6 +68,9 @@ async def procesar_formulario(
             job_id,
             "PROCESSING"
         )
+
+        if (respuesta := cortado()):
+            return respuesta
 
         # ==========================================
         # 2. OBTENER JOB
@@ -104,9 +121,13 @@ async def procesar_formulario(
         # 4. PROCESAR CON DOCLING
         # ==========================================
 
-        resultados = procesar_job(
-            carpeta_job
+        resultados = await asyncio.to_thread(
+            procesar_job,
+            carpeta_job,
         )
+
+        if (respuesta := cortado()):
+            return respuesta
 
         print(
             f"[WORKER] Archivos procesados: "
@@ -197,10 +218,14 @@ async def procesar_formulario(
             "del formulario..."
         )
 
-        campos = extraer_campos_formulario(
+        campos = await asyncio.to_thread(
+            extraer_campos_formulario,
             ruta_formulario,
-            formulario["documento"]
+            formulario["documento"],
         )
+
+        if (respuesta := cortado()):
+            return respuesta
 
         # ==========================================
         # 10. VALIDAR RESULTADO
@@ -243,17 +268,24 @@ async def procesar_formulario(
         print("=" * 60)
 
         # Reutiliza las conversiones de Docling del paso 4
-        chunks = generar_chunks_documentos(
+        chunks = await asyncio.to_thread(
+            generar_chunks_documentos,
             carpeta_job,
             {r["nombre"]: r["documento"] for r in resultados},
-            excluir=nombre_formulario,
+            nombre_formulario,
         )
 
         print(
             f"[WORKER] Chunks generados: {len(chunks)}"
         )
 
-        chunks = generar_embeddings(chunks)
+        if (respuesta := cortado()):
+            return respuesta
+
+        chunks = await asyncio.to_thread(generar_embeddings, chunks)
+
+        if (respuesta := cortado()):
+            return respuesta
 
         print(
             f"[WORKER] Embeddings generados: {len(chunks)}"
@@ -282,6 +314,13 @@ async def procesar_formulario(
         )
 
         for campo in lista_campos:
+
+            if (respuesta := cortado()):
+                return respuesta
+            # Cede el loop para que un abort de arq pueda cortar este job.
+            await asyncio.sleep(0)
+            if (respuesta := cortado()):
+                return respuesta
 
             nombre_campo = campo.get("campo")
             tipo_campo = campo.get("tipo")
@@ -312,11 +351,25 @@ async def procesar_formulario(
             # 2. GENERAR RESPUESTA CON QWEN
             # ============================================================
 
-            resultado_qwen = generar_respuesta(
-                campo=nombre_campo,
-                tipo=tipo_campo,
-                chunks_relevantes=resultados,
-            )
+            try:
+                resultado_qwen = await asyncio.to_thread(
+                    generar_respuesta,
+                    nombre_campo,
+                    tipo_campo,
+                    resultados,
+                )
+            except Exception as error:
+                if (respuesta := cortado()):
+                    return respuesta
+                # Un campo no puede frenar el formulario: se guarda vacío y sigue.
+                print(
+                    f"[WORKER] No se pudo responder "
+                    f"{nombre_campo}: {error}"
+                )
+                resultado_qwen = {
+                    "respuesta": None,
+                    "fuentes": [],
+                }
 
             respuesta = resultado_qwen.get("respuesta")
 
@@ -419,6 +472,9 @@ async def procesar_formulario(
         # 12. COMPLETED
         # ==========================================
 
+        if (respuesta := cortado()):
+            return respuesta
+
         actualizar_estado_job(
             job_id,
             "COMPLETED"
@@ -436,7 +492,18 @@ async def procesar_formulario(
             "campos_extraidos": len(lista_campos)
         }
 
+    except asyncio.CancelledError:
+        if (respuesta := cortado()):
+            return respuesta
+        # arq cancela el job al llegar al tiempo máximo. Sin esto la fila queda en PROCESSING.
+        print(f"[WORKER] Job {job_id} cortado por tiempo")
+        actualizar_estado_job(job_id, "FAILED")
+        raise
+
     except Exception as e:
+
+        if (respuesta := cortado()):
+            return respuesta
 
         print(
             f"[WORKER] Error procesando Job "

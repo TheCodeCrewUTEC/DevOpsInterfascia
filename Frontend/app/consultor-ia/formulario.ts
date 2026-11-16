@@ -1,5 +1,20 @@
 // Tipos y helpers del formulario completado (pantalla editable y PDF).
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "/backend";
+
+export async function cancelarGeneracion(jobId: number, consultaToken?: string | null) {
+  const consulta = consultaToken ? `?consulta=${encodeURIComponent(consultaToken)}` : "";
+  const response = await fetch(`${API_URL}/formularios/jobs/${jobId}/cancelar${consulta}`, {
+    method: "POST",
+    credentials: "include",
+  });
+
+  if (response.status === 409) return;
+  if (!response.ok) {
+    throw new Error("No se pudo cancelar la generación.");
+  }
+}
+
 export type Fuente = {
   pagina: number | null;
   archivo: string;

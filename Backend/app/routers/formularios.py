@@ -26,7 +26,11 @@ from app.services.dato_validado_service import (
 
 from app.schemas.formulario_job import FormularioJobResponse
 
-from app.services.formulario_job_service import crear_job, listar_jobs_usuario
+from app.services.formulario_job_service import (
+    actualizar_estado_job,
+    crear_job,
+    listar_jobs_usuario,
+)
 
 from app.services.file_service import (
     nombre_disponible,
@@ -36,7 +40,7 @@ from app.services.file_service import (
 
 from app.database.connection import get_connection
 
-from app.services.queue_service import encolar_formulario
+from app.services.queue_service import encolar_formulario, sacar_formulario_de_la_cola
 
 router = APIRouter(
     prefix="/formularios",
@@ -261,6 +265,46 @@ def listar_formularios(
     if not sub:
         raise HTTPException(status_code=401, detail="No se pudo identificar al usuario")
     return listar_jobs_usuario(sub)
+
+
+@router.post("/jobs/{job_id}/cancelar")
+async def cancelar_formulario_job(
+    job_id: int,
+    consulta: str | None = None,
+    usuario: dict | None = Depends(obtener_usuario_opcional),
+):
+    """Corta la generación: saca el job de la cola y el worker no lo retoma."""
+
+    if usuario is not None and not tiene_algun_rol(usuario, ROLES_CONSULTOR):
+        if not consulta:
+            raise HTTPException(
+                status_code=403,
+                detail="No tenés permisos para esta acción",
+            )
+        usuario = None
+
+    conn = get_connection()
+
+    try:
+        with conn.cursor() as cur:
+            _, estado = verificar_acceso_job(cur, job_id, usuario, consulta)
+    finally:
+        conn.close()
+
+    if estado == "CANCELLED":
+        await sacar_formulario_de_la_cola(job_id)
+        return {"id": job_id, "estado": "CANCELLED"}
+
+    if estado not in ("PENDING", "PROCESSING"):
+        raise HTTPException(
+            status_code=409,
+            detail="Ese formulario ya terminó",
+        )
+
+    actualizar_estado_job(job_id, "CANCELLED")
+    await sacar_formulario_de_la_cola(job_id)
+
+    return {"id": job_id, "estado": "CANCELLED"}
 
 
 @router.get("/jobs/{job_id}/resultado")

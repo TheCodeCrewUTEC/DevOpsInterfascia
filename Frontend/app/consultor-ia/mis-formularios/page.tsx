@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { cancelarGeneracion } from "../formulario";
 import Pestanas from "../Pestanas";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "/backend";
@@ -17,6 +18,7 @@ type Formulario = {
 function etiqueta(formulario: Formulario) {
   if (formulario.estado === "COMPLETED") return "Listo";
   if (formulario.estado === "FAILED") return "No se pudo completar";
+  if (formulario.estado === "CANCELLED") return "Cancelado";
   if (formulario.en_proceso) return "En proceso";
   if (formulario.estado === "PROCESSING") return "Procesando";
   return "En cola";
@@ -24,7 +26,7 @@ function etiqueta(formulario: Formulario) {
 
 function tono(formulario: Formulario) {
   if (formulario.estado === "COMPLETED") return "bg-foam text-pine-text";
-  if (formulario.estado === "FAILED") return "bg-clay/10 text-clay";
+  if (formulario.estado === "FAILED" || formulario.estado === "CANCELLED") return "bg-clay/10 text-clay";
   if (formulario.en_proceso) return "bg-gold/40 text-ink";
   return "bg-sand text-ink/80";
 }
@@ -44,6 +46,24 @@ function fecha(valor: string) {
 export default function MisFormulariosPage() {
   const [formularios, setFormularios] = useState<Formulario[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [cancelandoId, setCancelandoId] = useState<number | null>(null);
+
+  async function cancelar(id: number) {
+    setCancelandoId(id);
+    setError(null);
+    try {
+      await cancelarGeneracion(id);
+      setFormularios((actuales) =>
+        actuales?.map((item) =>
+          item.id === id ? { ...item, estado: "CANCELLED", en_proceso: false } : item,
+        ) ?? null,
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo cancelar la generación.");
+    } finally {
+      setCancelandoId(null);
+    }
+  }
 
   useEffect(() => {
     let activo = true;
@@ -136,20 +156,35 @@ export default function MisFormulariosPage() {
                   </>
                 );
 
+                const enCurso = formulario.estado === "PENDING" || formulario.estado === "PROCESSING";
+
                 return (
-                  <li key={formulario.id}>
+                  <li
+                    key={formulario.id}
+                    className="flex items-center gap-3 rounded-3xl border border-pine/10 bg-paper px-5 py-4 shadow-sm"
+                  >
                     {sePuedeAbrir ? (
                       <Link
                         href={`/consultor-ia/mis-formularios/${formulario.id}`}
-                        className="flex items-center justify-between gap-4 rounded-3xl border border-pine/10 bg-paper px-5 py-4 shadow-sm transition hover:border-pine/40"
+                        className="flex min-w-0 flex-1 items-center justify-between gap-4 transition hover:opacity-80"
                       >
                         {contenido}
                       </Link>
                     ) : (
-                      <div className="flex items-center justify-between gap-4 rounded-3xl border border-pine/10 bg-paper px-5 py-4 shadow-sm">
+                      <div className="flex min-w-0 flex-1 items-center justify-between gap-4">
                         {contenido}
                       </div>
                     )}
+                    {enCurso ? (
+                      <button
+                        type="button"
+                        onClick={() => void cancelar(formulario.id)}
+                        disabled={cancelandoId === formulario.id}
+                        className="shrink-0 rounded-full border border-ink/30 px-4 py-2 text-sm text-ink disabled:opacity-50"
+                      >
+                        {cancelandoId === formulario.id ? "Cancelando..." : "Cancelar"}
+                      </button>
+                    ) : null}
                   </li>
                 );
               })}

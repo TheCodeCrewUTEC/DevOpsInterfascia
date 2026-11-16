@@ -116,31 +116,47 @@ def obtener_job(job_id: int):
     finally:
         conn.close()
 
-def actualizar_estado_job(job_id: int, estado: str):
+def actualizar_estado_job(job_id: int, estado: str) -> bool:
+    # CANCELLED no se pisa: si la persona cortó la generación, el worker no la
+    # vuelve a marcar como PROCESSING, COMPLETED o FAILED.
+    if estado == "CANCELLED":
+        condicion = "estado IN ('PENDING', 'PROCESSING')"
+    else:
+        condicion = "estado IS DISTINCT FROM 'CANCELLED'"
+
     conn = get_connection()
 
     try:
         with conn.cursor() as cur:
 
             cur.execute(
-                """
+                f"""
                 UPDATE formulario_job
                 SET estado = %s
                 WHERE id = %s
+                  AND {condicion}
                 """,
                 (
                     estado,
                     job_id
                 )
             )
+            actualizo = cur.rowcount > 0
 
         conn.commit()
 
     finally:
         conn.close()
 
-    if estado in ("COMPLETED", "FAILED"):
+    if actualizo and estado in ("COMPLETED", "FAILED", "CANCELLED"):
         eliminar_carpeta_job(job_id)
+
+    return actualizo
+
+
+def esta_cancelado(job_id: int) -> bool:
+    job = obtener_job(job_id)
+    return job is not None and job[1] == "CANCELLED"
 
 
 def eliminar_carpeta_job(job_id: int):

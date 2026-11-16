@@ -1,8 +1,10 @@
 type LoadingProps = {
   mensaje: string;
+  onCancelar?: () => void;
+  cancelando?: boolean;
 };
 
-export default function Loading({ mensaje }: LoadingProps) {
+export default function Loading({ mensaje, onCancelar, cancelando = false }: LoadingProps) {
   return (
     <main
       className="flex flex-1 flex-col items-center justify-center px-6 py-24"
@@ -24,6 +26,16 @@ export default function Loading({ mensaje }: LoadingProps) {
       <p className="mt-2 max-w-md text-center text-sm leading-relaxed text-ink/60">
         Consultamos el estado del formulario cada 5 segundos.
       </p>
+      {onCancelar ? (
+        <button
+          type="button"
+          onClick={onCancelar}
+          disabled={cancelando}
+          className="mt-8 rounded-full border border-ink/30 bg-paper px-5 py-2 text-sm text-ink transition hover:border-clay hover:text-clay disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {cancelando ? "Cancelando..." : "Cancelar generación"}
+        </button>
+      ) : null}
     </main>
   );
 }

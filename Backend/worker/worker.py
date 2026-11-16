@@ -1,7 +1,7 @@
 import asyncio
 import os
 from dotenv import load_dotenv
-from arq import cron
+from arq import cron, func
 from arq.connections import RedisSettings
 from app.database.connection import ensure_schema
 from worker.tasks.formulario_task import procesar_formulario
@@ -25,7 +25,8 @@ class WorkerSettings:
     on_startup = preparar_esquema
 
     functions = [
-        procesar_formulario,
+        # Docling y un formulario largo superan el tope de 5 minutos de arq.
+        func(procesar_formulario, timeout=45 * 60),
         revisar_alertas,
         avisar_cierres_task,
         procesar_relacionar
@@ -45,3 +46,5 @@ class WorkerSettings:
     )
 
     max_jobs = 1
+    # Sin esto, Job.abort() no frena el formulario que ya está corriendo.
+    allow_abort_jobs = True
