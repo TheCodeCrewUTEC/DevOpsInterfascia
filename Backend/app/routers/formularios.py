@@ -5,6 +5,7 @@ from fastapi import (
     APIRouter,
     Depends,
     File,
+    Form,
     UploadFile,
     HTTPException
 )
@@ -26,6 +27,10 @@ from app.services.dato_validado_service import (
 
 from app.schemas.formulario_job import FormularioJobResponse
 
+from app.services.formulario_ande_service import (
+    campos_para_consultor,
+    listar_formularios_abiertos,
+)
 from app.services.formulario_job_service import (
     actualizar_estado_job,
     crear_job,
@@ -110,7 +115,8 @@ def verificar_acceso_job(
     response_model=FormularioJobResponse
 )
 async def crear_formulario_job(
-    formulario: UploadFile = File(...),
+    formulario: UploadFile | None = File(None),
+    formulario_id: int | None = Form(None),
     documentos: list[UploadFile] = File(
         ...,
         media_type="multipart/form-data"
@@ -118,17 +124,29 @@ async def crear_formulario_job(
     usuario: dict = Depends(requiere_algun_rol(*ROLES_CONSULTOR)),
 ):
 
-    # VALIDAR FORMULARIO
-    if not formulario.filename:
+    tiene_archivo = formulario is not None and bool(formulario.filename)
+    if tiene_archivo and formulario_id is not None:
         raise HTTPException(
             status_code=400,
-            detail="El archivo no tiene nombre"
+            detail="Elegí un formulario de ANDE o un PDF, no los dos",
+        )
+    if not tiene_archivo and formulario_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Seleccioná un formulario de ANDE o subí un PDF",
         )
 
-    if not validar_extension(formulario.filename):
+    # VALIDAR FORMULARIO
+    if tiene_archivo and not validar_extension(formulario.filename):
         raise HTTPException(
             status_code=400,
             detail="Formato de formulario no permitido"
+        )
+
+    if formulario_id is not None and not campos_para_consultor(formulario_id):
+        raise HTTPException(
+            status_code=404,
+            detail="No está ese formulario de ANDE",
         )
 
     if not documentos:
@@ -144,7 +162,7 @@ async def crear_formulario_job(
         )
 
     # CREAR JOB
-    job = crear_job(None, usuario.get("sub"))
+    job = crear_job(None, usuario.get("sub"), formulario_id)
 
     job_id = job["id"]
 
@@ -157,43 +175,43 @@ async def crear_formulario_job(
     )
 
     # GUARDAR FORMULARIO
-    nombre_formulario = nombre_disponible(
-        carpeta_job,
-        sanitizar_nombre_archivo(formulario.filename),
-    )
+    if tiene_archivo:
+        nombre_formulario = nombre_disponible(
+            carpeta_job,
+            sanitizar_nombre_archivo(formulario.filename),
+        )
 
-    formulario_path = carpeta_job / nombre_formulario
+        formulario_path = carpeta_job / nombre_formulario
 
-    with formulario_path.open("wb") as buffer:
+        with formulario_path.open("wb") as buffer:
 
-        while contenido := await formulario.read(
-            1024 * 1024
-        ):
-            buffer.write(contenido)
+            while contenido := await formulario.read(
+                1024 * 1024
+            ):
+                buffer.write(contenido)
 
-    # GUARDAR RUTA DEL FORMULARIO
-    conn = get_connection()
+        conn = get_connection()
 
-    try:
+        try:
 
-        with conn.cursor() as cur:
+            with conn.cursor() as cur:
 
-            cur.execute(
-                """
-                UPDATE formulario_job
-                SET formulario_path = %s
-                WHERE id = %s
-                """,
-                (
-                    str(formulario_path),
-                    job_id
+                cur.execute(
+                    """
+                    UPDATE formulario_job
+                    SET formulario_path = %s
+                    WHERE id = %s
+                    """,
+                    (
+                        str(formulario_path),
+                        job_id
+                    )
                 )
-            )
 
-        conn.commit()
+            conn.commit()
 
-    finally:
-        conn.close()
+        finally:
+            conn.close()
 
     # VALIDAR Y GUARDAR DOCUMENTOS
     archivos_guardados = []
@@ -256,6 +274,13 @@ async def crear_formulario_job(
         "consulta_token": job["consulta_token"],
     }
         
+
+@router.get("/convocatorias-abiertas")
+def listar_convocatorias_abiertas(
+    _usuario: dict = Depends(requiere_algun_rol(*ROLES_CONSULTOR)),
+):
+    return listar_formularios_abiertos()
+
 
 @router.get("/jobs")
 def listar_formularios(

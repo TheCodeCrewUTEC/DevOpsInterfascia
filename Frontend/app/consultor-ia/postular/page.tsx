@@ -14,6 +14,23 @@ const PASOS = ["Formulario", "Documentos del proyecto", "Revisar y enviar"];
 
 type RespuestaCampo = CampoFormulario;
 
+type CampoAnde = {
+  orden: number;
+  seccion: string;
+  etiqueta: string;
+  tipo: string;
+  requerido: boolean;
+  opciones: string[];
+  selector: string;
+};
+
+type FormularioAnde = {
+  id: number;
+  convocatoria: string;
+  obtenido: string | null;
+  campos: CampoAnde[];
+};
+
 type ResultadoJob = {
   job_id: number;
   estado: string;
@@ -79,6 +96,32 @@ class FormularioCancelado extends Error {
   constructor() {
     super("cancelado");
   }
+}
+
+function fechaObtenido(valor: string | null) {
+  if (!valor) return "";
+  const momento = new Date(valor);
+  if (Number.isNaN(momento.getTime())) return "";
+  return momento.toLocaleString("es-UY", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function gruposDeCampos(campos: CampoAnde[]) {
+  const grupos: { seccion: string; campos: CampoAnde[] }[] = [];
+  for (const campo of campos) {
+    const ultimo = grupos[grupos.length - 1];
+    if (!ultimo || ultimo.seccion !== campo.seccion) {
+      grupos.push({ seccion: campo.seccion, campos: [campo] });
+    } else {
+      ultimo.campos.push(campo);
+    }
+  }
+  return grupos;
 }
 
 function mensajeEstado(estado: string | null) {
@@ -172,6 +215,10 @@ async function consultarResultado(
 
 export default function PostularPage() {
   const [formulario, setFormulario] = useState<File | null>(null);
+  const [formulariosAnde, setFormulariosAnde] = useState<FormularioAnde[] | null>(null);
+  const [tituloAnde, setTituloAnde] = useState("Formularios de Convocatorias abiertas");
+  const [formularioAndeId, setFormularioAndeId] = useState<number | null>(null);
+  const [errorAnde, setErrorAnde] = useState<string | null>(null);
   const [documentos, setDocumentos] = useState<File[]>([]);
   const [subiendo, setSubiendo] = useState(false);
   const [vista, setVista] = useState<"formulario" | "cargando" | "resultado" | "demorado" | "cancelado">("formulario");
@@ -184,13 +231,66 @@ export default function PostularPage() {
   const [errorSubida, setErrorSubida] = useState<string | null>(null);
   const consultaJob = useRef<AbortController | null>(null);
   const tokenConsulta = useRef<string | null>(null);
+  const inputFormulario = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     return () => consultaJob.current?.abort();
   }, []);
 
+  useEffect(() => {
+    const controlador = new AbortController();
+
+    async function cargar() {
+      try {
+        const response = await fetch(`${API_URL}/formularios/convocatorias-abiertas`, {
+          signal: controlador.signal,
+          credentials: "include",
+        });
+        if (!response.ok) {
+          throw new Error("No se pudieron cargar los formularios de ANDE.");
+        }
+        const datos = (await response.json()) as {
+          titulo?: string;
+          formularios?: FormularioAnde[];
+        };
+        if (datos.titulo) setTituloAnde(datos.titulo);
+        setFormulariosAnde(datos.formularios ?? []);
+      } catch (error) {
+        if (controlador.signal.aborted) return;
+        setFormulariosAnde([]);
+        setErrorAnde(error instanceof Error ? error.message : "No se pudieron cargar los formularios de ANDE.");
+      }
+    }
+
+    void cargar();
+    return () => controlador.abort();
+  }, []);
+
+  const formularioAnde = formulariosAnde?.find((item) => item.id === formularioAndeId) ?? null;
+
+  function elegirFormularioAnde(id: number | null) {
+    setFormularioAndeId(id);
+    setErrorSubida(null);
+    if (id != null) {
+      setFormulario(null);
+      if (inputFormulario.current) inputFormulario.current.value = "";
+    }
+  }
+
   function handleFormularioChange(event: ChangeEvent<HTMLInputElement>) {
-    setFormulario(event.target.files?.[0] ?? null);
+    const archivo = event.target.files?.[0] ?? null;
+    if (!archivo || formularioAnde) {
+      event.target.value = "";
+      return;
+    }
+    setFormulario(archivo);
+    setFormularioAndeId(null);
+    setErrorSubida(null);
+  }
+
+  function quitarFormularioArchivo() {
+    setFormulario(null);
+    if (inputFormulario.current) inputFormulario.current.value = "";
     setErrorSubida(null);
   }
 
@@ -225,8 +325,8 @@ export default function PostularPage() {
   }
 
   async function handleSubir() {
-    if (!formulario) {
-      setErrorSubida("Seleccioná el formulario de postulación.");
+    if (!formulario && !formularioAnde) {
+      setErrorSubida("Seleccioná un formulario de ANDE o subí un PDF.");
       return;
     }
 
@@ -241,7 +341,11 @@ export default function PostularPage() {
     }
 
     const cuerpo = new FormData();
-    cuerpo.append("formulario", formulario);
+    if (formulario) {
+      cuerpo.append("formulario", formulario);
+    } else if (formularioAnde) {
+      cuerpo.append("formulario_id", String(formularioAnde.id));
+    }
     for (const documento of documentos) {
       cuerpo.append("documentos", documento);
     }
@@ -349,8 +453,8 @@ export default function PostularPage() {
 
   // Cada paso valida lo suyo antes de dejar avanzar
   function siguiente() {
-    if (paso === 0 && !formulario) {
-      setErrorSubida("Seleccioná el formulario de postulación.");
+    if (paso === 0 && !formulario && !formularioAnde) {
+      setErrorSubida("Seleccioná un formulario de ANDE o subí un PDF.");
       return;
     }
     if (paso === 1 && documentos.length === 0) {
@@ -498,24 +602,55 @@ export default function PostularPage() {
 
             <div className="mt-8 grid gap-4">
               {paso === 0 ? (
-                <div>
-                  <p className="mb-2 text-sm text-ink">Formulario de postulación</p>
-                  <label
-                    htmlFor="formulario-postulacion"
-                    className="flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed border-ink/70 bg-sand/60 px-6 py-8 text-center transition hover:border-pine hover:bg-paper"
-                  >
-                    <CloudUploadIcon />
-                    <span className="mt-4 text-sm text-ink/70">
-                      {formulario ? formulario.name : "Seleccionar formulario de postulación (PDF)"}
-                    </span>
-                    <input
-                      id="formulario-postulacion"
-                      type="file"
-                      accept=".pdf"
-                      className="sr-only"
-                      onChange={handleFormularioChange}
-                    />
-                  </label>
+                <div className="flex flex-col gap-6">
+                  <FormulariosAbiertos
+                    titulo={tituloAnde}
+                    formularios={formulariosAnde}
+                    error={errorAnde}
+                    seleccionado={formularioAnde}
+                    bloqueado={formulario != null}
+                    onElegir={elegirFormularioAnde}
+                  />
+                  <div>
+                    <p className="mb-2 text-sm text-ink">Formulario de postulación</p>
+                    <label
+                      htmlFor="formulario-postulacion"
+                      aria-disabled={formularioAnde != null}
+                      className={`flex min-h-40 flex-col items-center justify-center rounded-3xl border-2 border-dashed px-6 py-8 text-center ${
+                        formularioAnde
+                          ? "cursor-not-allowed border-ink/30 bg-sand/30"
+                          : "cursor-pointer border-ink/70 bg-sand/60 transition hover:border-pine hover:bg-paper"
+                      }`}
+                    >
+                      <CloudUploadIcon />
+                      <span className={`mt-4 text-sm ${formularioAnde ? "text-ink/40" : "text-ink/70"}`}>
+                        {formulario ? formulario.name : "Seleccionar formulario de postulación (PDF)"}
+                      </span>
+                      <input
+                        ref={inputFormulario}
+                        id="formulario-postulacion"
+                        type="file"
+                        accept=".pdf"
+                        disabled={formularioAnde != null}
+                        className="sr-only"
+                        onChange={handleFormularioChange}
+                      />
+                    </label>
+                    {formularioAnde ? (
+                      <p className="mt-2 text-sm text-ink/60">
+                        Ya elegiste un formulario de ANDE. Para subir un PDF en su lugar, volvé a «Elegí un formulario».
+                      </p>
+                    ) : null}
+                    {formulario ? (
+                      <button
+                        type="button"
+                        onClick={quitarFormularioArchivo}
+                        className="mt-3 text-sm text-ink/50 transition hover:text-clay"
+                      >
+                        Quitar PDF
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
               ) : null}
 
@@ -554,7 +689,9 @@ export default function PostularPage() {
                 <div className="flex flex-col gap-4">
                   <div className="rounded-2xl border border-ink/20 bg-sand/60 px-5 py-4">
                     <p className="text-xs font-medium tracking-[0.16em] text-clay uppercase">Formulario</p>
-                    <p className="mt-1 text-sm text-ink">{formulario?.name}</p>
+                    <p className="mt-1 text-sm text-ink">
+                      {formulario?.name ?? formularioAnde?.convocatoria}
+                    </p>
                   </div>
                   <ListaDocumentos documentos={documentos} onQuitar={quitarDocumento} />
                   <p className="text-sm text-ink/70">
@@ -606,6 +743,96 @@ export default function PostularPage() {
         </div>
       </section>
     </main>
+  );
+}
+
+function FormulariosAbiertos({
+  titulo,
+  formularios,
+  error,
+  seleccionado,
+  bloqueado,
+  onElegir,
+}: {
+  titulo: string;
+  formularios: FormularioAnde[] | null;
+  error: string | null;
+  seleccionado: FormularioAnde | null;
+  bloqueado: boolean;
+  onElegir: (id: number | null) => void;
+}) {
+  const obtenido = fechaObtenido(seleccionado?.obtenido ?? null);
+  const grupos = seleccionado ? gruposDeCampos(seleccionado.campos) : [];
+
+  return (
+    <div>
+      <h2 className="font-display text-3xl text-ink">{titulo}</h2>
+      <p className="mt-2 text-sm text-ink/70">
+        Formularios leídos del portal de ANDE. Al elegir uno ves sus campos y cuándo se obtuvo la información.
+      </p>
+
+      {formularios == null && !error ? (
+        <p className="mt-4 text-sm text-ink/70">Cargando formularios.</p>
+      ) : null}
+
+      {error ? (
+        <p className="mt-4 text-sm text-clay" role="alert">
+          {error}
+        </p>
+      ) : null}
+
+      {formularios && formularios.length === 0 && !error ? (
+        <p className="mt-4 text-sm text-ink/70">Todavía no hay formularios cargados.</p>
+      ) : null}
+
+      {formularios && formularios.length > 0 ? (
+        <label className="mt-4 block text-sm text-ink">
+          Formulario
+          <select
+            value={seleccionado?.id ?? ""}
+            disabled={bloqueado}
+            onChange={(event) => onElegir(event.target.value ? Number(event.target.value) : null)}
+            className={`mt-2 w-full rounded-2xl border-2 border-ink/70 bg-paper px-4 py-3 text-sm text-ink ${
+              bloqueado ? "cursor-not-allowed opacity-50" : ""
+            }`}
+          >
+            <option value="">Elegí un formulario</option>
+            {formularios.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.convocatoria}
+              </option>
+            ))}
+          </select>
+          {bloqueado ? (
+            <p className="mt-2 text-sm text-ink/60">Quitá el PDF para elegir un formulario de ANDE.</p>
+          ) : null}
+        </label>
+      ) : null}
+
+      {seleccionado ? (
+        <div className="mt-4 rounded-3xl border border-ink/20 bg-sand/60 p-5">
+          <p className="text-sm font-medium text-ink">{seleccionado.convocatoria}</p>
+          {obtenido ? (
+            <p className="mt-1 text-sm text-ink/70">Información obtenida el {obtenido}</p>
+          ) : null}
+          <div className="mt-4 max-h-96 overflow-y-auto pr-1">
+            {grupos.map((grupo) => (
+              <section key={grupo.seccion} className="mb-4">
+                <h3 className="text-sm font-medium tracking-[0.12em] text-clay uppercase">{grupo.seccion}</h3>
+                <ul className="mt-2 flex flex-col gap-1">
+                  {grupo.campos.map((campo) => (
+                    <li key={`${campo.orden}-${campo.selector}`} className="text-sm text-ink/80">
+                      {campo.etiqueta}
+                      <span className="text-ink/45"> · {campo.tipo}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }
 

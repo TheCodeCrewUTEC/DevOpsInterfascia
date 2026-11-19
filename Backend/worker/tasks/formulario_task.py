@@ -7,6 +7,7 @@ from app.services.qwen_service import (
     extraer_campos_formulario
 )
 
+from app.services.formulario_ande_service import campos_para_consultor
 from app.services.formulario_job_service import (
     obtener_job,
     actualizar_estado_job,
@@ -84,14 +85,27 @@ async def procesar_formulario(
             )
 
         formulario_path = job[2]
+        formulario_ande_id = job[8] if len(job) > 8 else None
 
-        if not formulario_path:
+        if formulario_ande_id:
+            lista_campos = campos_para_consultor(formulario_ande_id) or []
+            if not lista_campos:
+                raise Exception(
+                    f"El Job {job_id} no tiene campos "
+                    "del formulario de ANDE"
+                )
+            nombre_formulario = None
+            print(
+                f"[WORKER] Formulario de ANDE {formulario_ande_id}: "
+                f"{len(lista_campos)} campos"
+            )
+        elif not formulario_path:
             raise Exception(
                 f"El Job {job_id} no tiene "
                 "la ruta del formulario"
             )
-
-        nombre_formulario = Path(formulario_path).name
+        else:
+            nombre_formulario = Path(formulario_path).name
 
         print(
             f"[WORKER] Formulario esperado: "
@@ -150,113 +164,114 @@ async def procesar_formulario(
                 f"{len(resultado['texto'])}"
             )
 
-        # ==========================================
-        # 6. BUSCAR FORMULARIO
-        # ==========================================
+        if not formulario_ande_id:
+            # ==========================================
+            # 6. BUSCAR FORMULARIO
+            # ==========================================
 
-        formulario = next(
-            (
-                resultado
-                for resultado in resultados
-                if resultado["nombre"]
-                == nombre_formulario
-            ),
-            None
-        )
-
-        if not formulario:
-            nombres = ", ".join(
-                resultado["nombre"]
-                for resultado in resultados
-            )
-            raise Exception(
-                "No se encontró el formulario "
-                f"de postulación: {nombre_formulario}. "
-                f"Archivos: {nombres}"
+            formulario = next(
+                (
+                    resultado
+                    for resultado in resultados
+                    if resultado["nombre"]
+                    == nombre_formulario
+                ),
+                None
             )
 
-        print(
-            f"[WORKER] Formulario encontrado: "
-            f"{formulario['nombre']}"
-        )
+            if not formulario:
+                nombres = ", ".join(
+                    resultado["nombre"]
+                    for resultado in resultados
+                )
+                raise Exception(
+                    "No se encontró el formulario "
+                    f"de postulación: {nombre_formulario}. "
+                    f"Archivos: {nombres}"
+                )
 
-        # ==========================================
-        # 7. MOSTRAR INFORMACIÓN DEL FORMULARIO
-        # ==========================================
+            print(
+                f"[WORKER] Formulario encontrado: "
+                f"{formulario['nombre']}"
+            )
 
-        print(
-            f"[QWEN] Texto del formulario: "
-            f"{len(formulario['texto'])} caracteres"
-        )
+            # ==========================================
+            # 7. MOSTRAR INFORMACIÓN DEL FORMULARIO
+            # ==========================================
 
-        # ==========================================
-        # 8. OBTENER RUTA REAL DEL PDF
-        # ==========================================
+            print(
+                f"[QWEN] Texto del formulario: "
+                f"{len(formulario['texto'])} caracteres"
+            )
 
-        ruta_formulario = (
-            carpeta_job
-            / formulario["nombre"]
-        )
+            # ==========================================
+            # 8. OBTENER RUTA REAL DEL PDF
+            # ==========================================
 
-        if not ruta_formulario.exists():
-            raise Exception(
-                f"No existe el archivo del formulario: "
+            ruta_formulario = (
+                carpeta_job
+                / formulario["nombre"]
+            )
+
+            if not ruta_formulario.exists():
+                raise Exception(
+                    f"No existe el archivo del formulario: "
+                    f"{ruta_formulario}"
+                )
+
+            print(
+                f"[QWEN] Archivo utilizado: "
                 f"{ruta_formulario}"
             )
 
-        print(
-            f"[QWEN] Archivo utilizado: "
-            f"{ruta_formulario}"
-        )
+            # ==========================================
+            # 9. EXTRAER CAMPOS CON QWEN
+            # ==========================================
 
-        # ==========================================
-        # 9. EXTRAER CAMPOS CON QWEN
-        # ==========================================
-
-        print(
-            "[QWEN] Extrayendo campos "
-            "del formulario..."
-        )
-
-        campos = await asyncio.to_thread(
-            extraer_campos_formulario,
-            ruta_formulario,
-            formulario["documento"],
-        )
-
-        if (respuesta := cortado()):
-            return respuesta
-
-        # ==========================================
-        # 10. VALIDAR RESULTADO
-        # ==========================================
-
-        if not isinstance(
-            campos,
-            dict
-        ):
-            raise Exception(
-                "La extracción no devolvió "
-                "un objeto válido"
+            print(
+                "[QWEN] Extrayendo campos "
+                "del formulario..."
             )
 
-        lista_campos = campos.get(
-            "campos",
-            []
-        )
-
-        if not isinstance(
-            lista_campos,
-            list
-        ):
-            raise Exception(
-                "La lista de campos no es válida"
+            campos = await asyncio.to_thread(
+                extraer_campos_formulario,
+                ruta_formulario,
+                formulario["documento"],
             )
 
-        print(
-            f"\n[QWEN] Campos encontrados: "
-            f"{len(lista_campos)}"
-        )
+            if (respuesta := cortado()):
+                return respuesta
+
+            # ==========================================
+            # 10. VALIDAR RESULTADO
+            # ==========================================
+
+            if not isinstance(
+                campos,
+                dict
+            ):
+                raise Exception(
+                    "La extracción no devolvió "
+                    "un objeto válido"
+                )
+
+            lista_campos = campos.get(
+                "campos",
+                []
+            )
+
+            if not isinstance(
+                lista_campos,
+                list
+            ):
+                raise Exception(
+                    "La lista de campos no es válida"
+                )
+
+            print(
+                f"\n[QWEN] Campos encontrados: "
+                f"{len(lista_campos)}"
+            )
 
         # ============================================================
         # PROCESAR DOCUMENTOS DEL USUARIO

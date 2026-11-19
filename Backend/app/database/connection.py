@@ -141,7 +141,9 @@ def ensure_schema():
                 ALTER TABLE formulario_job
                     ADD COLUMN IF NOT EXISTS usuario_sub TEXT,
                     ADD COLUMN IF NOT EXISTS consulta_token TEXT,
-                    ADD COLUMN IF NOT EXISTS validado_en TIMESTAMPTZ
+                    ADD COLUMN IF NOT EXISTS validado_en TIMESTAMPTZ,
+                    ADD COLUMN IF NOT EXISTS formulario_ande_id INTEGER
+                        REFERENCES formularios(id)
                 """
             )
             # Lo confirmado en el formulario (human in the loop). Lo lee Grafana.

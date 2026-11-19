@@ -8,7 +8,11 @@ from app.database.connection import get_connection
 STORAGE_FORMULARIOS = Path("storage/formularios")
 UMBRAL_EN_PROCESO = timedelta(minutes=5)
 
-def crear_job(formulario_path: str | None, usuario_sub: str | None = None):
+def crear_job(
+    formulario_path: str | None,
+    usuario_sub: str | None = None,
+    formulario_ande_id: int | None = None,
+):
     # La página que creó el job lo usa para consultarlo mientras Qwen trabaja,
     # aunque el access token de Keycloak (5 minutos) ya se haya vencido.
     consulta_token = secrets.token_urlsafe(32)
@@ -24,9 +28,10 @@ def crear_job(formulario_path: str | None, usuario_sub: str | None = None):
                     estado,
                     formulario_path,
                     usuario_sub,
-                    consulta_token
+                    consulta_token,
+                    formulario_ande_id
                 )
-                VALUES (%s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s)
                 RETURNING id, estado, creado
                 """,
                 (
@@ -34,6 +39,7 @@ def crear_job(formulario_path: str | None, usuario_sub: str | None = None):
                     formulario_path,
                     usuario_sub,
                     consulta_token,
+                    formulario_ande_id,
                 )
             )
 
@@ -58,10 +64,11 @@ def listar_jobs_usuario(usuario_sub: str):
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT id, estado, creado, formulario_path
-                FROM formulario_job
-                WHERE usuario_sub = %s
-                ORDER BY creado DESC
+                SELECT j.id, j.estado, j.creado, j.formulario_path, f.convocatoria
+                FROM formulario_job j
+                LEFT JOIN formularios f ON f.id = j.formulario_ande_id
+                WHERE j.usuario_sub = %s
+                ORDER BY j.creado DESC
                 LIMIT 50
                 """,
                 (usuario_sub,),
@@ -73,14 +80,14 @@ def listar_jobs_usuario(usuario_sub: str):
     ahora = datetime.now(timezone.utc)
     formularios = []
 
-    for job_id, estado, creado, formulario_path in filas:
+    for job_id, estado, creado, formulario_path, convocatoria in filas:
         momento = creado if creado.tzinfo else creado.replace(tzinfo=timezone.utc)
         activo = estado in ("PENDING", "PROCESSING")
         formularios.append({
             "id": job_id,
             "estado": estado,
             "creado": creado,
-            "nombre": Path(formulario_path).name if formulario_path else None,
+            "nombre": Path(formulario_path).name if formulario_path else convocatoria,
             "en_proceso": activo and ahora - momento >= UMBRAL_EN_PROCESO,
         })
 
@@ -102,7 +109,8 @@ def obtener_job(job_id: int):
                     iniciado,
                     finalizado,
                     resultado_path,
-                    error
+                    error,
+                    formulario_ande_id
                 FROM formulario_job
                 WHERE id = %s
                 """,
