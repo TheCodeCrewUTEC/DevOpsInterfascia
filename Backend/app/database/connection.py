@@ -75,6 +75,35 @@ def ensure_schema():
                 )
                 """
             )
+            # Plantilla scrapeada del portal ANDE. formularios es el formulario;
+            # formularios_campos son sus campos, en orden. No apunta a convocatoria:
+            # el nombre del portal no coincide con convocatoria.titulo.
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS formularios (
+                    id SERIAL PRIMARY KEY,
+                    convocatoria TEXT NOT NULL UNIQUE,
+                    creado TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+                """
+            )
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS formularios_campos (
+                    id SERIAL PRIMARY KEY,
+                    formulario_id INTEGER NOT NULL
+                        REFERENCES formularios(id) ON DELETE CASCADE,
+                    orden INTEGER NOT NULL,
+                    seccion TEXT,
+                    etiqueta TEXT NOT NULL,
+                    tipo TEXT,
+                    requerido BOOLEAN NOT NULL DEFAULT FALSE,
+                    opciones JSONB NOT NULL DEFAULT '[]'::jsonb,
+                    selector TEXT,
+                    UNIQUE (formulario_id, orden)
+                )
+                """
+            )
             cur.execute(
                 """
                 CREATE TABLE IF NOT EXISTS respuesta_formulario (
