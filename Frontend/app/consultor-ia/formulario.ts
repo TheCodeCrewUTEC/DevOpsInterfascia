@@ -31,7 +31,90 @@ export type CampoFormulario = {
   tipo: string | null;
   pagina: number | null;
   fuentes: Fuente[];
+  opciones?: string[];
+  selector?: string | null;
+  depende_de?: string | null;
+  opciones_por_valor?: Record<string, string[]>;
+  columnas?: ColumnaTabla[];
 };
+
+export type ColumnaTabla = {
+  etiqueta: string;
+  tipo: string;
+  requerido?: boolean;
+  opciones: string[];
+  selector: string;
+  depende_de?: string | null;
+  opciones_por_valor?: Record<string, string[]>;
+};
+
+export type FilaTabla = Record<string, string>;
+
+export function columnasDe(valor: unknown): ColumnaTabla[] {
+  if (!Array.isArray(valor)) return [];
+  return valor.flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    const columna = item as Partial<ColumnaTabla>;
+    if (typeof columna.etiqueta !== "string" || typeof columna.selector !== "string") return [];
+    return [
+      {
+        etiqueta: columna.etiqueta,
+        tipo: typeof columna.tipo === "string" ? columna.tipo : "text",
+        requerido: Boolean(columna.requerido),
+        opciones: listaDeOpciones(columna.opciones),
+        selector: columna.selector,
+        depende_de: typeof columna.depende_de === "string" ? columna.depende_de : null,
+        opciones_por_valor: mapaDeOpciones(columna.opciones_por_valor),
+      },
+    ];
+  });
+}
+
+export function filasDeTabla(valor: string | null | undefined): FilaTabla[] {
+  if (!valor?.trim()) return [];
+  try {
+    const datos = JSON.parse(valor) as unknown;
+    if (!Array.isArray(datos)) return [];
+    return datos.flatMap((item) => {
+      if (!item || typeof item !== "object" || Array.isArray(item)) return [];
+      const fila: FilaTabla = {};
+      for (const [clave, celda] of Object.entries(item)) {
+        fila[clave] = celda == null ? "" : String(celda);
+      }
+      return [fila];
+    });
+  } catch {
+    return [];
+  }
+}
+
+export function textoDeTabla(valor: string | null | undefined, columnas: ColumnaTabla[]): string {
+  const filas = filasDeTabla(valor);
+  if (filas.length === 0) return "";
+  return filas
+    .map((fila, indice) => {
+      const celdas = (columnas.length > 0 ? columnas : Object.keys(fila).map((etiqueta) => ({ etiqueta }))).map(
+        (columna) => `${etiquetaCampo(columna.etiqueta)}: ${(fila[columna.etiqueta] || "").trim() || "—"}`,
+      );
+      return `${indice + 1}. ${celdas.join(" · ")}`;
+    })
+    .join("\n");
+}
+
+export function listaDeOpciones(valor: unknown): string[] {
+  if (!Array.isArray(valor)) return [];
+  return valor.filter((opcion): opcion is string => typeof opcion === "string" && opcion.trim() !== "");
+}
+
+export function mapaDeOpciones(valor: unknown): Record<string, string[]> {
+  if (!valor || typeof valor !== "object" || Array.isArray(valor)) return {};
+  const mapa: Record<string, string[]> = {};
+  for (const [clave, lista] of Object.entries(valor)) {
+    const opciones = listaDeOpciones(lista);
+    if (clave.trim() && opciones.length > 0) mapa[clave] = opciones;
+  }
+  return mapa;
+}
 
 export type SeccionFormulario = {
   titulo: string;

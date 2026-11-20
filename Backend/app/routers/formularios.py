@@ -30,6 +30,8 @@ from app.schemas.formulario_job import FormularioJobResponse
 from app.services.formulario_ande_service import (
     campos_para_consultor,
     listar_formularios_abiertos,
+    metadatos_del_job,
+    opcion_mas_parecida,
 )
 from app.services.formulario_job_service import (
     actualizar_estado_job,
@@ -389,12 +391,40 @@ def obtener_resultado_job(
                 else {}
             )
 
+            colas: dict[str, list] = {}
+            for meta in metadatos_del_job(job_id_db):
+                colas.setdefault(meta["etiqueta"], []).append(meta)
+
             respuestas = []
+            por_selector: dict[str, str] = {}
 
             for (
                 respuesta_id, campo, respuesta, fuentes,
                 tipo, pagina, respuesta_ia, editada,
             ) in filas:
+
+                cola = colas.get(campo) or []
+                meta = cola.pop(0) if cola else {}
+                mapa = meta.get("opciones_por_valor") or {}
+                depende_de = meta.get("depende_de")
+                columnas = meta.get("columnas") or []
+                if columnas:
+                    opciones = []
+                elif depende_de and mapa:
+                    opciones = list(mapa.get(por_selector.get(depende_de) or "") or [])
+                else:
+                    opciones = list(meta.get("opciones") or [])
+                if opciones and not editada:
+                    elegida = opcion_mas_parecida(respuesta, opciones)
+                    if elegida:
+                        respuesta = elegida
+                    elegida_ia = opcion_mas_parecida(respuesta_ia, opciones)
+                    if elegida_ia:
+                        respuesta_ia = elegida_ia
+
+                selector = meta.get("selector")
+                if selector:
+                    por_selector[selector] = respuesta or ""
 
                 dato_guardado = guardados.get(clave_campo(campo))
                 if dato_guardado == (respuesta or "").strip():
@@ -410,6 +440,11 @@ def obtener_resultado_job(
                     "respuesta_ia": respuesta_ia,
                     "editada": editada,
                     "dato_guardado": dato_guardado,
+                    "opciones": opciones,
+                    "selector": selector,
+                    "depende_de": depende_de,
+                    "opciones_por_valor": mapa if depende_de else {},
+                    "columnas": columnas,
                 })
 
             return {

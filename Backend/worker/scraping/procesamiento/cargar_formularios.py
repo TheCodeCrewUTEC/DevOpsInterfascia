@@ -11,6 +11,7 @@ Desde Backend/:
 
 import json
 import os
+import sys
 from pathlib import Path
 
 import psycopg2
@@ -141,7 +142,10 @@ def cargar():
                 ALTER TABLE formularios_campos
                     ALTER COLUMN seccion SET NOT NULL,
                     ALTER COLUMN tipo SET NOT NULL,
-                    ALTER COLUMN selector SET NOT NULL
+                    ALTER COLUMN selector SET NOT NULL,
+                    ADD COLUMN IF NOT EXISTS depende_de TEXT,
+                    ADD COLUMN IF NOT EXISTS opciones_por_valor JSONB
+                        NOT NULL DEFAULT '{}'::jsonb
                 """
             )
         conn.commit()
@@ -155,5 +159,151 @@ def cargar():
         print(f"  {cantidad:3}  {convocatoria}")
 
 
+def actualizar_dependencias():
+    """Actualiza depende_de y opciones_por_valor sin borrar los formularios."""
+    datos = json.loads(JSON_FORMULARIOS.read_text(encoding="utf-8"))
+    cambios = []
+    for item in datos.get("formularios", []):
+        convocatoria = " ".join((item.get("convocatoria") or "").split())
+        for campo in (item.get("formulario") or {}).get("campos") or []:
+            if not isinstance(campo, dict) or not campo.get("depende_de"):
+                continue
+            selector = " ".join(str(campo.get("selector") or "").split())
+            if not convocatoria or not selector:
+                continue
+            cambios.append(
+                (
+                    campo.get("depende_de"),
+                    Json(campo.get("opciones_por_valor") or {}),
+                    convocatoria,
+                    selector,
+                )
+            )
+    if not cambios:
+        raise SystemExit(f"No hay listas dependientes en {JSON_FORMULARIOS}")
+
+    conn = psycopg2.connect(
+        host=os.getenv("DB_HOST", "127.0.0.1"),
+        port=int(os.getenv("DB_PORT_PUBLICADO", "5433")),
+        dbname=os.getenv("DB_NAME", os.getenv("POSTGRES_DB", "interfascia")),
+        user=os.getenv("DB_USER", os.getenv("POSTGRES_USER", "interfascia")),
+        password=os.getenv("DB_PASSWORD", os.getenv("POSTGRES_PASSWORD", "")),
+    )
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                ALTER TABLE formularios_campos
+                    ADD COLUMN IF NOT EXISTS depende_de TEXT,
+                    ADD COLUMN IF NOT EXISTS opciones_por_valor JSONB
+                        NOT NULL DEFAULT '{}'::jsonb
+                """
+            )
+            actualizados = 0
+            for depende_de, opciones_por_valor, convocatoria, selector in cambios:
+                cur.execute(
+                    """
+                    UPDATE formularios_campos AS c
+                    SET depende_de = %s,
+                        opciones_por_valor = %s
+                    FROM formularios AS f
+                    WHERE f.id = c.formulario_id
+                      AND f.convocatoria = %s
+                      AND c.selector = %s
+                    """,
+                    (depende_de, opciones_por_valor, convocatoria, selector),
+                )
+                actualizados += cur.rowcount
+        conn.commit()
+    finally:
+        conn.close()
+
+    print(f"Campos dependientes en el JSON: {len(cambios)}")
+    print(f"Filas actualizadas: {actualizados}")
+
+
+def reemplazar_campos():
+    """Reescribe los campos de cada formulario ya cargado, sin cambiar su id."""
+    datos = json.loads(JSON_FORMULARIOS.read_text(encoding="utf-8"))
+    conn = psycopg2.connect(
+        host=os.getenv("DB_HOST", "127.0.0.1"),
+        port=int(os.getenv("DB_PORT_PUBLICADO", "5433")),
+        dbname=os.getenv("DB_NAME", os.getenv("POSTGRES_DB", "interfascia")),
+        user=os.getenv("DB_USER", os.getenv("POSTGRES_USER", "interfascia")),
+        password=os.getenv("DB_PASSWORD", os.getenv("POSTGRES_PASSWORD", "")),
+    )
+    tablas = 0
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                ALTER TABLE formularios_campos
+                    ADD COLUMN IF NOT EXISTS columnas JSONB
+                        NOT NULL DEFAULT '[]'::jsonb
+                """
+            )
+            for item in datos.get("formularios", []):
+                convocatoria = " ".join((item.get("convocatoria") or "").split())
+                formulario = item.get("formulario") or {}
+                campos = formulario.get("campos") or []
+                if not convocatoria or not campos:
+                    continue
+                cur.execute(
+                    "SELECT id FROM formularios WHERE convocatoria = %s",
+                    (convocatoria,),
+                )
+                fila = cur.fetchone()
+                if fila is None:
+                    continue
+                formulario_id = fila[0]
+                cur.execute(
+                    "DELETE FROM formularios_campos WHERE formulario_id = %s",
+                    (formulario_id,),
+                )
+                orden = 0
+                for campo in campos:
+                    if not isinstance(campo, dict):
+                        continue
+                    etiqueta = " ".join(str(campo.get("etiqueta") or "").split())
+                    selector = " ".join(str(campo.get("selector") or "").split())
+                    if not etiqueta or not selector:
+                        continue
+                    orden += 1
+                    if campo.get("tipo") == "tabla":
+                        tablas += 1
+                    cur.execute(
+                        """
+                        INSERT INTO formularios_campos (
+                            formulario_id, orden, seccion, etiqueta, tipo,
+                            requerido, opciones, selector, depende_de,
+                            opciones_por_valor, columnas
+                        )
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        """,
+                        (
+                            formulario_id,
+                            orden,
+                            " ".join(str(campo.get("seccion") or "General").split()),
+                            etiqueta,
+                            " ".join(str(campo.get("tipo") or "text").split()),
+                            bool(campo.get("requerido")),
+                            Json(campo.get("opciones") or []),
+                            selector,
+                            campo.get("depende_de"),
+                            Json(campo.get("opciones_por_valor") or {}),
+                            Json(campo.get("columnas") or []),
+                        ),
+                    )
+        conn.commit()
+    finally:
+        conn.close()
+    print(f"Tablas: {tablas}")
+
+
 if __name__ == "__main__":
-    cargar()
+    if len(sys.argv) > 1 and sys.argv[1] == "dependencias":
+        actualizar_dependencias()
+    elif len(sys.argv) > 1 and sys.argv[1] == "campos":
+        reemplazar_campos()
+    else:
+        cargar()

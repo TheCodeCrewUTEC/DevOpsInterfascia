@@ -126,10 +126,28 @@ def _texto_de_respuesta(content: str) -> str | None:
 # GENERAR RESPUESTA CON QWEN
 # ============================================================
 
+def _describir_columnas(columnas: list[dict[str, Any]]) -> str:
+    lineas = []
+    for columna in columnas:
+        etiqueta = " ".join(str(columna.get("etiqueta") or "").replace("*", " ").split())
+        if not etiqueta:
+            continue
+        opciones = [str(opcion).strip() for opcion in (columna.get("opciones") or []) if str(opcion).strip()]
+        if opciones and len(opciones) <= 12:
+            lineas.append(f"- {etiqueta}. Opciones: {'; '.join(opciones)}")
+        elif columna.get("depende_de"):
+            lineas.append(f"- {etiqueta}. Tiene que corresponder a la columna de la que depende, en la misma fila.")
+        else:
+            lineas.append(f"- {etiqueta}")
+    return "\n".join(lineas)
+
+
 def generar_respuesta(
     campo: str,
     tipo: str,
     chunks_relevantes: list[dict[str, Any]],
+    opciones: list[str] | None = None,
+    columnas: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
 
     # --------------------------------------------------------
@@ -156,7 +174,36 @@ def generar_respuesta(
     # --------------------------------------------------------
 
     # Orden pensado para la caché de Ollama: todo lo que se repite entre campos va
-    # primero y el campo va al final.
+    # primero y el campo va al final. Las opciones son de este campo, van al final.
+    lista = [opcion.strip() for opcion in (opciones or []) if str(opcion).strip()]
+    descripcion_columnas = _describir_columnas(columnas or [])
+    bloque_opciones = ""
+    if descripcion_columnas:
+        bloque_opciones = f"""
+Este campo es una tabla. Cada persona o registro es una fila.
+Devolvé "respuesta" como una lista de objetos, uno por fila, con estas columnas.
+Copiá los nombres de columna tal cual. No inventes filas.
+Si los documentos no identifican ningún registro, devolvé [].
+
+Columnas:
+{descripcion_columnas}
+"""
+    elif lista:
+        lineas = "\n".join(f"- {opcion}" for opcion in lista)
+        bloque_opciones = f"""
+Este campo es una lista. La respuesta debe ser exactamente una de estas opciones,
+copiada tal cual, o null si ninguna está respaldada por los documentos.
+No redactes una oración ni inventes una opción que no figure aquí.
+
+Opciones:
+{lineas}
+"""
+    if descripcion_columnas:
+        cierre = 'La respuesta es la lista de filas, nada más.'
+    elif lista:
+        cierre = "La respuesta es una opción de la lista, nada más."
+    else:
+        cierre = "La respuesta es una o dos oraciones, nada más."
     prompt = f"""
 Eres un asistente que completa formularios de postulación
 utilizando exclusivamente la información proporcionada en
@@ -189,6 +236,10 @@ Reglas:
 9. No agregues información que no esté respaldada por
    los documentos.
 
+10. Si más abajo hay una lista de opciones, la respuesta es
+    exactamente una de esas opciones, copiada tal cual, o null.
+    En ese caso no redactes una oración.
+
 Devuelve únicamente JSON válido con esta estructura:
 
 {{
@@ -216,8 +267,8 @@ Campo del formulario:
 
 Tipo de campo:
 {tipo}
-
-Cerrá el JSON. La respuesta es una o dos oraciones, nada más.
+{bloque_opciones}
+Cerrá el JSON. {cierre}
 """
 
     # --------------------------------------------------------
@@ -279,7 +330,7 @@ Cerrá el JSON. La respuesta es una o dos oraciones, nada más.
         "respuesta"
     )
 
-    if isinstance(respuesta, str):
+    if isinstance(respuesta, str) and not descripcion_columnas:
         respuesta = _primeras_oraciones(respuesta)
 
     fuentes = resultado.get(

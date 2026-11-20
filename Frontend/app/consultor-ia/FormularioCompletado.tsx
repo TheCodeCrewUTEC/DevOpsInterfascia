@@ -6,8 +6,11 @@ import {
   agruparPorPagina,
   esObligatorio,
   etiquetaCampo,
+  filasDeTabla,
   normalizarValor,
   type CampoFormulario,
+  type ColumnaTabla,
+  type FilaTabla,
 } from "./formulario";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "/backend";
@@ -34,10 +37,22 @@ export default function FormularioCompletado({ jobId, campos, validado = false, 
 
   const secciones = useMemo(() => agruparPorPagina(campos), [campos]);
   const pendientesDeGuardar = campos.filter((campo) => valores[campo.id] !== guardados[campo.id]);
-  const completos = campos.filter((campo) => valores[campo.id]?.trim()).length;
+  const completos = campos.filter((campo) => celdaCompleta(campo, valores[campo.id] ?? "")).length;
 
   function cambiar(id: number, valor: string) {
-    setValores((actuales) => ({ ...actuales, [id]: valor }));
+    setValores((actuales) => {
+      const siguientes = { ...actuales, [id]: valor };
+      const campo = campos.find((item) => item.id === id);
+      if (!campo?.selector) return siguientes;
+      for (const hijo of campos) {
+        if (hijo.depende_de !== campo.selector) continue;
+        const lista = hijo.opciones_por_valor?.[valor] ?? [];
+        if (siguientes[hijo.id] && !lista.includes(siguientes[hijo.id])) {
+          siguientes[hijo.id] = "";
+        }
+      }
+      return siguientes;
+    });
     setEstado(null);
     setConfirmado(false);
   }
@@ -170,14 +185,34 @@ export default function FormularioCompletado({ jobId, campos, validado = false, 
           <h2 className="text-xs font-medium tracking-[0.18em] text-clay uppercase">{seccion.titulo}</h2>
 
           <div className="flex flex-col gap-4 rounded-3xl border-2 border-ink bg-paper p-5 shadow-sm sm:p-6">
-            {seccion.campos.map((campo) => (
-              <Campo
-                key={campo.id}
-                campo={campo}
-                valor={valores[campo.id] ?? ""}
-                onChange={(valor) => cambiar(campo.id, valor)}
-              />
-            ))}
+            {seccion.campos.map((campo) => {
+              const mapa = campo.opciones_por_valor ?? {};
+              const dependiente = Boolean(campo.depende_de && Object.keys(mapa).length > 0);
+              const padre = dependiente
+                ? campos.find((item) => item.selector === campo.depende_de)
+                : undefined;
+              const valorPadre = padre ? (valores[padre.id] ?? "") : "";
+              const opciones = dependiente ? (mapa[valorPadre] ?? []) : (campo.opciones ?? []);
+              const nombrePadre = etiquetaCampo(padre?.campo ?? "el campo anterior");
+
+              return (
+                <Campo
+                  key={campo.id}
+                  campo={campo}
+                  valor={valores[campo.id] ?? ""}
+                  onChange={(valor) => cambiar(campo.id, valor)}
+                  opciones={opciones}
+                  bloqueado={dependiente && !valorPadre}
+                  aviso={
+                    dependiente
+                      ? valorPadre
+                        ? `Opciones según ${nombrePadre}.`
+                        : `Las opciones aparecen al elegir ${nombrePadre}.`
+                      : undefined
+                  }
+                />
+              );
+            })}
           </div>
         </section>
       ))}
@@ -214,30 +249,177 @@ export default function FormularioCompletado({ jobId, campos, validado = false, 
   );
 }
 
+function celdaCompleta(campo: CampoFormulario, valor: string) {
+  if (campo.tipo !== "tabla") return Boolean(valor.trim());
+  return filasDeTabla(valor).some((fila) => Object.values(fila).some((celda) => celda.trim()));
+}
+
+function opcionesDeColumna(columna: ColumnaTabla, fila: FilaTabla, columnas: ColumnaTabla[]) {
+  if (columna.depende_de) {
+    const padre = columnas.find((candidata) => candidata.selector === columna.depende_de);
+    const valorPadre = padre ? (fila[padre.etiqueta] ?? "") : "";
+    return {
+      opciones: columna.opciones_por_valor?.[valorPadre] ?? [],
+      bloqueado: !valorPadre,
+    };
+  }
+  return { opciones: columna.opciones ?? [], bloqueado: false };
+}
+
+function TablaFilas({
+  columnas,
+  valor,
+  onChange,
+}: {
+  columnas: ColumnaTabla[];
+  valor: string;
+  onChange: (valor: string) => void;
+}) {
+  const filas = filasDeTabla(valor);
+
+  function publicar(siguientes: FilaTabla[]) {
+    onChange(siguientes.length > 0 ? JSON.stringify(siguientes) : "");
+  }
+
+  function cambiarCelda(indice: number, etiqueta: string, celda: string) {
+    const selector = columnas.find((columna) => columna.etiqueta === etiqueta)?.selector;
+    const siguientes = filas.map((fila, actual) => {
+      if (actual !== indice) return fila;
+      const actualizada = { ...fila, [etiqueta]: celda };
+      if (!selector) return actualizada;
+      for (const columna of columnas) {
+        if (columna.depende_de !== selector) continue;
+        const opciones = columna.opciones_por_valor?.[celda] ?? [];
+        if (actualizada[columna.etiqueta] && !opciones.includes(actualizada[columna.etiqueta])) {
+          actualizada[columna.etiqueta] = "";
+        }
+      }
+      return actualizada;
+    });
+    publicar(siguientes);
+  }
+
+  function agregar() {
+    const vacia: FilaTabla = {};
+    for (const columna of columnas) vacia[columna.etiqueta] = "";
+    publicar([...filas, vacia]);
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[36rem] border-collapse">
+          <thead>
+            <tr>
+              {columnas.map((columna) => (
+                <th key={columna.selector} className="px-1 pb-2 text-left text-xs font-medium text-ink/70">
+                  {etiquetaCampo(columna.etiqueta)}
+                  {columna.requerido ? <span className="text-clay"> *</span> : null}
+                </th>
+              ))}
+              <th className="w-16" />
+            </tr>
+          </thead>
+          <tbody>
+            {filas.map((fila, indice) => (
+              <tr key={indice}>
+                {columnas.map((columna) => {
+                  const celda = fila[columna.etiqueta] ?? "";
+                  const { opciones, bloqueado } = opcionesDeColumna(columna, fila, columnas);
+                  const esLista = columna.tipo === "select" || opciones.length > 0 || Boolean(columna.depende_de);
+                  return (
+                    <td key={columna.selector} className="px-1 py-1 align-top">
+                      {esLista ? (
+                        <Combobox
+                          id={`tabla-${indice}-${columna.selector}`}
+                          value={celda}
+                          onChange={(nuevo) => cambiarCelda(indice, columna.etiqueta, nuevo)}
+                          options={opciones}
+                          disabled={bloqueado}
+                          opcionVacia={bloqueado ? "Elegí el campo anterior" : "Sin indicar"}
+                        />
+                      ) : (
+                        <input
+                          value={celda}
+                          onChange={(event) => cambiarCelda(indice, columna.etiqueta, event.target.value)}
+                          type={columna.tipo === "email" ? "email" : "text"}
+                          className="w-full min-w-36 rounded-xl border-2 border-ink bg-foam/60 px-3 py-2 text-sm text-ink outline-none focus:border-pine focus:bg-paper"
+                        />
+                      )}
+                    </td>
+                  );
+                })}
+                <td className="px-1 py-1 align-top">
+                  <button
+                    type="button"
+                    onClick={() => publicar(filas.filter((_, actual) => actual !== indice))}
+                    className="rounded-full px-2 py-2 text-sm text-ink/50 transition hover:text-clay"
+                  >
+                    Quitar
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {filas.length === 0 ? <p className="text-xs text-ink/60">No hay filas cargadas.</p> : null}
+      <button
+        type="button"
+        onClick={agregar}
+        className="self-start rounded-full border border-ink/20 px-4 py-1.5 text-sm text-ink transition hover:border-pine hover:text-pine-text"
+      >
+        Agregar fila
+      </button>
+    </div>
+  );
+}
+
 function Campo({
   campo,
   valor,
   onChange,
+  opciones,
+  bloqueado = false,
+  aviso,
 }: {
   campo: CampoFormulario;
   valor: string;
   onChange: (valor: string) => void;
+  opciones?: string[];
+  bloqueado?: boolean;
+  aviso?: string;
 }) {
   const id = `campo-${campo.id}`;
   const etiqueta = etiquetaCampo(campo.campo);
-  const sinDatosIa = !campo.respuesta_ia?.trim();
-  const sugerenciaIa = normalizarValor(campo.respuesta_ia);
+  const sinDatosIa = campo.tipo === "tabla" ? filasDeTabla(campo.respuesta_ia).length === 0 : !campo.respuesta_ia?.trim();
+  const sugerenciaIa = campo.tipo === "tabla" ? (campo.respuesta_ia ?? "") : normalizarValor(campo.respuesta_ia);
   const editado = valor !== sugerenciaIa;
-  const vacio = !valor.trim();
+  const vacio = !celdaCompleta(campo, valor);
 
   const clases = `w-full rounded-xl border-2 px-3 py-2.5 text-sm text-ink outline-none transition focus:border-pine focus:bg-paper ${
     vacio && esObligatorio(campo.campo) ? "border-gold bg-gold/10" : "border-ink bg-foam/60"
   }`;
 
   let control;
-  if (campo.tipo === "pregunta") {
+  if (campo.tipo === "tabla") {
+    control = <TablaFilas columnas={campo.columnas ?? []} valor={valor} onChange={onChange} />;
+  } else if (campo.tipo === "pregunta") {
     control = (
       <textarea id={id} rows={5} value={valor} onChange={(e) => onChange(e.target.value)} className={`${clases} resize-y leading-relaxed`} />
+    );
+  } else if ((opciones ?? campo.opciones ?? []).length > 0 || campo.depende_de) {
+    const lista = opciones ?? campo.opciones ?? [];
+    control = (
+      <Combobox
+        id={id}
+        value={valor}
+        onChange={onChange}
+        opcionVacia={bloqueado ? "Elegí el campo anterior" : "Sin indicar"}
+        options={lista}
+        disabled={bloqueado}
+        invalid={vacio && esObligatorio(campo.campo)}
+      />
     );
   } else if (campo.tipo === "checkbox") {
     control = (
@@ -286,6 +468,8 @@ function Campo({
       </div>
 
       {control}
+
+      {aviso ? <p className="text-xs text-ink/60">{aviso}</p> : null}
 
       {campo.dato_guardado && valor.trim() !== campo.dato_guardado.trim() ? (
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-pine/30 bg-foam/60 px-3 py-2 text-xs text-ink/80">

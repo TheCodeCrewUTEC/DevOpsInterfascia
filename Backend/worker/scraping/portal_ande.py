@@ -132,6 +132,9 @@ def _entrar_al_formulario(page):
     frame = _frame_formulario(page)
     formulario = _leer_formulario(frame)
     formulario["titulo_escrito"] = NOMBRE_PROYECTO if escribio else ""
+    if os.environ.get("ANDE_DEPENDENCIAS") == "1":
+        _anotar_dependencias(frame, formulario)
+    _agrupar_tablas(formulario)
     return formulario
 
 
@@ -306,6 +309,408 @@ def _borrar_en_proceso(page):
     return borradas
 
 
+_CATALOGOS = []
+
+_LEER_PARES = """() => {
+    const pares = [];
+    const vistos = new Set();
+    const sumar = (padre, hijo) => {
+        const limpio = (valor) => String(valor || "").replace(/\\\\/g, "");
+        padre = limpio(padre);
+        hijo = limpio(hijo);
+        if (!padre || !hijo || padre === hijo) return;
+        const clave = padre + "\\0" + hijo;
+        if (vistos.has(clave)) return;
+        vistos.add(clave);
+        pares.push({ padre, hijo });
+    };
+    if (window.jQuery) {
+        for (const select of document.querySelectorAll("select")) {
+            const data = window.jQuery._data(select, "events");
+            for (const cambio of (data && data.change) || []) {
+                const fuente = String(cambio.handler);
+                const re = /selectAutoLoadedScript\\s*\\(\\s*event\\s*,\\s*['"]([^'"]+)['"]/g;
+                let match;
+                while ((match = re.exec(fuente))) sumar(select.id, match[1]);
+            }
+        }
+    }
+    const scripts = [...document.scripts].map((script) => script.textContent || "").join("\\n");
+    const reScript = /\\$\\(\\s*['"]#([^'"]+)['"]\\s*\\)\\s*\\.on\\(\\s*['"]change['"][\\s\\S]{0,500}?selectAutoLoadedScript\\(\\s*event\\s*,\\s*['"]([^'"]+)['"]/g;
+    let match;
+    while ((match = reScript.exec(scripts))) sumar(match[1], match[2]);
+    return pares;
+}"""
+
+
+def _es_fila(campo):
+    selector = str((campo or {}).get("selector") or "")
+    prefijo = selector.split("·", 1)[0]
+    return "·" in selector and prefijo.startswith("n") and prefijo[1:].isdigit()
+
+
+def _agrupar_tablas(formulario):
+    """Junta la fila plantilla de un repetidor (n1·…) en un solo campo tabla.
+
+    En el portal el usuario agrega filas. Acá queda la definición de las columnas.
+    """
+    campos = formulario.get("campos") or []
+    agrupados = []
+    indice = 0
+    while indice < len(campos):
+        campo = campos[indice]
+        if not isinstance(campo, dict) or not _es_fila(campo):
+            agrupados.append(campo)
+            indice += 1
+            continue
+        seccion = campo.get("seccion") or "General"
+        columnas = []
+        while indice < len(campos):
+            actual = campos[indice]
+            if (
+                not isinstance(actual, dict)
+                or actual.get("seccion") != seccion
+                or not _es_fila(actual)
+            ):
+                break
+            columnas.append(
+                {
+                    "etiqueta": actual.get("etiqueta"),
+                    "tipo": actual.get("tipo") or "text",
+                    "requerido": bool(actual.get("requerido")),
+                    "opciones": actual.get("opciones") or [],
+                    "selector": actual.get("selector"),
+                    "depende_de": actual.get("depende_de"),
+                    "opciones_por_valor": actual.get("opciones_por_valor") or {},
+                }
+            )
+            indice += 1
+        requerido = any(columna["requerido"] for columna in columnas)
+        titulo = seccion.rstrip("*").strip()
+        agrupados.append(
+            {
+                "seccion": seccion,
+                "etiqueta": f"{titulo} *" if requerido else titulo,
+                "tipo": "tabla",
+                "requerido": requerido,
+                "opciones": [],
+                "selector": f"tabla:{columnas[0]['selector']}",
+                "columnas": columnas,
+            }
+        )
+    formulario["campos"] = agrupados
+
+
+def _familia_padre(selector):
+    limpio = selector.lower().replace("·", "").replace("_", "")
+    if "ciiu" in limpio and "4" not in limpio:
+        return "ciiu"
+    if "localidad" in limpio:
+        return ""
+    if limpio.startswith("dep") or "departamento" in limpio or "dep" in limpio:
+        return "lugar"
+    return ""
+
+
+def _familia_hijo(selector):
+    limpio = selector.lower().replace("·", "").replace("_", "")
+    if "ciiu" in limpio and "4" in limpio:
+        return "ciiu"
+    if "localidad" in limpio:
+        return "lugar"
+    return ""
+
+
+def _por_id(frame, elemento_id):
+    return frame.locator(f"[id={json.dumps(elemento_id)}]")
+
+
+def _textos_opciones(frame, elemento_id):
+    locator = _por_id(frame, elemento_id)
+    if locator.count() == 0:
+        return []
+    return locator.evaluate(
+        """(el) => [...el.options]
+            .map((opcion) => (opcion.textContent || "").replace(/\\s+/g, " ").trim())
+            .filter((texto) => texto && !texto.startsWith("--"))"""
+    )
+
+
+def _catalogo_para(familia, opciones):
+    buscadas = [texto for texto in opciones if texto]
+    if not familia or not buscadas:
+        return None
+    mejor = None
+    for item in _CATALOGOS:
+        if item["familia"] != familia:
+            continue
+        if all(texto in item["mapa"] for texto in buscadas):
+            return item["mapa"]
+        comunes = sum(1 for texto in buscadas if texto in item["mapa"])
+        if mejor is None or comunes > mejor[0]:
+            mejor = (comunes, item["mapa"])
+    if mejor and mejor[0] >= max(1, len(buscadas) // 2):
+        return mejor[1]
+    return None
+
+
+def _guardar_catalogo(familia, mapa):
+    if not familia or not any(mapa.values()):
+        return
+    firma = tuple(mapa)
+    for item in _CATALOGOS:
+        if item["familia"] == familia and item["firma"] == firma:
+            return
+    _CATALOGOS.append({"familia": familia, "firma": firma, "mapa": mapa})
+
+
+def _anotar_dependencias(frame, formulario):
+    frame.evaluate(
+        """() => {
+            if (typeof autoSave === "function") window.autoSave = () => {};
+        }"""
+    )
+    pares = frame.evaluate(_LEER_PARES)
+    print(f"pares {len(pares)}", flush=True)
+    if not pares:
+        muestra = frame.evaluate(
+            """() => {
+                const texto = [...document.scripts].map((script) => script.textContent || "").join("\\n");
+                const indice = texto.indexOf("selectAutoLoadedScript");
+                return indice < 0 ? "" : texto.slice(Math.max(0, indice - 180), indice + 240);
+            }"""
+        )
+        print(f"sin pares {muestra[:400]}", flush=True)
+        return
+    por_selector = {
+        campo.get("selector"): campo
+        for campo in formulario.get("campos") or []
+        if isinstance(campo, dict)
+    }
+    for par in pares:
+        padre = por_selector.get(par["padre"])
+        hijo = por_selector.get(par["hijo"])
+        if not padre or not hijo:
+            continue
+        try:
+            mapa = _mapa_dependiente(frame, par["padre"], par["hijo"], padre.get("opciones") or [])
+        except Exception as error:
+            print(f"sin lista {par['padre']} -> {par['hijo']}: {error}", flush=True)
+            continue
+        if not mapa:
+            continue
+        hijo["depende_de"] = par["padre"]
+        hijo["opciones_por_valor"] = mapa
+
+
+def _mapa_dependiente(frame, padre_id, hijo_id, opciones_conocidas):
+    familia = _familia_padre(padre_id)
+    reusado = _catalogo_para(familia, opciones_conocidas)
+    if reusado and all(texto in reusado for texto in opciones_conocidas if texto):
+        print(f"reuso {padre_id} -> {hijo_id}", flush=True)
+        return {texto: reusado[texto] for texto in opciones_conocidas if texto in reusado}
+    if _por_id(frame, padre_id).count() == 0:
+        return None
+    opciones = _por_id(frame, padre_id).evaluate(
+        """(el) => [...el.options].map((opcion, indice) => ({
+            indice,
+            texto: (opcion.textContent || "").replace(/\\s+/g, " ").trim(),
+        })).filter((opcion) => opcion.texto && !opcion.texto.startsWith("--"))"""
+    )
+    mapa = {}
+    fallos = 0
+    for opcion in opciones:
+        textos = _cargar_hijo(frame, padre_id, hijo_id, opcion["indice"])
+        mapa[opcion["texto"]] = textos
+        print(f"{padre_id}: {opcion['texto'][:48]} -> {len(textos)}", flush=True)
+        if textos:
+            fallos = 0
+        else:
+            fallos += 1
+            if fallos >= 2 and not any(mapa.values()):
+                print(f"corto {padre_id} -> {hijo_id}", flush=True)
+                break
+    _guardar_catalogo(familia, mapa)
+    return mapa
+
+
+def _cargar_hijo(frame, padre_id, hijo_id, indice):
+    frame.evaluate(
+        """(id) => {
+            const hijo = document.getElementById(id);
+            if (!hijo) return;
+            hijo.innerHTML = '<option value="">--Seleccionar--</option>';
+        }""",
+        hijo_id,
+    )
+    try:
+        _por_id(frame, padre_id).select_option(index=indice)
+    except Exception:
+        return []
+    try:
+        frame.wait_for_function(
+            """(id) => {
+                const hijo = document.getElementById(id);
+                if (!hijo) return false;
+                return [...hijo.options].some((opcion) => {
+                    const texto = (opcion.textContent || "").trim();
+                    return texto && !texto.startsWith("--");
+                });
+            }""",
+            arg=hijo_id,
+            timeout=12000,
+        )
+    except PlaywrightTimeout:
+        frame.evaluate(
+            """([padreId, hijoId, indice]) => {
+                const select = document.getElementById(padreId);
+                if (!select) return;
+                select.selectedIndex = indice;
+                const nativo = new Event("change", { bubbles: true });
+                window.event = nativo;
+                Object.defineProperty(nativo, "currentTarget", { value: select });
+                const data = window.jQuery && window.jQuery._data(select, "events");
+                const cambios = (data && data.change) || [];
+                for (const cambio of cambios) cambio.handler.call(select, nativo);
+            }""",
+            [padre_id, hijo_id, indice],
+        )
+        try:
+            frame.wait_for_function(
+                """(id) => {
+                    const hijo = document.getElementById(id);
+                    if (!hijo) return false;
+                    return [...hijo.options].some((opcion) => {
+                        const texto = (opcion.textContent || "").trim();
+                        return texto && !texto.startsWith("--");
+                    });
+                }""",
+                arg=hijo_id,
+                timeout=8000,
+            )
+        except PlaywrightTimeout:
+            return []
+    return _textos_opciones(frame, hijo_id)
+
+
+def _aplicar_catalogos(formularios):
+    if not _CATALOGOS:
+        return
+    for item in formularios:
+        campos = (item.get("formulario") or {}).get("campos") or []
+        ultimo = {"ciiu": None, "lugar": None}
+        for campo in campos:
+            if not isinstance(campo, dict):
+                continue
+            selector = campo.get("selector") or ""
+            opciones = campo.get("opciones") or []
+            familia_padre = _familia_padre(selector)
+            if familia_padre and opciones:
+                ultimo[familia_padre] = campo
+            if campo.get("opciones_por_valor"):
+                continue
+            familia = _familia_hijo(selector)
+            padre = ultimo.get(familia) if familia else None
+            if not padre:
+                continue
+            mapa = _catalogo_para(familia, padre.get("opciones") or [])
+            if not mapa:
+                continue
+            campo["depende_de"] = padre.get("selector")
+            campo["opciones_por_valor"] = {
+                texto: mapa[texto]
+                for texto in padre.get("opciones") or []
+                if texto in mapa
+            }
+
+
+def _borrar_prueba(page):
+    _volver(page)
+    while True:
+        pendiente = page.evaluate(
+            """() => {
+                const limpio = (texto) => (texto || "").replace(/\\s+/g, " ").trim();
+                const boton = [...document.querySelectorAll('a[title="Borrar postulación"]')]
+                    .find((el) => {
+                        const fila = el.closest("tr");
+                        return !el.id.includes("Mb") && /\\bPrueba\\b/.test(limpio(fila && fila.innerText));
+                    });
+                if (!boton) return null;
+                return { id: boton.id, texto: limpio(boton.closest("tr").innerText) };
+            }"""
+        )
+        if not pendiente:
+            break
+        page.evaluate("(id) => document.getElementById(id).click()", pendiente["id"])
+        page.wait_for_function(
+            """() => document.querySelector("#modalDeleteSubmission")?.classList.contains("show")""",
+            timeout=10000,
+        )
+        page.locator("[id='modalDeleteSubmissionForm:mdsYBtn']").click()
+        try:
+            page.wait_for_function(
+                """(texto) => {
+                    const limpio = (valor) => (valor || "").replace(/\\s+/g, " ").trim();
+                    const modal = document.querySelector("#modalDeleteSubmission");
+                    const filas = [...document.querySelectorAll('a[title="Borrar postulación"]')]
+                        .filter((el) => !el.id.includes("Mb"))
+                        .map((el) => limpio(el.closest("tr") && el.closest("tr").innerText));
+                    return (!modal || !modal.classList.contains("show")) && !filas.includes(texto);
+                }""",
+                arg=pendiente["texto"],
+                timeout=15000,
+            )
+        except PlaywrightTimeout:
+            _volver(page)
+        print(f"borrada {pendiente['texto']}", flush=True)
+
+
+def _catalogos_listos():
+    familias = {item["familia"] for item in _CATALOGOS}
+    return "ciiu" in familias and "lugar" in familias
+
+
+def _completar_dependencias():
+    email, password = _credenciales()
+    headless = os.environ.get("ANDE_HEADFUL", "") != "1"
+    formularios = _cargar()
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=headless)
+        context = browser.new_context(locale="es-UY", viewport={"width": 1400, "height": 1200})
+        page = context.new_page()
+        _login(page, email, password)
+        try:
+            referencias = _convocatorias(page)
+            for indice, referencia in enumerate(referencias):
+                if _catalogos_listos():
+                    break
+                if indice:
+                    _volver(page)
+                try:
+                    formulario = _abrir(page, referencia)
+                except Exception as error:
+                    print(f"salteo {referencia}: {error}", flush=True)
+                    continue
+                if formulario.get("error"):
+                    print(f"salteo {referencia}: {formulario['error']}", flush=True)
+                    continue
+                formularios = [
+                    item for item in formularios if item.get("convocatoria") != referencia
+                ]
+                formularios.append({"convocatoria": referencia, "formulario": formulario})
+                _guardar(formularios)
+                print(f"dependencias {referencia}", flush=True)
+            _aplicar_catalogos(formularios)
+            _guardar(formularios)
+        finally:
+            try:
+                _borrar_prueba(page)
+            except Exception as error:
+                print(f"no pude borrar el borrador Prueba: {error}", flush=True)
+            browser.close()
+    print(SALIDA)
+
+
 def _cargar():
     if not SALIDA.exists():
         return []
@@ -321,6 +726,9 @@ def _guardar(formularios):
 
 
 def main():
+    if os.environ.get("ANDE_DEPENDENCIAS") == "1":
+        _completar_dependencias()
+        return
     email, password = _credenciales()
     headless = os.environ.get("ANDE_HEADFUL", "") != "1"
     formularios = _cargar()

@@ -4,7 +4,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import FormularioCompletado from "../FormularioCompletado";
-import { cancelarGeneracion, type CampoFormulario, type Fuente } from "../formulario";
+import {
+  cancelarGeneracion,
+  columnasDe,
+  listaDeOpciones,
+  mapaDeOpciones,
+  type CampoFormulario,
+  type Fuente,
+} from "../formulario";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "/backend";
 
@@ -89,6 +96,11 @@ export default function EditorFormulario({ jobId }: { jobId: number }) {
             editada: Boolean(item.editada),
             tipo: item.tipo ?? null,
             pagina: item.pagina ?? null,
+            opciones: listaDeOpciones(item.opciones),
+            selector: typeof item.selector === "string" ? item.selector : null,
+            depende_de: typeof item.depende_de === "string" ? item.depende_de : null,
+            opciones_por_valor: mapaDeOpciones(item.opciones_por_valor),
+            columnas: columnasDe(item.columnas),
             fuentes: normalizarFuentes(item.fuentes),
           })),
         });

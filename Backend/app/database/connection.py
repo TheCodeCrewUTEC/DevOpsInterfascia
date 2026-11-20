@@ -100,8 +100,21 @@ def ensure_schema():
                     requerido BOOLEAN NOT NULL DEFAULT FALSE,
                     opciones JSONB NOT NULL DEFAULT '[]'::jsonb,
                     selector TEXT,
+                    depende_de TEXT,
+                    opciones_por_valor JSONB NOT NULL DEFAULT '{}'::jsonb,
+                    columnas JSONB NOT NULL DEFAULT '[]'::jsonb,
                     UNIQUE (formulario_id, orden)
                 )
+                """
+            )
+            cur.execute(
+                """
+                ALTER TABLE formularios_campos
+                    ADD COLUMN IF NOT EXISTS depende_de TEXT,
+                    ADD COLUMN IF NOT EXISTS opciones_por_valor JSONB
+                        NOT NULL DEFAULT '{}'::jsonb,
+                    ADD COLUMN IF NOT EXISTS columnas JSONB
+                        NOT NULL DEFAULT '[]'::jsonb
                 """
             )
             cur.execute(

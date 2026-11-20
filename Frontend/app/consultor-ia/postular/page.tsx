@@ -4,7 +4,14 @@ import { ChangeEvent, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Loading from "../../components/Loading";
 import FormularioCompletado from "../FormularioCompletado";
-import { cancelarGeneracion, type CampoFormulario, type Fuente } from "../formulario";
+import {
+  cancelarGeneracion,
+  columnasDe,
+  listaDeOpciones,
+  mapaDeOpciones,
+  type CampoFormulario,
+  type Fuente,
+} from "../formulario";
 import Pestanas from "../Pestanas";
 import Stepper from "../../components/Stepper";
 
@@ -22,6 +29,8 @@ type CampoAnde = {
   requerido: boolean;
   opciones: string[];
   selector: string;
+  depende_de?: string | null;
+  opciones_por_valor?: Record<string, string[]>;
 };
 
 type FormularioAnde = {
@@ -190,6 +199,11 @@ async function consultarResultado(
       dato_guardado: item.dato_guardado ?? null,
       tipo: item.tipo ?? null,
       pagina: item.pagina ?? null,
+      opciones: listaDeOpciones(item.opciones),
+      selector: typeof item.selector === "string" ? item.selector : null,
+      depende_de: typeof item.depende_de === "string" ? item.depende_de : null,
+      opciones_por_valor: mapaDeOpciones(item.opciones_por_valor),
+      columnas: columnasDe(item.columnas),
       fuentes: normalizarFuentes(item.fuentes),
     }));
 
@@ -254,7 +268,17 @@ export default function PostularPage() {
           formularios?: FormularioAnde[];
         };
         if (datos.titulo) setTituloAnde(datos.titulo);
-        setFormulariosAnde(datos.formularios ?? []);
+        setFormulariosAnde(
+          (datos.formularios ?? []).map((formulario) => ({
+            ...formulario,
+            campos: (formulario.campos ?? []).map((campo) => ({
+              ...campo,
+              opciones: listaDeOpciones(campo.opciones),
+              depende_de: campo.depende_de ?? null,
+              opciones_por_valor: mapaDeOpciones(campo.opciones_por_valor),
+            })),
+          })),
+        );
       } catch (error) {
         if (controlador.signal.aborted) return;
         setFormulariosAnde([]);

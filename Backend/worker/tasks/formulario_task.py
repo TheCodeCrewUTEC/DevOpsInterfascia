@@ -1,4 +1,5 @@
 import asyncio
+import json
 from pathlib import Path
 
 from app.services.docling_service import procesar_job
@@ -7,7 +8,11 @@ from app.services.qwen_service import (
     extraer_campos_formulario
 )
 
-from app.services.formulario_ande_service import campos_para_consultor
+from app.services.formulario_ande_service import (
+    campos_para_consultor,
+    filas_de_tabla,
+    opcion_mas_parecida,
+)
 from app.services.formulario_job_service import (
     obtener_job,
     actualizar_estado_job,
@@ -316,6 +321,7 @@ async def procesar_formulario(
         print("=" * 60)
 
         respuestas = []
+        por_selector = {}
 
         usar_documento_completo = cabe_documento_completo(chunks)
 
@@ -339,6 +345,7 @@ async def procesar_formulario(
 
             nombre_campo = campo.get("campo")
             tipo_campo = campo.get("tipo")
+            columnas = campo.get("columnas") or []
 
             print("\n" + "=" * 70)
             print(f"[WORKER] PROCESANDO CAMPO: {nombre_campo}")
@@ -354,13 +361,25 @@ async def procesar_formulario(
                 chunks
                 if usar_documento_completo
                 else buscar_chunks_relevantes(
-                    nombre_campo,
+                    (
+                        f"{nombre_campo} "
+                        + " ".join(str(columna.get("etiqueta") or "") for columna in columnas)
+                    ).strip()
+                    if columnas
+                    else nombre_campo,
                     chunks,
                     top_k=5,
                 )
             )
 
             print(f"[WORKER] Chunks encontrados: {len(resultados)}")
+
+            mapa = campo.get("opciones_por_valor") or {}
+            depende_de = campo.get("depende_de")
+            if depende_de and mapa:
+                opciones = list(mapa.get(por_selector.get(depende_de) or "") or [])
+            else:
+                opciones = list(campo.get("opciones") or [])
 
             # ============================================================
             # 2. GENERAR RESPUESTA CON QWEN
@@ -372,6 +391,8 @@ async def procesar_formulario(
                     nombre_campo,
                     tipo_campo,
                     resultados,
+                    opciones or None,
+                    columnas or None,
                 )
             except Exception as error:
                 if (respuesta := cortado()):
@@ -394,6 +415,20 @@ async def procesar_formulario(
 
             if respuesta == "null":
                 respuesta = None
+
+            if columnas:
+                filas = filas_de_tabla(respuesta, columnas)
+                respuesta = json.dumps(filas, ensure_ascii=False) if filas else None
+            elif opciones:
+                elegida = opcion_mas_parecida(respuesta, opciones) if respuesta else None
+                if elegida:
+                    print(f"[WORKER] Opción elegida: {elegida}")
+                elif respuesta:
+                    print(f"[WORKER] La respuesta no coincide con una opción: {respuesta}")
+                respuesta = elegida
+            selector = campo.get("selector")
+            if selector:
+                por_selector[selector] = respuesta or ""
 
             # ============================================================
             # 4. TRANSFORMAR FUENTES

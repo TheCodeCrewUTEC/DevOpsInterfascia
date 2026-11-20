@@ -5,6 +5,7 @@ import {
   esObligatorio,
   etiquetaCampo,
   normalizarValor,
+  textoDeTabla,
   type CampoFormulario,
 } from "../../formulario";
 
@@ -103,7 +104,8 @@ export async function GET(
 
     for (const campo of seccion.campos) {
       const etiqueta = limpiar(etiquetaCampo(campo.campo) + (esObligatorio(campo.campo) ? " *" : ""));
-      const respuesta = normalizarValor(campo.respuesta).trim();
+      const respuesta =
+        campo.tipo === "tabla" ? textoDeTabla(campo.respuesta, campo.columnas ?? []) : normalizarValor(campo.respuesta).trim();
       const valor = respuesta ? limpiar(respuesta) : "";
 
       doc.setFont("helvetica", "bold");
