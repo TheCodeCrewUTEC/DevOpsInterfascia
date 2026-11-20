@@ -30,6 +30,8 @@ export type CampoFormulario = {
   dato_guardado: string | null;
   tipo: string | null;
   pagina: number | null;
+  seccion?: string | null;
+  detalle?: string | null;
   fuentes: Fuente[];
   opciones?: string[];
   selector?: string | null;
@@ -134,6 +136,13 @@ export function normalizarValor(valor: string | null | undefined) {
   return valor ?? "";
 }
 
+export function textosDetalle(detalle: string | null | undefined) {
+  return (detalle ?? "")
+    .split("\n")
+    .map((linea) => linea.trim())
+    .filter(Boolean);
+}
+
 export function esObligatorio(campo: string) {
   return /\*\s*$/.test(campo);
 }
@@ -143,7 +152,11 @@ export function agruparPorPagina(campos: CampoFormulario[]): SeccionFormulario[]
   const secciones: SeccionFormulario[] = [];
 
   for (const campo of campos) {
-    const titulo = campo.pagina != null ? `Página ${campo.pagina} del formulario` : "Campos del formulario";
+    const titulo = campo.seccion?.trim()
+      ? campo.seccion
+      : campo.pagina != null
+        ? `Página ${campo.pagina} del formulario`
+        : "Campos del formulario";
     const ultima = secciones.at(-1);
 
     if (ultima && ultima.titulo === titulo) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { KeyboardEvent, useEffect, useId, useMemo, useRef, useState } from "react";
+import { KeyboardEvent, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 // Combo con autocompletado: se escribe para filtrar las opciones (sin importar
 // tildes ni mayúsculas) y se elige con el mouse o con las flechas + Enter.
@@ -23,6 +23,8 @@ interface ComboboxProps {
   disabled?: boolean;
   ariaLabel?: string;
   className?: string;
+  // El campo crece con el texto elegido para que la respuesta se lea entera.
+  crecer?: boolean;
 }
 
 const chevron =
@@ -56,6 +58,7 @@ export default function Combobox({
   disabled = false,
   ariaLabel,
   className,
+  crecer = false,
 }: ComboboxProps) {
   const controlado = value !== undefined;
   const [interno, setInterno] = useState(defaultValue);
@@ -75,6 +78,7 @@ export default function Combobox({
   const [activo, setActivo] = useState(0);
   const contenedor = useRef<HTMLDivElement>(null);
   const lista = useRef<HTMLUListElement>(null);
+  const campoRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
   const listaId = useId();
 
   // Si el valor o las opciones cambian desde afuera, el texto los acompaña.
@@ -91,6 +95,13 @@ export default function Combobox({
     const buscado = normalizar(texto);
     return opciones.filter((opcion) => normalizar(opcion.label).includes(buscado));
   }, [opciones, texto, filtrando]);
+
+  useLayoutEffect(() => {
+    const campo = campoRef.current;
+    if (!crecer || !campo) return;
+    campo.style.height = "auto";
+    campo.style.height = `${campo.scrollHeight}px`;
+  }, [texto, crecer]);
 
   useEffect(() => {
     if (!abierto) return;
@@ -123,7 +134,7 @@ export default function Combobox({
     setTexto(textoDe(seleccionado));
   }
 
-  function tecla(evento: KeyboardEvent<HTMLInputElement>) {
+  function tecla(evento: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) {
     if (evento.key === "ArrowDown") {
       evento.preventDefault();
       if (!abierto) return abrir();
@@ -132,10 +143,8 @@ export default function Combobox({
       evento.preventDefault();
       setActivo((actual) => Math.max(actual - 1, 0));
     } else if (evento.key === "Enter") {
-      if (abierto && visibles[activo]) {
-        evento.preventDefault();
-        elegir(visibles[activo].valor);
-      }
+      if (crecer || (abierto && visibles[activo])) evento.preventDefault();
+      if (abierto && visibles[activo]) elegir(visibles[activo].valor);
     } else if (evento.key === "Escape") {
       if (abierto) {
         evento.preventDefault();
@@ -155,7 +164,42 @@ export default function Combobox({
         if (!contenedor.current?.contains(evento.relatedTarget as Node)) cerrar();
       }}
     >
+      {crecer ? (
+      <textarea
+        ref={(nodo) => {
+          campoRef.current = nodo;
+        }}
+        id={id}
+        rows={1}
+        role="combobox"
+        autoComplete="off"
+        aria-autocomplete="list"
+        aria-expanded={abierto}
+        aria-controls={listaId}
+        aria-activedescendant={abierto && visibles[activo] ? `${listaId}-${activo}` : undefined}
+        aria-invalid={invalid || undefined}
+        aria-label={ariaLabel}
+        required={required}
+        disabled={disabled}
+        placeholder={placeholder}
+        value={texto}
+        onChange={(evento) => {
+          setTexto(evento.target.value);
+          setFiltrando(true);
+          setActivo(0);
+          setAbierto(true);
+        }}
+        onFocus={(evento) => evento.target.select()}
+        onClick={() => (abierto ? undefined : abrir())}
+        onKeyDown={tecla}
+        className={(invalid ? ESTILO_INVALIDO : ESTILO_COMBO).replace("h-11", "min-h-11") + " resize-none overflow-hidden leading-relaxed"}
+        style={{ backgroundImage: chevron }}
+      />
+      ) : (
       <input
+        ref={(nodo) => {
+          campoRef.current = nodo;
+        }}
         id={id}
         type="text"
         role="combobox"
@@ -182,6 +226,7 @@ export default function Combobox({
         className={invalid ? ESTILO_INVALIDO : ESTILO_COMBO}
         style={{ backgroundImage: chevron }}
       />
+      )}
       {name ? <input type="hidden" name={name} value={seleccionado} /> : null}
 
       {abierto ? (
@@ -207,7 +252,7 @@ export default function Combobox({
                   elegir(opcion.valor);
                 }}
                 onMouseEnter={() => setActivo(indice)}
-                className={`cursor-pointer rounded-lg px-3 py-2 text-sm ${
+                className={`cursor-pointer whitespace-normal break-words rounded-lg px-3 py-2 text-sm ${
                   indice === activo
                     ? "bg-pine-deep text-paper"
                     : opcion.valor === seleccionado

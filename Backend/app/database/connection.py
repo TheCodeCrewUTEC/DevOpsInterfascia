@@ -103,6 +103,7 @@ def ensure_schema():
                     depende_de TEXT,
                     opciones_por_valor JSONB NOT NULL DEFAULT '{}'::jsonb,
                     columnas JSONB NOT NULL DEFAULT '[]'::jsonb,
+                    detalle TEXT NOT NULL DEFAULT '',
                     UNIQUE (formulario_id, orden)
                 )
                 """
@@ -114,7 +115,9 @@ def ensure_schema():
                     ADD COLUMN IF NOT EXISTS opciones_por_valor JSONB
                         NOT NULL DEFAULT '{}'::jsonb,
                     ADD COLUMN IF NOT EXISTS columnas JSONB
-                        NOT NULL DEFAULT '[]'::jsonb
+                        NOT NULL DEFAULT '[]'::jsonb,
+                    ADD COLUMN IF NOT EXISTS detalle TEXT
+                        NOT NULL DEFAULT ''
                 """
             )
             cur.execute(

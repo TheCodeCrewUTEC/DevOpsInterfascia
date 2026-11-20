@@ -6,8 +6,10 @@ import {
   etiquetaCampo,
   normalizarValor,
   textoDeTabla,
+  textosDetalle,
   type CampoFormulario,
 } from "../../formulario";
+import { mensajesIdentificador } from "../../identificacion";
 
 export const dynamic = "force-dynamic";
 
@@ -50,7 +52,8 @@ export async function GET(
   }
 
   const resultado = (await response.json()) as { respuestas: CampoFormulario[] };
-  const secciones = agruparPorPagina(resultado.respuestas ?? []);
+  const respuestas = resultado.respuestas ?? [];
+  const secciones = agruparPorPagina(respuestas);
 
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   let y = MARGEN;
@@ -102,7 +105,20 @@ export async function GET(
     doc.text(limpiar(seccion.titulo.toUpperCase()), MARGEN, y);
     y += 20;
 
+    let detalleAnterior = "";
     for (const campo of seccion.campos) {
+      const detalle = textosDetalle(campo.detalle).join("\n");
+      if (detalle && detalle !== detalleAnterior) {
+        detalleAnterior = detalle;
+        doc.setFont("helvetica", "italic");
+        doc.setFontSize(9);
+        doc.setTextColor(...TEXTO_SUAVE);
+        const lineasDetalle = doc.splitTextToSize(limpiar(detalle), ANCHO_TEXTO) as string[];
+        asegurarEspacio(lineasDetalle.length * 12 + 8);
+        doc.text(lineasDetalle, MARGEN, y);
+        y += lineasDetalle.length * 12 + 6;
+      }
+
       const etiqueta = limpiar(etiquetaCampo(campo.campo) + (esObligatorio(campo.campo) ? " *" : ""));
       const respuesta =
         campo.tipo === "tabla" ? textoDeTabla(campo.respuesta, campo.columnas ?? []) : normalizarValor(campo.respuesta).trim();
@@ -149,6 +165,17 @@ export async function GET(
           doc.addPage();
           y = MARGEN;
         }
+      }
+
+      const avisos = mensajesIdentificador(campo, campo.respuesta ?? "", respuestas, (item) => (item as CampoFormulario).respuesta ?? "");
+      if (avisos.length > 0) {
+        doc.setFont("helvetica", "italic");
+        doc.setFontSize(8.5);
+        doc.setTextColor(176, 64, 48);
+        const lineasAviso = doc.splitTextToSize(limpiar(avisos.join(" ")), ANCHO_TEXTO) as string[];
+        asegurarEspacio(lineasAviso.length * 11 + 4);
+        doc.text(lineasAviso, MARGEN, y + 11);
+        y += lineasAviso.length * 11 + 2;
       }
 
       y += 14;

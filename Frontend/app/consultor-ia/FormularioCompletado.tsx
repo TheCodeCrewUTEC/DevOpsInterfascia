@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import Combobox from "../components/Combobox";
 import {
   agruparPorPagina,
@@ -8,10 +8,12 @@ import {
   etiquetaCampo,
   filasDeTabla,
   normalizarValor,
+  textosDetalle,
   type CampoFormulario,
   type ColumnaTabla,
   type FilaTabla,
 } from "./formulario";
+import { mensajeDeCelda, mensajesDelFormulario } from "./identificacion";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "/backend";
 
@@ -185,7 +187,9 @@ export default function FormularioCompletado({ jobId, campos, validado = false, 
           <h2 className="text-xs font-medium tracking-[0.18em] text-clay uppercase">{seccion.titulo}</h2>
 
           <div className="flex flex-col gap-4 rounded-3xl border-2 border-ink bg-paper p-5 shadow-sm sm:p-6">
-            {seccion.campos.map((campo) => {
+            {seccion.campos.map((campo, indice) => {
+              const detalle = textosDetalle(campo.detalle);
+              const anterior = textosDetalle(seccion.campos[indice - 1]?.detalle).join("\n");
               const mapa = campo.opciones_por_valor ?? {};
               const dependiente = Boolean(campo.depende_de && Object.keys(mapa).length > 0);
               const padre = dependiente
@@ -194,10 +198,14 @@ export default function FormularioCompletado({ jobId, campos, validado = false, 
               const valorPadre = padre ? (valores[padre.id] ?? "") : "";
               const opciones = dependiente ? (mapa[valorPadre] ?? []) : (campo.opciones ?? []);
               const nombrePadre = etiquetaCampo(padre?.campo ?? "el campo anterior");
+              const alertas = mensajesDelFormulario(campo, valores[campo.id] ?? "", campos, valores);
 
               return (
+                <div key={campo.id} className="flex flex-col gap-2">
+                  {detalle.length > 0 && detalle.join("\n") !== anterior ? (
+                    <p className="whitespace-pre-line text-sm text-ink/70">{detalle.join("\n")}</p>
+                  ) : null}
                 <Campo
-                  key={campo.id}
                   campo={campo}
                   valor={valores[campo.id] ?? ""}
                   onChange={(valor) => cambiar(campo.id, valor)}
@@ -210,7 +218,9 @@ export default function FormularioCompletado({ jobId, campos, validado = false, 
                         : `Las opciones aparecen al elegir ${nombrePadre}.`
                       : undefined
                   }
+                  alertas={campo.tipo === "tabla" ? [] : alertas}
                 />
+                </div>
               );
             })}
           </div>
@@ -252,6 +262,41 @@ export default function FormularioCompletado({ jobId, campos, validado = false, 
 function celdaCompleta(campo: CampoFormulario, valor: string) {
   if (campo.tipo !== "tabla") return Boolean(valor.trim());
   return filasDeTabla(valor).some((fila) => Object.values(fila).some((celda) => celda.trim()));
+}
+
+function CampoTexto({
+  id,
+  value,
+  onChange,
+  className,
+  ariaInvalid,
+}: {
+  id?: string;
+  value: string;
+  onChange: (valor: string) => void;
+  className: string;
+  ariaInvalid?: boolean;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  useLayoutEffect(() => {
+    const campo = ref.current;
+    if (!campo) return;
+    campo.style.height = "auto";
+    campo.style.height = `${campo.scrollHeight}px`;
+  }, [value]);
+
+  return (
+    <textarea
+      ref={ref}
+      id={id}
+      rows={1}
+      value={value}
+      onChange={(evento) => onChange(evento.target.value)}
+      aria-invalid={ariaInvalid || undefined}
+      className={`${className} resize-none overflow-hidden whitespace-pre-wrap leading-relaxed`}
+    />
+  );
 }
 
 function opcionesDeColumna(columna: ColumnaTabla, fila: FilaTabla, columnas: ColumnaTabla[]) {
@@ -327,6 +372,7 @@ function TablaFilas({
                   const celda = fila[columna.etiqueta] ?? "";
                   const { opciones, bloqueado } = opcionesDeColumna(columna, fila, columnas);
                   const esLista = columna.tipo === "select" || opciones.length > 0 || Boolean(columna.depende_de);
+                  const alerta = mensajeDeCelda(columna, fila, columnas);
                   return (
                     <td key={columna.selector} className="px-1 py-1 align-top">
                       {esLista ? (
@@ -336,16 +382,22 @@ function TablaFilas({
                           onChange={(nuevo) => cambiarCelda(indice, columna.etiqueta, nuevo)}
                           options={opciones}
                           disabled={bloqueado}
+                          crecer
                           opcionVacia={bloqueado ? "Elegí el campo anterior" : "Sin indicar"}
                         />
                       ) : (
-                        <input
+                        <CampoTexto
                           value={celda}
-                          onChange={(event) => cambiarCelda(indice, columna.etiqueta, event.target.value)}
-                          type={columna.tipo === "email" ? "email" : "text"}
-                          className="w-full min-w-36 rounded-xl border-2 border-ink bg-foam/60 px-3 py-2 text-sm text-ink outline-none focus:border-pine focus:bg-paper"
+                          onChange={(nuevo) => cambiarCelda(indice, columna.etiqueta, nuevo)}
+                          ariaInvalid={Boolean(alerta)}
+                          className={`w-full min-w-36 rounded-xl border-2 bg-foam/60 px-3 py-2 text-sm text-ink outline-none focus:bg-paper ${
+                            alerta ? "border-clay focus:border-clay" : "border-ink focus:border-pine"
+                          }`}
                         />
                       )}
+                      {alerta ? (
+                        <p className="mt-1 text-xs text-clay">{alerta.charAt(0).toUpperCase() + alerta.slice(1)}</p>
+                      ) : null}
                     </td>
                   );
                 })}
@@ -382,6 +434,7 @@ function Campo({
   opciones,
   bloqueado = false,
   aviso,
+  alertas = [],
 }: {
   campo: CampoFormulario;
   valor: string;
@@ -389,6 +442,7 @@ function Campo({
   opciones?: string[];
   bloqueado?: boolean;
   aviso?: string;
+  alertas?: string[];
 }) {
   const id = `campo-${campo.id}`;
   const etiqueta = etiquetaCampo(campo.campo);
@@ -397,17 +451,19 @@ function Campo({
   const editado = valor !== sugerenciaIa;
   const vacio = !celdaCompleta(campo, valor);
 
-  const clases = `w-full rounded-xl border-2 px-3 py-2.5 text-sm text-ink outline-none transition focus:border-pine focus:bg-paper ${
-    vacio && esObligatorio(campo.campo) ? "border-gold bg-gold/10" : "border-ink bg-foam/60"
+  const clases = `w-full rounded-xl border-2 px-3 py-2.5 text-sm text-ink outline-none transition focus:bg-paper ${
+    alertas.length > 0
+      ? "border-clay bg-foam/60 focus:border-clay"
+      : vacio && esObligatorio(campo.campo)
+        ? "border-gold bg-gold/10 focus:border-pine"
+        : "border-ink bg-foam/60 focus:border-pine"
   }`;
 
   let control;
   if (campo.tipo === "tabla") {
     control = <TablaFilas columnas={campo.columnas ?? []} valor={valor} onChange={onChange} />;
   } else if (campo.tipo === "pregunta") {
-    control = (
-      <textarea id={id} rows={5} value={valor} onChange={(e) => onChange(e.target.value)} className={`${clases} resize-y leading-relaxed`} />
-    );
+    control = <CampoTexto id={id} value={valor} onChange={onChange} className={clases} />;
   } else if ((opciones ?? campo.opciones ?? []).length > 0 || campo.depende_de) {
     const lista = opciones ?? campo.opciones ?? [];
     control = (
@@ -418,6 +474,7 @@ function Campo({
         opcionVacia={bloqueado ? "Elegí el campo anterior" : "Sin indicar"}
         options={lista}
         disabled={bloqueado}
+        crecer
         invalid={vacio && esObligatorio(campo.campo)}
       />
     );
@@ -429,19 +486,11 @@ function Campo({
         onChange={onChange}
         opcionVacia="Sin indicar"
         options={["Sí", "No", ...(valor && valor !== "Sí" && valor !== "No" ? [valor] : [])]}
+        crecer
       />
     );
   } else {
-    control = (
-      <input
-        id={id}
-        type={campo.tipo === "email" ? "email" : "text"}
-        inputMode={campo.tipo === "numero" ? "numeric" : undefined}
-        value={valor}
-        onChange={(e) => onChange(e.target.value)}
-        className={clases}
-      />
-    );
+    control = <CampoTexto id={id} value={valor} onChange={onChange} className={clases} ariaInvalid={alertas.length > 0} />;
   }
 
   return (
@@ -470,6 +519,13 @@ function Campo({
       {control}
 
       {aviso ? <p className="text-xs text-ink/60">{aviso}</p> : null}
+      {alertas.map((alerta) => {
+        const frase = alerta.includes(": ") ? alerta.slice(alerta.indexOf(": ") + 2) : alerta;
+        const visible = frase.charAt(0).toUpperCase() + frase.slice(1);
+        return (
+          <p key={alerta} className="text-xs text-clay">{visible}</p>
+        );
+      })}
 
       {campo.dato_guardado && valor.trim() !== campo.dato_guardado.trim() ? (
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-pine/30 bg-foam/60 px-3 py-2 text-xs text-ink/80">

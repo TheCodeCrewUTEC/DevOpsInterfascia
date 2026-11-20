@@ -171,6 +171,8 @@ def metadatos_del_job(job_id: int) -> list[dict]:
                 """
                 SELECT
                     c.etiqueta,
+                    c.seccion,
+                    c.detalle,
                     c.selector,
                     c.opciones,
                     c.depende_de,
@@ -190,13 +192,24 @@ def metadatos_del_job(job_id: int) -> list[dict]:
     return [
         {
             "etiqueta": etiqueta,
+            "seccion": seccion or "",
+            "detalle": detalle or "",
             "selector": selector,
             "opciones": _opciones(opciones),
             "depende_de": depende_de,
             "opciones_por_valor": _mapa(opciones_por_valor),
             "columnas": _columnas(columnas),
         }
-        for etiqueta, selector, opciones, depende_de, opciones_por_valor, columnas in filas
+        for (
+            etiqueta,
+            seccion,
+            detalle,
+            selector,
+            opciones,
+            depende_de,
+            opciones_por_valor,
+            columnas,
+        ) in filas
     ]
 
 
@@ -212,6 +225,7 @@ def listar_formularios_abiertos():
                     f.creado,
                     c.orden,
                     c.seccion,
+                    c.detalle,
                     c.etiqueta,
                     c.tipo,
                     c.requerido,
@@ -236,6 +250,7 @@ def listar_formularios_abiertos():
         creado,
         orden,
         seccion,
+        detalle,
         etiqueta,
         tipo,
         requerido,
@@ -258,6 +273,7 @@ def listar_formularios_abiertos():
             {
                 "orden": orden,
                 "seccion": seccion,
+                "detalle": detalle or "",
                 "etiqueta": etiqueta,
                 "tipo": tipo,
                 "requerido": bool(requerido),
@@ -291,7 +307,7 @@ def campos_para_consultor(formulario_id: int):
                 return None
             cur.execute(
                 """
-                SELECT etiqueta, tipo, opciones, selector, depende_de, opciones_por_valor, columnas
+                SELECT etiqueta, tipo, opciones, selector, depende_de, opciones_por_valor, columnas, seccion, detalle
                 FROM formularios_campos
                 WHERE formulario_id = %s
                 ORDER BY orden
@@ -311,6 +327,18 @@ def campos_para_consultor(formulario_id: int):
             "depende_de": depende_de,
             "opciones_por_valor": _mapa(opciones_por_valor),
             "columnas": _columnas(columnas),
+            "seccion": seccion or "",
+            "detalle": detalle or "",
         }
-        for etiqueta, tipo, opciones, selector, depende_de, opciones_por_valor, columnas in filas
+        for (
+            etiqueta,
+            tipo,
+            opciones,
+            selector,
+            depende_de,
+            opciones_por_valor,
+            columnas,
+            seccion,
+            detalle,
+        ) in filas
     ]

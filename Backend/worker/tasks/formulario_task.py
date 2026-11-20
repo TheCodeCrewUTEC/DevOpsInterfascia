@@ -29,6 +29,7 @@ from app.services.respuesta_service import (
     cabe_documento_completo,
     generar_respuesta,
 )
+from app.services.documento_uy import es_nombre, mensajes_del_campo
 
 
 def fuente_desde_chunk(chunk: dict):
@@ -322,6 +323,7 @@ async def procesar_formulario(
 
         respuestas = []
         por_selector = {}
+        respuestas_por_campo = {}
 
         usar_documento_completo = cabe_documento_completo(chunks)
 
@@ -357,16 +359,22 @@ async def procesar_formulario(
             # ============================================================
 
             # Documento chico: siempre los mismos chunks y en el mismo orden
+            detalle_busqueda = None if es_nombre(nombre_campo) else campo.get("detalle")
+            consulta = " ".join(
+                parte
+                for parte in (
+                    nombre_campo,
+                    campo.get("seccion"),
+                    detalle_busqueda,
+                    " ".join(str(columna.get("etiqueta") or "") for columna in columnas),
+                )
+                if str(parte or "").strip()
+            )
             resultados = (
                 chunks
                 if usar_documento_completo
                 else buscar_chunks_relevantes(
-                    (
-                        f"{nombre_campo} "
-                        + " ".join(str(columna.get("etiqueta") or "") for columna in columnas)
-                    ).strip()
-                    if columnas
-                    else nombre_campo,
+                    consulta,
                     chunks,
                     top_k=5,
                 )
@@ -393,6 +401,8 @@ async def procesar_formulario(
                     resultados,
                     opciones or None,
                     columnas or None,
+                    campo.get("detalle") or None,
+                    campo.get("seccion") or None,
                 )
             except Exception as error:
                 if (respuesta := cortado()):
@@ -427,6 +437,7 @@ async def procesar_formulario(
                     print(f"[WORKER] La respuesta no coincide con una opción: {respuesta}")
                 respuesta = elegida
             selector = campo.get("selector")
+            respuestas_por_campo[id(campo)] = respuesta or ""
             if selector:
                 por_selector[selector] = respuesta or ""
 
@@ -517,6 +528,11 @@ async def procesar_formulario(
 
             print(f"[WORKER] RESPUESTA FINAL: {respuesta}")
             print(f"[WORKER] FUENTES: {fuentes_unicas}")
+
+        for campo in lista_campos:
+            texto = respuestas_por_campo.get(id(campo), "")
+            for aviso in mensajes_del_campo(campo, texto, por_selector, lista_campos):
+                print(f"[WORKER] Validación: {aviso}")
 
         # ==========================================
         # 12. COMPLETED

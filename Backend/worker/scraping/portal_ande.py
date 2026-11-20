@@ -181,11 +181,31 @@ def _leer_formulario(frame):
             const secciones = [];
             const campos = [];
             let seccion = "General";
-            for (const el of document.querySelectorAll("h1, h2, h3, h4, legend, input, textarea, select")) {
-                if (/^H[1-4]$/.test(el.tagName) || el.tagName === "LEGEND") {
-                    const titulo = limpio(el.innerText);
+            let tituloH5 = "";
+            let tituloH6 = "";
+            let h5Pendiente = false;
+            let h6Pendiente = false;
+            const detalleDe = () => [tituloH5, tituloH6].filter(Boolean).join("\\n");
+            for (const el of document.querySelectorAll("h1, h2, h3, h4, h5, h6, legend, input, textarea, select")) {
+                if (/^H[1-6]$/.test(el.tagName) || el.tagName === "LEGEND") {
+                    const titulo = limpio(el.innerText).slice(0, 400);
                     if (!titulo) continue;
-                    seccion = titulo;
+                    const nivel = el.tagName === "LEGEND" ? 4 : Number(el.tagName.slice(1));
+                    if (nivel <= 4) {
+                        seccion = titulo;
+                        if (!h5Pendiente) tituloH5 = "";
+                        if (!h6Pendiente) tituloH6 = "";
+                        h5Pendiente = false;
+                        h6Pendiente = false;
+                    } else if (nivel === 5) {
+                        tituloH5 = titulo;
+                        tituloH6 = "";
+                        h5Pendiente = true;
+                        h6Pendiente = false;
+                    } else {
+                        tituloH6 = titulo;
+                        h6Pendiente = true;
+                    }
                     secciones.push(titulo);
                     continue;
                 }
@@ -201,12 +221,15 @@ def _leer_formulario(frame):
                     : [];
                 campos.push({
                     seccion,
+                    detalle: detalleDe(),
                     etiqueta,
                     tipo: tipoDe(el),
                     requerido: Boolean(el.required || etiqueta.endsWith("*")),
                     opciones,
                     selector,
                 });
+                h5Pendiente = false;
+                h6Pendiente = false;
             }
             const acciones = [...document.querySelectorAll("button, input[type='submit'], input[type='button']")]
                 .map((el) => limpio(el.innerText || el.value))
@@ -382,6 +405,7 @@ def _agrupar_tablas(formulario):
                     "selector": actual.get("selector"),
                     "depende_de": actual.get("depende_de"),
                     "opciones_por_valor": actual.get("opciones_por_valor") or {},
+                    "detalle": actual.get("detalle") or "",
                 }
             )
             indice += 1
@@ -390,6 +414,10 @@ def _agrupar_tablas(formulario):
         agrupados.append(
             {
                 "seccion": seccion,
+                "detalle": next(
+                    (columna.get("detalle") for columna in columnas if columna.get("detalle")),
+                    "",
+                ),
                 "etiqueta": f"{titulo} *" if requerido else titulo,
                 "tipo": "tabla",
                 "requerido": requerido,

@@ -239,7 +239,9 @@ def reemplazar_campos():
                 """
                 ALTER TABLE formularios_campos
                     ADD COLUMN IF NOT EXISTS columnas JSONB
-                        NOT NULL DEFAULT '[]'::jsonb
+                        NOT NULL DEFAULT '[]'::jsonb,
+                    ADD COLUMN IF NOT EXISTS detalle TEXT
+                        NOT NULL DEFAULT ''
                 """
             )
             for item in datos.get("formularios", []):
@@ -276,9 +278,9 @@ def reemplazar_campos():
                         INSERT INTO formularios_campos (
                             formulario_id, orden, seccion, etiqueta, tipo,
                             requerido, opciones, selector, depende_de,
-                            opciones_por_valor, columnas
+                            opciones_por_valor, columnas, detalle
                         )
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         """,
                         (
                             formulario_id,
@@ -292,6 +294,11 @@ def reemplazar_campos():
                             campo.get("depende_de"),
                             Json(campo.get("opciones_por_valor") or {}),
                             Json(campo.get("columnas") or []),
+                            "\n".join(
+                                linea.strip()
+                                for linea in str(campo.get("detalle") or "").splitlines()
+                                if linea.strip()
+                            ),
                         ),
                     )
         conn.commit()

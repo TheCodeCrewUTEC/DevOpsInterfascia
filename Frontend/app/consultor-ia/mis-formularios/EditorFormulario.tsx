@@ -101,6 +101,8 @@ export default function EditorFormulario({ jobId }: { jobId: number }) {
             depende_de: typeof item.depende_de === "string" ? item.depende_de : null,
             opciones_por_valor: mapaDeOpciones(item.opciones_por_valor),
             columnas: columnasDe(item.columnas),
+            seccion: typeof item.seccion === "string" ? item.seccion : "",
+            detalle: typeof item.detalle === "string" ? item.detalle : "",
             fuentes: normalizarFuentes(item.fuentes),
           })),
         });

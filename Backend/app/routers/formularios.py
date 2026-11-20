@@ -445,6 +445,8 @@ def obtener_resultado_job(
                     "depende_de": depende_de,
                     "opciones_por_valor": mapa if depende_de else {},
                     "columnas": columnas,
+                    "seccion": meta.get("seccion") or "",
+                    "detalle": meta.get("detalle") or "",
                 })
 
             return {

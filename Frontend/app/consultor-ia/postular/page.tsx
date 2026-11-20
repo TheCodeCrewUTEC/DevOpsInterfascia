@@ -7,6 +7,7 @@ import FormularioCompletado from "../FormularioCompletado";
 import {
   cancelarGeneracion,
   columnasDe,
+  textosDetalle,
   listaDeOpciones,
   mapaDeOpciones,
   type CampoFormulario,
@@ -24,6 +25,7 @@ type RespuestaCampo = CampoFormulario;
 type CampoAnde = {
   orden: number;
   seccion: string;
+  detalle?: string | null;
   etiqueta: string;
   tipo: string;
   requerido: boolean;
@@ -204,6 +206,8 @@ async function consultarResultado(
       depende_de: typeof item.depende_de === "string" ? item.depende_de : null,
       opciones_por_valor: mapaDeOpciones(item.opciones_por_valor),
       columnas: columnasDe(item.columnas),
+      seccion: typeof item.seccion === "string" ? item.seccion : "",
+      detalle: typeof item.detalle === "string" ? item.detalle : "",
       fuentes: normalizarFuentes(item.fuentes),
     }));
 
@@ -844,12 +848,19 @@ function FormulariosAbiertos({
               <section key={grupo.seccion} className="mb-4">
                 <h3 className="text-sm font-medium tracking-[0.12em] text-clay uppercase">{grupo.seccion}</h3>
                 <ul className="mt-2 flex flex-col gap-1">
-                  {grupo.campos.map((campo) => (
-                    <li key={`${campo.orden}-${campo.selector}`} className="text-sm text-ink/80">
-                      {campo.etiqueta}
-                      <span className="text-ink/45"> · {campo.tipo}</span>
-                    </li>
-                  ))}
+                  {grupo.campos.map((campo, indice) => {
+                    const detalle = textosDetalle(campo.detalle);
+                    const anterior = textosDetalle(grupo.campos[indice - 1]?.detalle).join("\n");
+                    return (
+                      <li key={`${campo.orden}-${campo.selector}`} className="text-sm text-ink/80">
+                        {detalle.length > 0 && detalle.join("\n") !== anterior ? (
+                          <p className="mt-2 mb-1 whitespace-pre-line text-sm text-ink/70">{detalle.join("\n")}</p>
+                        ) : null}
+                        {campo.etiqueta}
+                        <span className="text-ink/45"> · {campo.tipo}</span>
+                      </li>
+                    );
+                  })}
                 </ul>
               </section>
             ))}

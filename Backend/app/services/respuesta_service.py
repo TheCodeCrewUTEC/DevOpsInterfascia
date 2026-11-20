@@ -6,6 +6,8 @@ from typing import Any
 from dotenv import load_dotenv
 from langchain_ollama import ChatOllama
 
+from app.services.documento_uy import instruccion_formato, instruccion_nombre, limpiar_respuesta_nombre
+
 load_dotenv()
 
 # ============================================================
@@ -133,10 +135,16 @@ def _describir_columnas(columnas: list[dict[str, Any]]) -> str:
         if not etiqueta:
             continue
         opciones = [str(opcion).strip() for opcion in (columna.get("opciones") or []) if str(opcion).strip()]
+        formato = instruccion_formato(etiqueta)
+        nombre = instruccion_nombre(etiqueta)
         if opciones and len(opciones) <= 12:
             lineas.append(f"- {etiqueta}. Opciones: {'; '.join(opciones)}")
         elif columna.get("depende_de"):
             lineas.append(f"- {etiqueta}. Tiene que corresponder a la columna de la que depende, en la misma fila.")
+        elif formato:
+            lineas.append(f"- {etiqueta}. {formato}")
+        elif nombre:
+            lineas.append(f"- {etiqueta}. {nombre}")
         else:
             lineas.append(f"- {etiqueta}")
     return "\n".join(lineas)
@@ -148,6 +156,8 @@ def generar_respuesta(
     chunks_relevantes: list[dict[str, Any]],
     opciones: list[str] | None = None,
     columnas: list[dict[str, Any]] | None = None,
+    detalle: str | None = None,
+    seccion: str | None = None,
 ) -> dict[str, Any]:
 
     # --------------------------------------------------------
@@ -176,6 +186,10 @@ def generar_respuesta(
     # Orden pensado para la caché de Ollama: todo lo que se repite entre campos va
     # primero y el campo va al final. Las opciones son de este campo, van al final.
     lista = [opcion.strip() for opcion in (opciones or []) if str(opcion).strip()]
+    texto_seccion = " ".join(str(seccion or "").split())
+    texto_detalle = " ".join(str(detalle or "").split())
+    formato = instruccion_formato(campo)
+    texto_nombre = instruccion_nombre(campo)
     descripcion_columnas = _describir_columnas(columnas or [])
     bloque_opciones = ""
     if descripcion_columnas:
@@ -199,11 +213,28 @@ Opciones:
 {lineas}
 """
     if descripcion_columnas:
-        cierre = 'La respuesta es la lista de filas, nada más.'
+        cierre = "La respuesta es la lista de filas, nada más."
     elif lista:
         cierre = "La respuesta es una opción de la lista, nada más."
+    elif formato:
+        cierre = "La respuesta es el número, nada más."
+    elif texto_nombre:
+        cierre = "La respuesta es el nombre, nada más."
     else:
         cierre = "La respuesta es una o dos oraciones, nada más."
+    bloque_ubicacion = ""
+    if texto_seccion or texto_detalle:
+        lineas_ubicacion = []
+        if texto_seccion:
+            lineas_ubicacion.append(f"Sección: {texto_seccion}")
+        if texto_detalle:
+            lineas_ubicacion.append(f"Subtítulo: {texto_detalle}")
+        lineas_ubicacion.append(
+            "La sección y el subtítulo dicen de quién es el dato. "
+            "Lo que tenés que devolver es lo que pide el nombre del campo, "
+            "no un número que aparezca en el subtítulo."
+        )
+        bloque_ubicacion = "\n" + "\n".join(lineas_ubicacion) + "\n"
     prompt = f"""
 Eres un asistente que completa formularios de postulación
 utilizando exclusivamente la información proporcionada en
@@ -220,9 +251,12 @@ Reglas:
 4. Si la información necesaria no aparece claramente,
    responde null.
 
-5. Si existe información suficiente, responde en una o
-   dos oraciones. No redactes un informe ni copies
-   párrafos del documento.
+5. Si el campo pide un texto, responde en una o dos
+   oraciones. No redactes un informe ni copies párrafos
+   del documento. Si pide un nombre o una razón social,
+   responde solo ese nombre, nunca un RUT ni otro número.
+   Si pide un RUT, una cédula, un número de documento,
+   una fecha, un correo o un teléfono, responde solo ese dato.
 
 6. Mantén los datos exactamente como aparecen cuando se
    trate de identificadores, nombres, números, fechas,
@@ -264,7 +298,7 @@ Información de los documentos:
 
 Campo del formulario:
 {campo}
-
+{bloque_ubicacion}{f"\n{formato}\n" if formato else ""}{f"\n{texto_nombre}\n" if texto_nombre else ""}
 Tipo de campo:
 {tipo}
 {bloque_opciones}
@@ -330,8 +364,10 @@ Cerrá el JSON. {cierre}
         "respuesta"
     )
 
-    if isinstance(respuesta, str) and not descripcion_columnas:
+    if isinstance(respuesta, str) and not descripcion_columnas and not formato and not texto_nombre:
         respuesta = _primeras_oraciones(respuesta)
+
+    respuesta = limpiar_respuesta_nombre(campo, respuesta)
 
     fuentes = resultado.get(
         "fuentes",
