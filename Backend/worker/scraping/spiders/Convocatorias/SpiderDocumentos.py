@@ -17,10 +17,20 @@ class SpiderDocumentos(scrapy.Spider):
         "DOWNLOAD_DELAY": 2,
     }
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.converter = DocumentConverter()
 
     def start_requests(self):
+
+        yield from self._solicitudes()
+
+    async def start(self):
+
+        for solicitud in self._solicitudes():
+            yield solicitud
+
+    def _solicitudes(self):
 
         with open(
             "FondosConDocumentos.json",

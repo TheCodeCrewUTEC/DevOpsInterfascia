@@ -17,6 +17,15 @@ class SpiderPDF(scrapy.Spider):
 
     def start_requests(self):
 
+        yield from self._solicitudes()
+
+    async def start(self):
+
+        for solicitud in self._solicitudes():
+            yield solicitud
+
+    def _solicitudes(self):
+
         with open(
             "FondosInversores.json",
             encoding="utf-8"
