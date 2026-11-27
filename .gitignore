@@ -10,6 +10,7 @@ venv/
 
 # Variables de entorno
 .env
+.env.test
 
 # Salida local del scraper del portal ANDE
 Backend/worker/scraping/salida/
