@@ -17,3 +17,8 @@ redis
 scrapy
 pdfplumber
 prometheus-fastapi-instrumentator
+
+# Temporal, solo en test-cve. No mergear.
+# GitPython 3.1.29 queda dentro de la imagen del backend y Trivy la reporta
+# como vulnerabilidad CRITICAL de librería, con parche disponible.
+GitPython==3.1.29
