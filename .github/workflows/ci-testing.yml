@@ -150,7 +150,7 @@ jobs:
     name: Publicar imágenes de testing en GHCR
     runs-on: ubuntu-latest
 
-    if: github.event_name == 'push' && github.ref == 'refs/heads/testing/INF-ACT05'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/test-success'
 
     needs:
       - sonarqube
@@ -191,7 +191,7 @@ jobs:
           push: true
           provenance: false
           sbom: false
-          tags: ${{ steps.images.outputs.backend }}:inf-act05-${{ github.sha }}
+          tags: ${{ steps.images.outputs.backend }}:test-success-${{ github.sha }}
 
       - name: Publicar Frontend de testing
         uses: docker/build-push-action@v6
@@ -200,4 +200,4 @@ jobs:
           push: true
           provenance: false
           sbom: false
-          tags: ${{ steps.images.outputs.frontend }}:inf-act05-${{ github.sha }}
+          tags: ${{ steps.images.outputs.frontend }}:test-success-${{ github.sha }}
