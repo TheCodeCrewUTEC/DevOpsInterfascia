@@ -1765,15 +1765,12 @@ def procesar_convocatoria(
     institucion_doc = None
     financiamiento_doc = None
 
-    if (
-        valores_actuales["fecha_apertura"] is None
-        or valores_actuales["fecha_cierre"] is None
-    ):
-
-        apertura_doc, cierre_doc = periodo_en_bd(
-            cur,
-            convocatoria_id,
-        )
+    # Siempre, también si la fecha ya estaba cargada: un período nuevo en el
+    # documento tiene que poder reemplazar la fecha de cierre.
+    apertura_doc, cierre_doc = periodo_en_bd(
+        cur,
+        convocatoria_id,
+    )
 
     institucion_actual = str(
         valores_actuales["institucion"] or ""
@@ -1842,10 +1839,19 @@ def procesar_convocatoria(
             and str(valor_actual or "").strip().upper() == "ANDE"
         )
 
+        # Completar un NULL no es un cambio. Una fecha de cierre distinta
+        # en el documento sí: es la misma convocatoria con plazo nuevo.
+        cierre_nuevo = (
+            campo == "fecha_cierre"
+            and cierre_doc is not None
+            and str(valor_actual)[:10] != cierre_doc.isoformat()
+        )
+
         if (
             SOLO_CAMPOS_VACIOS
             and valor_actual is not None
             and not institucion_corta
+            and not cierre_nuevo
         ):
 
             print(
