@@ -179,6 +179,26 @@ def importar_desde_keycloak(keycloak_id: str, usuario: dict | None = None) -> di
     return guardar_usuario(datos_desde_keycloak(usuario, rol), actualizar_estado=True)
 
 
+def registrar_desde_keycloak(keycloak_id: str) -> dict:
+    """Alta avisada por el registro. Sin un estado válido, la cuenta queda pendiente.
+
+    En REGISTER Keycloak no persiste lo que el listener cambia en la misma transacción:
+    la cuenta llega habilitada y sin estadoAprobacion. Importarla así la deja aprobada
+    y no aparece en Pendientes.
+    """
+
+    usuario = keycloak.obtener_usuario(keycloak_id)
+    estado = _primero(usuario.get("attributes") or {}, "estadoAprobacion")
+
+    if estado not in ESTADOS:
+        keycloak.cambiar_aprobacion(keycloak_id, habilitado=False, estado="pendiente")
+        # No se vuelve a leer: un GET inmediato puede seguir viendo la cuenta habilitada.
+        atributos = {**(usuario.get("attributes") or {}), "estadoAprobacion": ["pendiente"]}
+        usuario = {**usuario, "enabled": False, "attributes": atributos}
+
+    return importar_desde_keycloak(keycloak_id, usuario)
+
+
 def sincronizar_desde_keycloak() -> int:
     """Copia todos los usuarios de Keycloak a la tabla (Keycloak manda sobre el estado)."""
 

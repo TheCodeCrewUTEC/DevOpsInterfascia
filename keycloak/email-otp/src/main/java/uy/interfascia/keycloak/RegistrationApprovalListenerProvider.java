@@ -15,9 +15,11 @@ import org.keycloak.events.EventType;
 import org.keycloak.events.admin.AdminEvent;
 import org.keycloak.models.AbstractKeycloakTransaction;
 import org.keycloak.models.KeycloakSession;
+import org.keycloak.models.KeycloakSessionFactory;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.RoleModel;
 import org.keycloak.models.UserModel;
+import org.keycloak.models.utils.KeycloakModelUtils;
 
 /**
  * Tras el registro: deja la cuenta deshabilitada (pendiente de aprobación),
@@ -60,25 +62,14 @@ public class RegistrationApprovalListenerProvider implements EventListenerProvid
             return;
         }
 
-        RealmModel realm = session.realms().getRealm(event.getRealmId());
-        if (realm == null || event.getUserId() == null) {
+        if (event.getUserId() == null) {
             return;
         }
 
-        UserModel user = session.users().getUserById(realm, event.getUserId());
-        if (user == null) {
-            return;
-        }
-
-        user.setEnabled(false);
-        user.setSingleAttribute(ATTR_ESTADO, ESTADO_PENDIENTE);
-        asignarRolDesdePerfil(realm, user);
-        avisarRegistroDespuesDelCommit(user.getId());
-
-        LOG.infof(
-                "Usuario %s registrado: cuenta pendiente de aprobación del administrador.",
-                user.getUsername()
-        );
+        // En REGISTER el usuario ya está escrito: setEnabled, el atributo y el rol
+        // hechos acá no se vuelven a persistir y la cuenta queda habilitada. La API
+        // la importaría como aprobada y no entra en Pendientes.
+        dejarPendienteDespuesDelCommit(event.getRealmId(), event.getUserId());
     }
 
     private void asignarRolDesdePerfil(RealmModel realm, UserModel user) {
@@ -106,30 +97,54 @@ public class RegistrationApprovalListenerProvider implements EventListenerProvid
     }
 
     /**
-     * El aviso sale recién cuando Keycloak confirma la transacción: la API lee el
-     * usuario por la API de administración y antes del commit todavía no existe.
-     * Si la API no responde, el registro sigue igual y el admin puede sincronizar.
+     * Otra transacción, después del commit del registro: ahí sí se guardan
+     * enabled, estadoAprobacion y el rol. Recién entonces se avisa a la API,
+     * que lee el usuario por la API de administración. Si la API no responde,
+     * la cuenta queda igual de pendiente y el admin puede sincronizar.
      */
-    private void avisarRegistroDespuesDelCommit(String userId) {
-        if (API_URL == null || API_URL.isBlank() || INTERNAL_SECRET == null || INTERNAL_SECRET.isBlank()) {
-            LOG.warn("Falta INTERFASCIA_API_URL o INTERNAL_API_SECRET: el registro no se avisa a la API.");
-            return;
-        }
+    private void dejarPendienteDespuesDelCommit(String realmId, String userId) {
+        KeycloakSessionFactory fabrica = session.getKeycloakSessionFactory();
 
         session.getTransactionManager().enlistAfterCompletion(new AbstractKeycloakTransaction() {
             @Override
             protected void commitImpl() {
+                try {
+                    KeycloakModelUtils.runJobInTransaction(fabrica, nueva -> {
+                        RealmModel realm = nueva.realms().getRealm(realmId);
+                        if (realm == null) {
+                            return;
+                        }
+                        UserModel user = nueva.users().getUserById(realm, userId);
+                        if (user == null) {
+                            return;
+                        }
+                        user.setEnabled(false);
+                        user.setSingleAttribute(ATTR_ESTADO, ESTADO_PENDIENTE);
+                        asignarRolDesdePerfil(realm, user);
+                        LOG.infof(
+                                "Usuario %s registrado: cuenta pendiente de aprobación del administrador.",
+                                user.getUsername()
+                        );
+                    });
+                } catch (RuntimeException error) {
+                    LOG.warnf(error, "No se pudo dejar pendiente al usuario %s", userId);
+                }
                 avisarRegistro(userId);
             }
 
             @Override
             protected void rollbackImpl() {
-                // El registro no se guardó: no hay nada que avisar
+                // El registro no se guardó: no hay nada que dejar pendiente
             }
         });
     }
 
     private void avisarRegistro(String userId) {
+        if (API_URL == null || API_URL.isBlank() || INTERNAL_SECRET == null || INTERNAL_SECRET.isBlank()) {
+            LOG.warn("Falta INTERFASCIA_API_URL o INTERNAL_API_SECRET: el registro no se avisa a la API.");
+            return;
+        }
+
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(API_URL.replaceAll("/+$", "") + "/internal/usuarios"))
                 .timeout(Duration.ofSeconds(15))

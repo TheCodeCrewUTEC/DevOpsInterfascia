@@ -33,7 +33,7 @@ def recibir_registro(
         raise HTTPException(status_code=401, detail="No autorizado")
 
     try:
-        usuario = usuario_service.importar_desde_keycloak(aviso.keycloak_id)
+        usuario = usuario_service.registrar_desde_keycloak(aviso.keycloak_id)
     except keycloak.KeycloakAdminError as error:
         raise _error_keycloak(error)
 
