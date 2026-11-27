@@ -77,8 +77,17 @@ jobs:
         working-directory: Backend
         run: "pip install --only-binary=:all: -r requirements.txt"
 
+      - name: Levantar la base de prueba
+        run: docker compose -f docker-compose.test.yml up -d --wait
+
       - name: Ejecutar tests
         working-directory: Backend
+        env:
+          TEST_POSTGRES_HOST: 127.0.0.1
+          TEST_POSTGRES_PORT: "5434"
+          TEST_POSTGRES_DB: interfascia_test
+          TEST_POSTGRES_USER: interfascia_test
+          TEST_POSTGRES_PASSWORD: interfascia_test_local_2026
         run: python -m pytest
 
       - name: Verificar FastAPI
