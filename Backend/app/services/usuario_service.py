@@ -80,7 +80,7 @@ def eliminar_ausentes(ids_vigentes: set[str]) -> int:
         with conn.cursor() as cur:
             if ids_vigentes:
                 cur.execute(
-                    "DELETE FROM usuarios WHERE keycloak_id <> ALL(%s)",
+                    "DELETE FROM usuarios WHERE NOT (keycloak_id = ANY(%s))",
                     (list(ids_vigentes),),
                 )
             else:
@@ -92,6 +92,38 @@ def eliminar_ausentes(ids_vigentes: set[str]) -> int:
 
     finally:
         conn.close()
+
+
+def ids_en_tabla() -> set[str]:
+    conn = get_connection()
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT keycloak_id FROM usuarios")
+            return {fila[0] for fila in cur.fetchall()}
+
+    finally:
+        conn.close()
+
+
+def incorporar_faltantes(usuarios_keycloak: list[dict]) -> int:
+    """Copia las cuentas de Keycloak que la tabla todavía no tiene.
+
+    Crearlas en la consola no avisa a la API: sin esto la gestión solo muestra
+    a quien pasó por el registro de la app.
+    """
+
+    existentes = ids_en_tabla()
+    agregados = 0
+
+    for usuario in usuarios_keycloak:
+        if usuario["id"] in existentes:
+            continue
+        rol = keycloak.rol_de_usuario(usuario["id"])
+        guardar_usuario(datos_desde_keycloak(usuario, rol), actualizar_estado=True)
+        agregados += 1
+
+    return agregados
 
 
 def listar_usuarios(estado: str | None = None) -> list[dict]:

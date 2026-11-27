@@ -51,3 +51,44 @@ def test_registro_con_estado_no_se_pisa(monkeypatch):
 
     assert "cambio" not in llamadas
     assert llamadas["importar"] == ("kc-2", usuario)
+
+
+def test_incorpora_cuentas_de_keycloak_que_no_estan_en_la_tabla(monkeypatch):
+    guardados = []
+
+    monkeypatch.setattr(usuario_service, "ids_en_tabla", lambda: {"ya-esta"})
+    monkeypatch.setattr(usuario_service.keycloak, "rol_de_usuario", lambda _id: None)
+
+    def guardar(datos, actualizar_estado=False):
+        guardados.append((datos, actualizar_estado))
+        return datos
+
+    monkeypatch.setattr(usuario_service, "guardar_usuario", guardar)
+
+    agregados = usuario_service.incorporar_faltantes([
+        {
+            "id": "ya-esta",
+            "enabled": True,
+            "email": "ana@example.com",
+            "attributes": {"estadoAprobacion": ["aprobado"]},
+        },
+        {
+            "id": "nuevo",
+            "enabled": True,
+            "email": "nuevo@example.com",
+            "firstName": "Nuevo",
+            "attributes": {},
+        },
+        {
+            "id": "deshabilitado",
+            "enabled": False,
+            "email": "off@example.com",
+            "attributes": {},
+        },
+    ])
+
+    assert agregados == 2
+    assert [datos["keycloak_id"] for datos, _ in guardados] == ["nuevo", "deshabilitado"]
+    assert guardados[0][0]["estado"] == "aprobado"
+    assert guardados[1][0]["estado"] == "pendiente"
+    assert all(actualizar for _, actualizar in guardados)
