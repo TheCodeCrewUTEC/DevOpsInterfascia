@@ -37,9 +37,9 @@ DB_CONFIG = {
 # Ollama
 # ------------------------------------------------------------
 
-OLLAMA_URL = "http://localhost:11434"
+OLLAMA_URL = os.getenv("OLLAMA_URL") or "http://localhost:11434"
 
-QWEN_MODEL = "qwen2.5:3b-instruct"
+QWEN_MODEL = os.getenv("OLLAMA_MODEL") or "qwen2.5:3b-instruct"
 
 
 # ------------------------------------------------------------

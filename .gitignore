@@ -31,3 +31,6 @@ keycloak/truststore/
 keycloak/email-otp/target/
 
 ##Frontend/tsconfig.tsbuildinfo
+
+## datos BD
+interfascia.dump

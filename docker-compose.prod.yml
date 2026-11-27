@@ -1,0 +1,52 @@
+# Sitio publicado detrás del túnel de Cloudflare (interfasciauy.com y auth.interfasciauy.com).
+# Uso: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+# El túnel manda interfasciauy.com -> localhost:3000 y auth.interfasciauy.com -> localhost:8081.
+# Todos los puertos quedan solo en 127.0.0.1: desde afuera se entra únicamente por Cloudflare.
+
+services:
+  frontend:
+    ports: !override
+      - "127.0.0.1:3000:3000"
+    environment:
+      AUTH_URL: "https://interfasciauy.com"
+      AUTH_KEYCLOAK_ISSUER: "https://auth.interfasciauy.com/realms/interfascia"
+
+  backend:
+    ports: !override
+      - "127.0.0.1:8000:80"
+    environment:
+      KEYCLOAK_ISSUER: "https://auth.interfasciauy.com/realms/interfascia"
+      INTERFASCIA_APP_URL: "https://interfasciauy.com"
+      # Ollama de este servidor, que corre en la RTX 5060 Ti. Pisa el OLLAMA_URL del .env.
+      OLLAMA_URL: "http://host.docker.internal:11434"
+
+  worker:
+    environment:
+      INTERFASCIA_APP_URL: "https://interfasciauy.com"
+      OLLAMA_URL: "http://host.docker.internal:11434"
+
+  keycloak:
+    ports: !override
+      - "127.0.0.1:${KEYCLOAK_HOST_PORT:-8081}:8080"
+    environment:
+      KC_HOSTNAME: "https://auth.interfasciauy.com"
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+      KC_PROXY_HEADERS: xforwarded
+      INTERFASCIA_APP_URL: "https://interfasciauy.com"
+
+  redis:
+    ports: !reset []
+
+  # 9090 y 3001 los usa la copia de desarrollo
+  prometheus:
+    ports: !override
+      - "127.0.0.1:9091:9090"
+
+  grafana:
+    ports: !override
+      - "127.0.0.1:3002:3000"
+
+  # El 5432 lo ocupa el PostgreSQL instalado en Windows
+  db:
+    ports: !override
+      - "127.0.0.1:5433:5432"
